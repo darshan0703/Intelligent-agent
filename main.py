@@ -19,11 +19,11 @@ load_dotenv()  # Load environment variables from .env file
 # Use `model` for both providers to match current usage patterns.
 #llm = ChatOllama(model="phi3", temperature=0)cal
 #llm = ChatOllama(model="mistral", temperature=0.3)
-llm = ChatGroq(model="openai/gpt-oss-120b",temperature=0.3)
+llm = ChatGroq(model="llama-3.3-70b-versatile",temperature=0)
 #llm = ChatOpenAI(
  #     model="grok-1",  
    #   api_key=os.getenv("GROK_API_KEY"),
-    #  GROK_API_KEY="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"
+    #  GROK_API_KEY="GROQ_API_KEY=""
 
 
 
@@ -46,10 +46,12 @@ prompt = ChatPromptTemplate.from_messages(
       "system",
       """ 
       You are a friendly, fast-paced Burger King cashier.
-Keep responses short and natural.
-Do not mention sources or tools.
-Ask one clear follow-up question.
-Be conversational, not corporate.
+      Keep responses short and natural.
+      Continue the conversation naturally.
+      Remember what the customer already ordered.
+      Ask follow-up questions when needed
+      Do not mention sources or tools.
+      Be conversational, not corporate.
 
     
       """,
@@ -72,16 +74,30 @@ agent = create_tool_calling_agent(
     prompt=prompt,
 )  
 agent_executor = AgentExecutor(agent=agent, tools=[search_tool], memory=memory,verbose=False)
-input = input("Hi there, how can I help you today?")
+#input = input("Hi there, how can I help you today?")
+order_completed = False
 start_time = time.time()
 
-raw_response = agent_executor.invoke({
-    "input": input,
-})
-#response = parser.parse(raw_response["output"])
-end_time = time.time()
+opening = agent_executor.invoke({
+    "input": "The customer just walked to the counter",})
+print("Cashier:", opening["output"])
 
-#structured_response = parser.parse(raw_response["output"])
-print(raw_response["output"])
+while not order_completed:
+  user_input = input("Customer: ")
+
+  if user_input.lower() in ["quit", "exit"]:
+    break
+
+  raw_response = agent_executor.invoke({
+    "input": user_input,
+ })
+  if "payment received" in raw_response["output"].lower() or \
+       "thank you for your purchase" in raw_response["output"].lower():
+        order_completed = True
+ #response = parser.parse(raw_response["output"])
+  end_time = time.time()
+
+ #structured_response = parser.parse(raw_response["output"])
+  print(raw_response["output"])
 print(f"Time taken: {end_time - start_time:.2f} seconds")
 
