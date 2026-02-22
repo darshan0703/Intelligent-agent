@@ -51,6 +51,7 @@ prompt = ChatPromptTemplate.from_messages(
       Remember what the customer already ordered.
       Ask follow-up questions when needed
       Do not mention sources or tools.
+      after receiving the payment, say thank you for your purchase.
       Be conversational, not corporate.
 
     
