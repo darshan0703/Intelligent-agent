@@ -16,6 +16,7 @@ from schemas import OrderIntent
 from pydantic import ValidationError
 import json
 import time
+from datetime import date
 import os
 
 load_dotenv()  # Load environment variables from .env file
@@ -111,7 +112,17 @@ def handle_menu():
 
     menu = get_available_menu()
 
-    response = "Here are the items available today:\n\n"
+    # compute items we want to sell first
+    priority_items = get_priority_items(menu)
+
+    response = "Namaste! Welcome to Burger King India.\n\n"
+
+    response += "Today we have some great options you might enjoy:\n"
+
+    for item in priority_items:
+        response += f"⭐ {item['name']} – ₹{int(item['price'])}\n"
+
+    response += "\nFull menu:\n"
 
     for item in menu:
         response += f"• {item['name']} – ₹{int(item['price'])}\n"
@@ -144,6 +155,22 @@ def handle_menu():
         }
 
     return {"type": "unknown"}'''
+def get_priority_items(menu):
+
+    today = date.today()
+
+    for item in menu:
+        days_to_expiry = (item["expiry"] - today).days
+
+        # high stock + near expiry = higher priority
+        expiry_score = max(0, 30 - days_to_expiry)
+
+        item["priority"] = item["stock"] + expiry_score
+
+    menu_sorted = sorted(menu, key=lambda x: x["priority"], reverse=True)
+
+    return menu_sorted[:2]  # top items to push
+
 def handle_order(item_name):
 
     result = add_to_cart(item_name)

@@ -1,6 +1,7 @@
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 from models import MenuItem, Inventory, Branch
+from datetime import date
 
 engine = create_engine("postgresql://darshan@localhost/restaurant_ai")
 Session = sessionmaker(bind=engine)
@@ -15,11 +16,17 @@ def get_available_menu():
         .filter(Inventory.branch_id == BRANCH_ID)
         .filter(MenuItem.is_available == True)
         .filter(Inventory.stock > 0)
+        .filter(Inventory.expiry_date >= date.today())
         .all()
     )
 
     result = [
-        {"name": item.MenuItem.name, "price": float(item.MenuItem.price)}
+        {
+            "name": item.MenuItem.name,
+            "price": float(item.MenuItem.price),
+            "stock": item.Inventory.stock,
+            "expiry": item.Inventory.expiry_date
+        }
         for item in items
     ]
 

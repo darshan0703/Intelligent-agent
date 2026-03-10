@@ -1,5 +1,5 @@
 from sqlalchemy import (
-    Column, Integer, String, Boolean, ForeignKey, Numeric
+    Column, Integer, String, Boolean, ForeignKey, Numeric,Date
 )
 from sqlalchemy.orm import declarative_base, relationship
 
@@ -33,3 +33,4 @@ class Inventory(Base):
     branch_id = Column(Integer, ForeignKey("branches.id"), nullable=False)
     item_id = Column(Integer, ForeignKey("menu_items.id"), nullable=False)
     stock = Column(Integer, nullable=False)
+    expiry_date = Column(Date)
