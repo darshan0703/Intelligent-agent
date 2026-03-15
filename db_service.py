@@ -8,15 +8,16 @@ Session = sessionmaker(bind=engine)
 
 BRANCH_ID = 1  # For now, prototype branch
 
-def get_available_menu():
+def get_menu_by_category(category):
+
     session = Session()
+
     items = (
         session.query(MenuItem, Inventory)
         .join(Inventory, MenuItem.id == Inventory.item_id)
+        .filter(MenuItem.category.ilike(category))
         .filter(Inventory.branch_id == BRANCH_ID)
-        .filter(MenuItem.is_available == True)
         .filter(Inventory.stock > 0)
-        .filter(Inventory.expiry_date >= date.today())
         .all()
     )
 
@@ -31,6 +32,34 @@ def get_available_menu():
     ]
 
     session.close()
+
+    return result
+def get_available_menu():
+
+    session = Session()
+
+    items = (
+        session.query(MenuItem, Inventory)
+        .join(Inventory, MenuItem.id == Inventory.item_id)
+        .filter(Inventory.branch_id == BRANCH_ID)
+        .filter(MenuItem.is_available == True)
+        .filter(Inventory.stock > 0)
+        .all()
+    )
+
+    result = [
+        {
+            "name": item.MenuItem.name,
+            "price": float(item.MenuItem.price),
+            "stock": item.Inventory.stock,
+            "expiry": item.Inventory.expiry_date,
+            "category": item.MenuItem.category
+        }
+        for item in items
+    ]
+
+    session.close()
+
     return result
 
 

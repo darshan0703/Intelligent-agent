@@ -25,6 +25,7 @@ class MenuItem(Base):
     price = Column(Numeric, nullable=False)
     brand_id = Column(Integer, ForeignKey("brands.id"), nullable=False)
     is_available = Column(Boolean, default=True)
+    category = Column(String)
 
 
 class Inventory(Base):
