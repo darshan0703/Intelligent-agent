@@ -30,7 +30,7 @@ llm = ChatGroq(model="llama-3.3-70b-versatile",temperature=0)
  #     model="grok-1",  
    #   api_key=os.getenv("GROK_API_KEY"),
     #  GROK_API_KEY="GROQ_API_KEY=""
-conversation_context = {"last_category": None}
+conversation_context = {   "last_category": None,"cart": [],"last_item": None,"last_offer": None}
 
 
 #llm = ChatAnthropic(model="claude-opus-4.5", temperature=0)
@@ -61,105 +61,141 @@ Keep it short and friendly.
 
     return response.content
 
-def extract_intent(user_input):
+def handle_decline():
 
     prompt = f"""
-You are an intent classification engine for a restaurant ordering system.
+You are a Burger King India cashier.
 
-Classify the user's message into ONE of these actions:
+Facts:
+- Current cart: {conversation_context['cart']}
 
-1. add_item → customer wants to order a specific item
-2. show_priority_menu → customer asks for specials / suggestions / recommendations
-3. show_full_menu → customer asks for full menu / all items / what else is available
-4. show_category → customer asks for a category like desserts, drinks, burgers, sides
-5. checkout → customer wants to pay / finish order
-6. unknown → anything else
+Customer declined the previous suggestion.
 
 Rules:
-
-- Return ONLY JSON
-- Do not explain
-- If action is add_item, include item_name
-- If action is show_category, include category
-
-Examples:
-
-User: what is special today
-Response: {{"action":"show_priority_menu"}}
-
-User: what do you recommend
-Response: {{"action":"show_priority_menu"}}
-
-User: what do you have
-Response: {{"action":"show_priority_menu"}}
-
-User: show menu
-Response: {{"action":"show_full_menu"}}
-
-User: what's on menu
-Response: {{"action":"show_full_menu"}}
-
-User: what else do you have
-Response: {{"action":"show_full_menu"}}
-
-User: show all items
-Response: {{"action":"show_full_menu"}}
-
-User: desserts
-Response: {{"action":"show_category","category":"dessert"}}
-
-User: what desserts do you have
-Response: {{"action":"show_category","category":"dessert"}}
-
-User: drinks
-Response: {{"action":"show_category","category":"beverage"}}
-
-User: burgers
-Response: {{"action":"show_category","category":"burger"}}
-
-User: fries please
-Response: {{"action":"add_item","item_name":"Fries"}}
-
-User: one whopper
-Response: {{"action":"add_item","item_name":"Whopper"}}
-
-User: add whopper jr
-Response: {{"action":"add_item","item_name":"Whopper Jr"}}
-
-User: I want to pay
-Response: {{"action":"checkout"}}
-
-User: checkout
-Response: {{"action":"checkout"}}
-
-Now classify:
-
-User: "{user_input}"
+- Do not greet again
+- Speak naturally
+- Ask whether customer wants checkout or more items
 """
 
     response = llm.invoke(prompt)
 
-    try:
-        data = json.loads(response.content)
-        return OrderIntent(**data)
+    return response.content
 
-    except:
-        return OrderIntent(action="unknown")
-    
-def handle_more_options():
+def extract_intent(user_input):
+
+    structured_llm = llm.with_structured_output(OrderIntent)
 
     menu = get_available_menu()
+    menu_names = [item["name"] for item in menu]
+
+    prompt = f"""
+You are an intelligent restaurant intent extractor.
+
+Understand customer intent semantically.
+
+Available menu items:
+{menu_names}
+
+Customer message:
+{user_input}
+
+Rules:
+
+Rules:
+
+- If customer wants to order something:
+  action = add_item
+
+- If customer wants to remove something already ordered:
+  action = remove_item
+
+- If customer asks for specials / best / highlights:
+  action = show_priority_menu
+
+- If customer asks for all available items:
+  action = show_full_menu
+
+- If customer asks for a category:
+  action = show_category
+- If customer asks for more within current context:
+  action = expand_context
+
+- If customer declines recommendation or upsell:
+  action = decline_offer
+
+Allowed categories:
+burger
+beverage
+dessert
+side
+
+- If customer asks for recommendation:
+  action = recommend
+
+- If customer asks for more within current context:
+  action = expand_context
+
+- If customer declines recommendation / upsell:
+  action = decline_offer
+
+- If customer asks to pay:
+  action = checkout
+
+- If greeting or casual talk:
+  action = unknown
+
+Important:
+- item_name must match closest available menu item
+- If customer uses partial names, map intelligently
+- If customer says cancel / remove / don't want / delete:
+  action = remove_item.
+"""
+
+    try:
+        result = structured_llm.invoke(prompt)
+
+        if result.category:
+            mapping = {
+                "burgers": "burger",
+                "burger": "burger",
+                "drinks": "beverage",
+                "drink": "beverage",
+                "beverages": "beverage",
+                "desserts": "dessert",
+                "dessert": "dessert",
+                "sides": "side",
+                "side": "side"
+            }
+
+            result.category = mapping.get(result.category.lower(), result.category.lower())
+
+        return result
+
+    except Exception:
+        return OrderIntent(action="unknown")
+    
+
+
+def handle_more_options():
+
+    if conversation_context["last_category"]:
+        menu = get_menu_by_category(conversation_context["last_category"])
+    else:
+        menu = get_available_menu()
 
     priority_items = get_priority_items(menu)
 
     remaining_items = [item for item in menu if item not in priority_items]
 
-    response = "Yes, besides our current recommendations, we also have:\n\n"
+    if not remaining_items:
+        return f"That's all we currently have in {conversation_context['last_category']}."
+
+    response = "Besides those, we also have:\n\n"
 
     for item in remaining_items:
         response += f"• {item['name']} – ₹{int(item['price'])}\n"
 
-    response += "\nThat’s the full menu currently available today. Would you like to try any of these?"
+    response += "\nWould you like to try any of these?"
 
     return response
 def handle_category(category):
@@ -184,7 +220,11 @@ def handle_category(category):
 
 def handle_menu(user_input):
 
-    menu = get_available_menu()
+    if conversation_context["last_category"]:
+        menu = get_menu_by_category(conversation_context["last_category"])
+    else:
+        menu = get_available_menu() 
+
     priority_items = get_priority_items(menu)
 
     expanded_keywords = [
@@ -235,33 +275,27 @@ Rules:
     response = llm.invoke(prompt)
 
     return response.content
-    
-'''def handle_intent(intent, user_input):
-
-    if intent.action == "show_menu":
-        menu = get_available_menu()
-
-        return {
-            "type": "menu",
-            "menu": menu,
-            "user_question": user_input
-        }
-
-    elif intent.action == "add_item":
-        result = add_to_cart(intent.item_name)
-        return {
-            "type": "add_item",
-            "result": result
-        }
-
-    elif intent.action == "checkout":
-        return {
-            "type": "checkout"
-        }
-
-    return {"type": "unknown"}'''
 
 def handle_full_menu():
+
+    if conversation_context["last_category"]:
+        menu = get_menu_by_category(conversation_context["last_category"])
+
+        priority = get_priority_items(menu)
+
+        remaining = [item for item in menu if item not in priority]
+
+        if not remaining:
+            return f"That's all we currently have in {conversation_context['last_category']}."
+
+        response = f"Besides those, we also have:\n\n"
+
+        for item in remaining:
+            response += f"• {item['name']} – ₹{int(item['price'])}\n"
+
+        response += "\nThat completes our available options in this category."
+
+        return response
 
     menu = get_available_menu()
 
@@ -274,28 +308,41 @@ def handle_full_menu():
 
     return response
 
-def handle_recommendation():
+def handle_recommendation(user_input):
 
     if conversation_context["last_category"]:
-
         items = get_menu_by_category(conversation_context["last_category"])
-
+        category = conversation_context["last_category"]
     else:
         items = get_available_menu()
+        category = "menu"
 
     priority = get_priority_items(items)
 
     if not priority:
         return "Everything available is already shown."
 
-    response = "I'd recommend:\n\n"
+    recommended = priority[0]
 
-    for item in priority:
-        response += f"• {item['name']} – ₹{int(item['price'])}\n"
+    prompt = f"""
+You are a Burger King India cashier.
 
-    response += "\nThese are moving well today."
+Facts:
+- Customer asked: "{user_input}"
+- Current category: {category}
+- Recommended item: {recommended['name']}
+- Price: ₹{int(recommended['price'])}
 
-    return response
+Rules:
+- Recommend ONLY this item
+- Speak naturally
+- Explain briefly why it is a good choice
+- Do not invent other items
+"""
+
+    response = llm.invoke(prompt)
+
+    return response.content
 
 def get_priority_items(menu):
 
@@ -312,54 +359,54 @@ def get_priority_items(menu):
     menu_sorted = sorted(menu, key=lambda x: x["priority"], reverse=True)
 
     return menu_sorted[:2]  # top items to push
-def handle_category(category):
 
-    items = get_menu_by_category(category)
-
-    if not items:
-        return f"Sorry, we don't have any {category} available right now."
-
-    priority = get_priority_items(items)
-
-    response = f"Here are our available {category} options:\n\n"
-
-    for item in priority:
-        response += f"• {item['name']} – ₹{int(item['price'])}\n"
-
-    return response
 
 def handle_order(item_name):
 
     result = add_to_cart(item_name)
 
     if result["success"]:
+        conversation_context["cart"].append(result["item"])
 
         menu = get_available_menu()
         priority_items = get_priority_items(menu)
 
-        upsell = priority_items[0]["name"] if priority_items else None
+        upsell = None
+        for item in priority_items:
+            if item["name"] != result["item"]:
+                upsell = item["name"]
+                break
 
         prompt = f"""
-You are a friendly Burger King India cashier.
+You are a Burger King India cashier continuing an active order conversation.
 
 Facts:
 - Item added: {result['item']}
 - Price: ₹{int(result['price'])}
-
-Upsell item:
-- {upsell}
+- Suggested upsell: {upsell}
 
 Rules:
-- Never change item name
-- Never change price
-- Speak naturally like a human cashier
-- Softly suggest the upsell item if appropriate
+- Do NOT greet
+- Do NOT say welcome again
+- Confirm item directly
+- Mention exact price only
+- Sound natural like a cashier already mid-conversation
+- Softly suggest upsell only if available
+- Do not invent menu items
 """
 
         response = llm.invoke(prompt)
 
         return response.content
+
     return result["message"]
+def handle_remove(item_name):
+
+    if item_name in conversation_context["cart"]:
+        conversation_context["cart"].remove(item_name)
+        return f"{item_name} removed from your order. Anything else?"
+
+    return "That item is not in your current order."
   
 def handle_checkout():
 
@@ -375,20 +422,6 @@ Respond naturally like a cashier collecting payment.
 
     return response.content
 
-'''def format_response(system_result):
-
-    if system_result["type"] == "menu":
-
-        menu = system_result["menu"]
-
-        response = "Namaste! Here are the items available today:\n\n"
-
-        for item in menu:
-            response += f"• {item['name']} – ₹{int(item['price'])}\n"
-
-        response += "\nWhat would you like to order?"
-
-        return response'''
     
 prompt = ChatPromptTemplate.from_messages(
   [
@@ -442,12 +475,26 @@ while True:
     user_input = input("Customer: ")
 
     if user_input.lower() in ["exit", "quit"]:
-        break
+     break
 
     intent = extract_intent(user_input)
 
+    if intent.action == "show_category" and not intent.category:
+     reply = "Which category would you like — burgers, beverages, desserts, or sides?"
+     print("Cashier:", reply)
+     continue
+
     if intent.action == "unknown":
      reply = handle_greeting(user_input)
+
+    elif intent.action == "recommend":
+     reply = handle_recommendation(user_input)
+
+    elif intent.action == "expand_context":
+     reply = handle_more_options()
+
+    elif intent.action == "decline_offer":
+     reply = handle_decline()
 
     elif intent.action == "show_priority_menu":
      reply = handle_menu(user_input)
@@ -460,6 +507,9 @@ while True:
 
     elif intent.action == "add_item":
      reply = handle_order(intent.item_name)
+
+    elif intent.action == "remove_item":
+     reply = handle_remove(intent.item_name)
 
     elif intent.action == "checkout":
      reply = handle_checkout()
