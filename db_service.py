@@ -7,26 +7,31 @@ engine = create_engine("postgresql://darshan@localhost/restaurant_ai")
 Session = sessionmaker(bind=engine)
 
 BRANCH_ID = 1  # For now, prototype branch
-
 def get_menu_by_category(category):
 
     session = Session()
 
-    items = (
+    query = (
         session.query(MenuItem, Inventory)
         .join(Inventory, MenuItem.id == Inventory.item_id)
-        .filter(MenuItem.category.ilike(category))
         .filter(Inventory.branch_id == BRANCH_ID)
         .filter(Inventory.stock > 0)
-        .all()
     )
+
+    if category in ["veg", "non_veg"]:
+        query = query.filter(MenuItem.food_type.ilike(category))
+    else:
+        query = query.filter(MenuItem.category.ilike(category))
+
+    items = query.all()
 
     result = [
         {
             "name": item.MenuItem.name,
             "price": float(item.MenuItem.price),
             "stock": item.Inventory.stock,
-            "expiry": item.Inventory.expiry_date
+            "expiry": item.Inventory.expiry_date,
+            "category": item.MenuItem.category
         }
         for item in items
     ]
@@ -34,6 +39,7 @@ def get_menu_by_category(category):
     session.close()
 
     return result
+
 def get_available_menu():
 
     session = Session()

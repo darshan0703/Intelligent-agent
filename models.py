@@ -20,12 +20,13 @@ class Branch(Base):
 
 class MenuItem(Base):
     __tablename__ = "menu_items"
+
     id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False)
-    price = Column(Numeric, nullable=False)
-    brand_id = Column(Integer, ForeignKey("brands.id"), nullable=False)
-    is_available = Column(Boolean, default=True)
+    name = Column(String)
+    price = Column(Numeric)
     category = Column(String)
+    food_type = Column(String)
+    is_available = Column(Boolean)
 
 
 class Inventory(Base):

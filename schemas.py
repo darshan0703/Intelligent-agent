@@ -5,3 +5,4 @@ class OrderIntent(BaseModel):
     action: str
     item_name: Optional[str] = None
     category: Optional[str] = None
+    quantity: Optional[int] = 1

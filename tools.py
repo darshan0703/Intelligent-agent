@@ -1,7 +1,6 @@
 from datetime import datetime
 from langchain.tools import tool
 from db_service import get_available_menu, add_to_cart
-from langchain_community.tools import DuckDuckGoSearchRun
 
 @tool
 def fetch_menu():
