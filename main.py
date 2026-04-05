@@ -118,8 +118,6 @@ agent = create_tool_calling_agent(
 agent_executor = AgentExecutor(agent=agent, tools=[fetch_menu, add_item_to_cart], memory=memory,verbose=True)
 order_completed = False
 
-from router import route_intent
-
 print("Cashier: Welcome to Burger King India! What can I get for you today?")
 
 while True:
@@ -185,7 +183,7 @@ while True:
      reply = handle_correction(intent.item_name)
 
     elif intent.action == "add_item":
-     reply = handle_order(intent.item_name,intent.quantity,conversation_context,llm)
+     reply = handle_order(intent.item_name,intent.quantity,intent.category,conversation_context,llm)
 
     elif intent.action == "remove_item":
      reply = handle_remove(intent.item_name,conversation_context)

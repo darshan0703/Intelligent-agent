@@ -16,17 +16,39 @@ def find_best_match(clean_item, menu):
             best_score = score
             best_match = item
 
-    return best_match if best_score > 0 else None
+    return best_match if best_score >= 2 else None
+
+def infer_category_from_menu(clean_item, menu):
+    user_tokens = set(clean_item.split())
+    category_scores = {}
+
+    for item in menu:
+        item_tokens = set(item["name"].lower().split())
+        score = len(user_tokens & item_tokens)
+
+        if score > 0:
+            category = item["category"]
+            category_scores[category] = category_scores.get(category, 0) + score
+
+    if category_scores:
+        return max(category_scores, key=category_scores.get)
+
+    return None
 
 
-def handle_order(item_name, quantity, conversation_context, llm):
 
-    if conversation_context["pending_suggestion"]:
-        for item in conversation_context["pending_suggestion"]:
-            if item_name.lower() in item.lower():
-                item_name = item
-                conversation_context["pending_suggestion"] = None
-                break
+def handle_order(item_name, quantity, category, conversation_context, llm):
+    if not item_name:
+     return "Could you tell me which item you'd like?"
+
+    if conversation_context["pending_suggestion"] and item_name:
+     if item_name.lower() in conversation_context["pending_suggestion"].lower():
+        item_name = conversation_context["pending_suggestion"]
+        conversation_context["pending_suggestion"] = None
+    
+    if not item_name and conversation_context["pending_suggestion"]:
+        item_name = conversation_context["pending_suggestion"]
+        conversation_context["pending_suggestion"] = None
 
     menu = get_available_menu()
 
@@ -55,20 +77,50 @@ def handle_order(item_name, quantity, conversation_context, llm):
             return f"Did you mean {options}?"
 
         else:
-          exact_match = find_best_match(clean_item, menu)
+         exact_match = find_best_match(clean_item, menu)
 
-          if not exact_match:
+         if not exact_match:
+          
+          if not category:
+            category = infer_category_from_menu(clean_item, menu)
+          
+          category_items = []
+
+          if category:
+            category_items = [
+                item for item in menu
+                if item["category"].lower() == category.lower()
+            ]
+
+          print("Category:", category)
+          print("Category items:", [item["name"] for item in category_items])
+
+          similar = [
+            item["name"]
+            for item in category_items
+            if any(word in item["name"].lower() for word in clean_item.split())
+         ]
+
+          if not similar:
             similar = [
-             item["name"]
-             for item in menu
-             if any(word in item["name"].lower() for word in clean_item.split())
-              ]
+                item["name"]
+                for item in menu
+                if any(word in item["name"].lower() for word in clean_item.split())
+            ]
 
-            if similar:
-              conversation_context["pending_suggestion"] = similar
-              return f"We don't currently have {item_name}, but we do have {', '.join(similar)}. Would you like one of those?"
-
-          return f"Sorry, we don't currently have {item_name}."
+          if category_items:
+           priority_items = get_priority_items(category_items)
+           category_suggestions = [item["name"] for item in priority_items]
+           conversation_context["pending_suggestion"] = category_suggestions
+           return f"We don't currently have {item_name}, but we do have {', '.join(category_suggestions)}. Would you like one of those?"
+           
+          if similar:
+           conversation_context["last_offer"] = similar
+           conversation_context["pending_suggestion"] = similar[0]
+           return f"We don't currently have {item_name}, but we do have {', '.join(similar)}. Would you like one of those?"
+         
+         return f"Sorry, we don't currently have {item_name}."
+        
     for _ in range(quantity):
         result = add_to_cart(exact_match["name"])
 
@@ -79,6 +131,7 @@ def handle_order(item_name, quantity, conversation_context, llm):
             "name": exact_match["name"],
             "price": exact_match["price"]
         })
+        conversation_context["pending_suggestion"] = None
 
     total_price = exact_match["price"] * quantity
     item_name = exact_match["name"]

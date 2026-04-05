@@ -23,9 +23,18 @@ Current cart:
 Current category:
 {conversation_context["last_category"]}
 
-Customer message:
-{user_input}
+Last offered items:
+{conversation_context.get("last_offer")}
+
+Pending suggestion:
+{conversation_context.get("pending_suggestion")}
+
+Waiting for confirmation:
+{True if conversation_context.get("pending_suggestion") else False}
+
 Rules:
+
+
 
 Rules:
 
@@ -47,10 +56,45 @@ Rules:
 - If customer asks for all available items:
   action = show_full_menu
 
+- If pending suggestion exists and customer confirms:
+  action = add_item
+  item_name = pending suggestion
+
 - If customer asks for a category:
   action = show_category
-- If customer asks for more within current context:
+
+- If current category exists AND customer says:
+  what else
+  anything else
+  more
+  show more
+  other options
+
   action = expand_context
+
+  - If customer says short continuation phrases like:
+  what else
+  anything else
+  show more
+  other options
+  more
+
+  AND current category exists:
+  action = expand_context
+
+Examples:
+
+Current category: dessert
+Customer: what else
+action = expand_context
+
+Current category: beverage
+Customer: anything else
+action = expand_context
+
+Current category: burger
+Customer: show more
+action = expand_context
 
 - If customer declines recommendation or upsell:
   action = decline_offer
@@ -108,8 +152,18 @@ item_name = crispy chicken
 Customer: fusion sundae
 item_name = fusion sundae
 
+Pending suggestion: BK Fusion Sundae
+Customer: yeah
+action = add_item
+item_name = BK Fusion Sundae
+
 - If customer says cancel / remove / don't want / delete:
   action = remove_item
+
+ 
+Customer message:
+{user_input} 
+
 """
 
     try:
