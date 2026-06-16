@@ -2,15 +2,13 @@
 venv/
 __pycache__/
 *.pyc
+
+# Environment variables
 .env
 
-# VS Code
-.vscode/
+# macOS
+.DS_Store
 
-# React
+# Frontend
 node_modules/
 dist/
-build/
-
-# Mac
-.DS_Store
