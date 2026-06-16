@@ -1,0 +1,73 @@
+/* ========================================= */
+/* PREVIOUS BUTTON */
+/* ========================================= */
+
+.previous-button {
+  position: absolute;
+
+  top: 230px;
+  left: 35px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 12px;
+
+  width: 150px;
+  height: 72px;
+
+  border-radius: 24px;
+
+  border: 2px solid rgba(91, 43, 17, 0.12);
+
+  background: rgba(255,255,255,0.25);
+
+  backdrop-filter: blur(12px);
+
+  color: var(--bk-brown);
+
+  font-family: "Flame";
+
+  font-size: 26px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition: all 0.2s ease;
+
+  z-index: 100;
+}
+
+.previous-button:hover {
+  background: rgba(255,255,255,0.4);
+
+  border: 2px solid rgba(91,43,17,0.18);
+}
+
+.previous-button:active {
+  transform: scale(0.96);
+}
+
+/* ========================================= */
+/* ICON */
+/* ========================================= */
+
+.previous-icon {
+  font-size: 32px;
+
+  color: var(--bk-red);
+
+  margin-top: -2px;
+}
+
+/* ========================================= */
+/* TEXT */
+/* ========================================= */
+
+.previous-text {
+  color: var(--bk-brown);
+
+  letter-spacing: 0.5px;
+}

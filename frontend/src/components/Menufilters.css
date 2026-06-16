@@ -1,0 +1,68 @@
+.menu-filters {
+  position: absolute;
+
+  top: 320px;
+  left: 280px;
+
+  display: flex;
+
+  gap: 15px;
+}
+
+.filter-btn {
+  width: 140px;
+  height: 58px;
+
+  border: 2px solid rgba(91, 43, 17, 0.1);
+
+  border-radius: 30px;
+
+  background: rgba(255,255,255,0.25);
+
+  color: var(--bk-brown);
+
+  font-family: "Flame";
+
+  font-size: 20px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  outline: none;
+
+  -webkit-tap-highlight-color: transparent;
+
+  user-select: none;
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.12s ease,
+    box-shadow 0.2s ease;
+}
+
+.filter-btn:active {
+  background: rgba(255,255,255,0.25);
+}
+
+.filter-btn:focus,
+.filter-btn:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.filter-btn:active {
+  transform: scale(0.96);
+}
+
+.active-filter {
+  background: var(--bk-orange);
+
+  border-color: var(--bk-orange);
+
+  color: white;
+
+  box-shadow:
+    0 8px 20px rgba(255, 135, 0, 0.25);
+}

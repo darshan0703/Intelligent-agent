@@ -1,0 +1,145 @@
+.cart-container {
+  position: fixed;
+
+  left: 40px;
+  top: 1450px;
+
+  width: 1000px;
+  height: 380px;
+
+  border-radius: 45px;
+
+  background: rgba(255,255,255,0.92);
+
+  backdrop-filter: blur(14px);
+
+  border: 2px solid rgba(91,43,17,0.12);
+
+  overflow: hidden;
+
+  z-index: 999;
+}
+
+.cart-header {
+  position: absolute;
+
+  top: 30px;
+  left: 30px;
+  right: 30px;
+
+  display: flex;
+
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cart-left {
+  display: flex;
+
+  align-items: center;
+
+  gap: 15px;
+}
+
+.cart-icon {
+  font-size: 42px;
+}
+
+.Your-cart {
+  color: var(--bk-brown);
+
+  font-size: 32px;
+
+  font-family: "Flame";
+}
+
+.cart-count {
+  color: var(--bk-orange);
+
+  font-size: 32px;
+
+  font-family: "Flame";
+}
+
+.cart-right {
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+}
+
+.edit-icon {
+  font-size: 34px;
+}
+
+.edit-text {
+  color: var(--bk-orange);
+
+  font-size: 34px;
+
+  font-family: "Flame";
+}
+
+.cart-footer {
+  position: absolute;
+
+  left: 35px;
+  right: 35px;
+  bottom: 15px;
+
+  display: flex;
+
+  justify-content: space-between;
+  align-items: center;
+}
+
+.total-text {
+  color: var(black);
+
+  font-size: 28px;
+
+  font-family: "Flame";
+}
+
+.total-price {
+  color: var(black);
+
+  font-size: 40px;
+
+  font-family: "Flame";
+}
+
+.thin-line {
+  position: absolute;
+
+  left: 40px;
+  top: 310px;
+
+  width: 920px;
+  height: 2px;
+
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(91,43,17,0.25),
+    transparent
+  );
+}
+
+
+.No-items {
+  position: absolute;
+
+  left: 0;
+  right: 0;
+  bottom: 120px;
+
+  text-align: center;
+
+  color: rgba(91,43,17,0.35);
+
+  font-size: 72px;
+
+  font-family: "Flame";
+}

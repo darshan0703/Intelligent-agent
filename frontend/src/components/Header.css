@@ -1,0 +1,179 @@
+.ai-image {
+  position: absolute;
+
+  left: 20px;
+  top: 10px;
+
+  width: 130px;
+  height: auto;
+}
+
+.logo-image {
+  position: absolute;
+
+  left: 421px;
+  top: 10px;
+
+  width: 238px;
+  height: auto;
+}
+
+.lang-image {
+  position: absolute;
+
+  left: 900px;
+  top: 15px;
+
+  width: 140px;
+  height: auto;
+}
+
+.page-title {
+  position: absolute;
+
+  left: 0;
+  top: 125px;
+
+  width: 1080px;
+
+  text-align: center;
+
+  color: #5B2B11;
+
+  font-family: "Flame", sans-serif;
+
+  font-size: 48px;
+  font-weight: 700;
+
+  margin: 0;
+}
+
+.wave-container {
+  position: absolute;
+
+  left: 390px;
+  top: 210px;
+
+  width: 120px;
+  height: 60px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  gap: 6px;
+}
+
+.bar {
+  width: 8px;
+
+  height: 10px;
+
+  border-radius: 999px;
+
+  background: linear-gradient(
+    to top,
+    #D62300,
+    #FF8732
+  );
+
+  animation: wave 1s infinite ease-in-out;
+}
+
+.bar:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.bar:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.bar:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.bar:nth-child(4) {
+  animation-delay: 0.45s;
+}
+
+.bar:nth-child(5) {
+  animation-delay: 0.6s;
+}
+
+@keyframes wave {
+  0% {
+    height: 10px;
+  }
+
+  50% {
+    height: 40px;
+  }
+
+  100% {
+    height: 10px;
+  }
+}
+
+.listening-text {
+  position: absolute;
+
+  left: 520px;
+  top: 212px;
+
+  color: var(--bk-orange);
+
+  font-family: "Flame", sans-serif;
+
+  font-size: 28px;
+  font-weight: 700;
+
+  margin: 0;
+
+  display: flex;
+  align-items: center;
+}
+
+/* DOTS */
+.dots::after {
+  content: "";
+  animation: dots 1.5s infinite;
+}
+
+@keyframes dots {
+  0% {
+    content: "";
+  }
+
+  25% {
+    content: ".";
+  }
+
+  50% {
+    content: "..";
+  }
+
+  75% {
+    content: "...";
+  }
+
+  100% {
+    content: "";
+  }
+}
+
+.thin-line {
+  position: absolute;
+
+  left: 40px;
+  top: 320px;
+
+  width: 1000px;
+  height: 2px;
+
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(91, 43, 17, 0.35),
+    transparent
+  );
+}

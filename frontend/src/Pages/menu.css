@@ -1,0 +1,71 @@
+/* ========================================= */
+/* PAGE */
+/* ========================================= */
+
+.menu-page {
+  position: relative;
+
+  width: 1080px;
+  height: 1920px;
+
+  overflow: hidden;
+
+  background: rgb(255, 255, 255);
+}
+
+/* ========================================= */
+/* MENU CONTENT */
+/* ========================================= */
+
+.menu-content {
+  position: absolute;
+
+  left: 260px;
+  top: 390px;
+
+  width: 760px;
+  height: 1100px;
+
+  overflow-y: auto;
+
+  padding-right: 10px;
+  padding-bottom: 250px;
+
+  scroll-behavior: smooth;
+}
+
+/* ========================================= */
+/* REMOVE SCROLLBAR */
+/* ========================================= */
+
+.menu-content::-webkit-scrollbar {
+  display: none;
+}
+
+.menu-content {
+  scrollbar-width: none;
+}
+
+/* ========================================= */
+/* SECTION TITLE */
+/* ========================================= */
+
+.menu-section-title {
+  color: var(--bk-brown);
+
+  font-family: "Flame";
+
+  font-size: 42px;
+
+  font-weight: 700;
+
+  margin-bottom: 30px;
+}
+
+/* ========================================= */
+/* SECTION SPACING */
+/* ========================================= */
+
+.menu-section {
+  margin-bottom: 60px;
+}

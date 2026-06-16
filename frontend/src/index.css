@@ -1,0 +1,52 @@
+@import url('https://fonts.googleapis.com/css2?family=Flame:wght@700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  margin: 0;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  background: #000000;
+
+  overflow: hidden;
+
+  font-family: "Flame", sans-serif;
+}
+
+#root {
+  width: 1080px;
+  height: 1920px;
+  transform: scale(0.5);
+}
+
+:root {
+  --bg: #ffffff;
+
+  --bk-red: #D62300;
+  --bk-orange: #FF7A00;
+  --bk-brown: #5B2B11;
+
+  --text-primary: #5B2B11;
+  --text-secondary: #7A685B;
+
+  --card-radius: 32px;
+  --shadow-soft: 0 12px 40px rgba(0,0,0,0.08);
+}

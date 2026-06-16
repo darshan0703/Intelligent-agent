@@ -1,0 +1,204 @@
+/* PAGE */
+.burger-page {
+  position: relative;
+
+  width: 1080px;
+  height: 1920px;
+
+  overflow: hidden;
+
+  background-color: var(--bg);
+}
+
+/* GRID */
+.burger-grid {
+  position: absolute;
+
+  top: 380px;
+  left: 40px;
+
+  display: grid;
+
+  grid-template-columns: repeat(2, 1fr);
+
+  gap: 30px;
+}
+
+/* SECTION ICONS */
+.fire-image {
+  position: absolute;
+
+  top: 320px;
+  left: 22px;
+
+  width: 70px;
+  height: 70px;
+}
+
+.crown-image {
+  position: absolute;
+
+  top: 733px;
+  left: 22px;
+
+  width: 60px;
+  height: 70px;
+}
+
+/* RECOMMENDED SECTION */
+.Recommendation-text {
+  position: absolute;
+
+  left: 90px;
+  top: 322px;
+
+  font-family: "Flame";
+
+  color: var(--bk-brown);
+
+  font-size: 30px;
+  font-weight: 700;
+
+  margin: 0;
+}
+
+.Recommendation-text2 {
+  position: absolute;
+
+  left: 90px;
+  top: 353px;
+
+  font-family: "Flame";
+
+  color: var(--text-secondary);
+
+  font-size: 20px;
+  font-weight: 400;
+
+  margin: 0;
+}
+
+/* DIVIDER 1 */
+.thin-line-2 {
+  position: absolute;
+
+  left: 0px;
+  top: 734px;
+
+  width: 1080px;
+  height: 3px;
+
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(91,43,17,0.25),
+    transparent
+  );
+}
+
+/* PREMIUM SECTION */
+.Premium-text {
+  position: absolute;
+
+  left: 90px;
+  top: 734px;
+
+  font-family: "Flame";
+
+  color: var(--bk-brown);
+
+  font-size: 30px;
+  font-weight: 700;
+
+  margin: 0;
+}
+
+.Premium-text2 {
+  position: absolute;
+
+  left: 90px;
+  top: 765px;
+
+  font-family: "Flame";
+
+  color: var(--text-secondary);
+
+  font-size: 20px;
+  font-weight: 400;
+
+  margin: 0;
+}
+
+/* DIVIDER 2 */
+.thin-line-3 {
+  position: absolute;
+
+  left: 0px;
+  top: 1155px;
+
+  width: 1080px;
+  height: 3px;
+
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(91,43,17,0.25),
+    transparent
+  );
+}
+
+/* MORE HEADER */
+.more-header {
+  position: absolute;
+
+  top: 1165px;
+  left: 900px;
+
+  width: 1014px;
+
+  display: flex;
+
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* MORE HEADER TITLE */
+.more-header-text {
+  font-family: "Flame";
+
+  color: var(--bk-brown);
+
+  font-size: 100px;
+  font-weight: 700;
+
+  margin: 0;
+}
+
+/* VIEW ALL */
+.view-all-btn {
+  border: none;
+
+  background: transparent;
+
+  color: var(--bk-red);
+
+  font-family: "Flame";
+
+  font-size: 24px;
+  font-weight: 700;
+
+  margin: 0;
+  padding: 0;
+
+  cursor: pointer;
+
+  transition: 0.2s ease;
+}
+
+.view-all-btn:hover {
+  opacity: 0.8;
+}
+
+.view-all-btn:active {
+  transform: scale(0.95);
+}

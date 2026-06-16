@@ -1,0 +1,115 @@
+.home {
+  position: relative;
+
+  width: 1080px;
+  height: 1920px;
+
+  background-color: #E7E1D0;
+
+  overflow: hidden;
+}
+
+h1 {
+  position: absolute;
+
+  color: #5B2B11;
+  font-family: 'Flame';
+
+  left: 210px;
+  top: 567px;
+
+  font-size: 128px;
+  font-weight: 700;
+
+  line-height: 100%;
+
+  letter-spacing: 0px;
+
+  margin-bottom: 20px;
+}
+
+.burger-image {
+  position: absolute;
+
+  left: 368px;
+  top: 826px;
+
+  width: 275px;
+  height: 267px;
+}
+
+.rc {
+  position: absolute;
+
+  left: 439px;
+  top: 156px;
+
+  width: 702.93px;
+  height: 156px;
+}
+
+.oc {
+  position: absolute;
+
+  left: -93.64px;
+  top: -2px;
+
+  width: 1197.84px;
+  height: 426.84px;
+}
+
+.touch-bar {
+  position: absolute;
+
+  bottom: 0;
+
+  width: 100%;
+  height: 140px;
+
+  background-color: #FF7A00;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  color: #E7E1D0;
+
+  font-family: 'Flame';
+
+  font-size: 100px;
+  font-weight: 700;
+
+  letter-spacing: 0px;
+}
+
+.touch-bar {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.75;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+.touch-bar p {
+  color: white;
+  font-family: 'Flame';
+
+  font-size: 48px;
+
+  left: 103px;
+  top: 1739px;
+
+  font-weight: 700;
+
+  letter-spacing: 4px;
+}

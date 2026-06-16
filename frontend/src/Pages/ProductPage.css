@@ -1,0 +1,341 @@
+/* ========================================= */
+/* PAGE */
+/* ========================================= */
+
+.product-page {
+  position: relative;
+
+  width: 1080px;
+  height: 1920px;
+
+  overflow: hidden;
+
+  background: var(--bg);
+}
+
+/* ========================================= */
+/* PRODUCT IMAGE */
+/* ========================================= */
+
+.product-image {
+  position: absolute;
+
+  top: 300px;
+  right: 40px;
+
+  width: 500px;
+
+  object-fit: contain;
+}
+
+/* ========================================= */
+/* PRODUCT TITLE */
+/* ========================================= */
+
+.product-title-container {
+  position: absolute;
+
+  display: flex;
+
+  align-items: flex-start;
+
+  gap: 12px;
+
+  width: 420px;
+
+  z-index: 100;
+}
+
+.product-name {
+  margin: 0;
+  top: 310px;
+  left: 40px;
+  width: 500px;
+
+  color: var(--bk-brown);
+
+  font-family: "Flame";
+
+  font-size: 56px;
+
+  font-weight: 700;
+
+  line-height: 1.1;
+
+  white-space: normal;
+}
+
+.product-type-icon {
+  width: 60px;
+  height: 60px;
+
+  transform: translate(480px, 380px);
+  flex-shrink: 0;
+}
+
+/* ========================================= */
+/* SHORT DESCRIPTION */
+/* ========================================= */
+
+.product-short-description {
+  position: absolute;
+
+  top: 470px;
+  left: 40px;
+
+  width: 380px;
+
+  color: #666;
+
+  font-family: "Flame";
+
+  font-size: 24px;
+
+  line-height: 1.4;
+}
+
+/* ========================================= */
+/* PRICE */
+/* ========================================= */
+
+.product-price {
+  position: absolute;
+
+  top: 560px;
+  left: 40px;
+
+  margin: 0;
+
+  color: var(--bk-black);
+
+  font-family: "Flame";
+
+  font-size: 64px;
+
+  font-weight: 700;
+}
+
+/* ========================================= */
+/* SECTION TITLES */
+/* ========================================= */
+
+.section-title {
+  color: var(--bk-orange);
+
+  font-family: "Flame";
+
+  font-size: 34px;
+
+  font-weight: 700;
+
+  text-transform: uppercase;
+
+  margin: 0;
+}
+
+.about-title {
+  position: absolute;
+
+  top: 680px;
+  left: 40px;
+}
+
+.recommended-title {
+  position: absolute;
+
+  top: 980px;
+  left: 40px;
+}
+
+/* ========================================= */
+/* DESCRIPTION */
+/* ========================================= */
+
+.product-description {
+  position: absolute;
+
+  top: 740px;
+  left: 40px;
+
+  width: 500px;
+
+  color: var(--bk-black);
+
+  font-family: "Flame";
+
+  font-size: 24px;
+
+  line-height: 1.6;
+}
+
+/* ========================================= */
+/* RECOMMENDATIONS */
+/* ========================================= */
+
+.recommendations {
+  position: absolute;
+
+  top: 1050px;
+  left: 40px;
+
+  width: 900px;
+
+  display: flex;
+
+  gap: 20px;
+
+  overflow-x: auto;
+
+  scrollbar-width: none;
+}
+
+.recommendations::-webkit-scrollbar {
+  display: none;
+}
+
+.recommend-card {
+  min-width: 180px;
+  height: 100px;
+
+  border-radius: 20px;
+
+  background: rgba(255, 122, 0, 0.08);
+
+  border: 2px solid rgba(255, 122, 0, 0.15);
+
+  display: flex;
+
+  justify-content: center;
+  align-items: center;
+
+  font-family: "Flame";
+
+  font-size: 22px;
+
+  color: var(--bk-brown);
+
+  flex-shrink: 0;
+}
+
+/* ========================================= */
+/* QUANTITY */
+/* ========================================= */
+
+.quantity-selector {
+  position: absolute;
+
+  left: 340px;
+  bottom: 500px;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 30px;
+}
+
+.qty-btn {
+  width: 70px;
+  height: 70px;
+
+  border-radius: 20px;
+
+  border: 2px solid rgba(91, 43, 17, 0.15);
+
+  background: white;
+
+  font-size: 36px;
+
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.qty-value {
+  font-size: 42px;
+
+  font-family: "Flame";
+
+  color: var(--bk-brown);
+}
+
+/* ========================================= */
+/* ADD TO CART */
+/* ========================================= */
+
+.add-cart-btn {
+  position: absolute;
+
+  left: 570px;
+  bottom: 500px;
+
+  width: 500px;
+  height: 95px;
+
+  border: none;
+
+  border-radius: 24px;
+
+  background: var(--bk-orange);
+
+  color: white;
+
+  font-family: "Flame";
+
+  font-size: 34px;
+
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition: all 0.2s ease;
+}
+
+.add-cart-btn:hover {
+  opacity: 0.95;
+}
+
+.add-cart-btn:active {
+  transform: scale(0.98);
+}
+
+/* ========================================= */
+/* NUTRITION PANEL */
+/* ========================================= */
+
+.nutrition-panel {
+  position: absolute;
+
+  top: 700px;
+  right: 40px;
+
+  width: 220px;
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 20px;
+}
+
+.nutrition-item {
+  text-align: center;
+}
+
+.nutrition-label {
+  color: #777;
+
+  font-size: 18px;
+
+  font-family: "Flame";
+}
+
+.nutrition-value {
+  color: var(--bk-brown);
+
+  font-size: 28px;
+
+  font-weight: 700;
+
+  font-family: "Flame";
+}
