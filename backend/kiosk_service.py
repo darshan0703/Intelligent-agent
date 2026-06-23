@@ -134,7 +134,7 @@ def process_message(user_input, llm):
         conversation_context
     )
 
-    print("Intent:", intent)
+    print("Intent Result:", intent)
 
     # ==========================
     # ROUTING

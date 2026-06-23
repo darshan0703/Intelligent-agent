@@ -66,10 +66,16 @@ def handle_burger_selection(burger_type, conversation_context):
 
     burgers = get_menu_by_category("burger")
 
-    filtered = [
+    if burger_type == "both":
+
+     filtered = burgers
+
+    else:
+
+     filtered = [
         item for item in burgers
         if item["food_type"].lower() == burger_type
-    ]
+     ]
 
     if not filtered:
         return "Sorry, no matching burgers are available right now."
@@ -134,14 +140,18 @@ def handle_burger_selection(burger_type, conversation_context):
     
      
     return KioskResponse(
-    screen=ScreenTypes.RECOMMENDED_BURGERS,
-    message="Here are our top burger picks today.",
-    data={
+     screen=ScreenTypes.RECOMMENDED_BURGERS,
+     message=(
+        "Here are our top burger picks today. "
+        "Are you looking for veg or non veg?"
+     ),
+     data={
+        "selected_type": burger_type,
         "priority": priority_burgers,
         "premium": premium_burgers,
         "additional": additional_burgers
     }
- )
+)
 
 def handle_full_menu(conversation_context):
 
@@ -183,10 +193,10 @@ def handle_category(category, conversation_context):
 
      conversation_context["pending_clarification"] = "burger_type"
 
-     return KioskResponse(
-        screen=ScreenTypes.BURGER_TYPE_SELECTION,
-        message="Sure — veg or non veg?"
-      )
+     return handle_burger_selection(
+        "both",
+        conversation_context
+    )
     items = get_menu_by_category(category)
 
     if not items:

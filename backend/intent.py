@@ -28,9 +28,31 @@ def extract_intent(user_input, llm, conversation_context):
      situation_block = "No special dialogue state."
 
     pre_category = infer_category_from_text(user_input)
+    
+    if pre_category:
 
-    if pre_category and any(word in user_input.lower() for word in ["what", "show", "have", "options"]):
-        return OrderIntent(action="show_category", category=pre_category)
+     text = user_input.lower()
+
+     if pre_category == "burger":
+
+        return OrderIntent(
+            action="show_category",
+            category="burger"
+        )
+
+     if any(
+        word in text
+        for word in [
+            "what",
+            "show",
+            "have",
+            "options"
+        ]
+      ):
+        return OrderIntent(
+            action="show_category",
+            category=pre_category
+         )
 
     prompt = f"""
 You are an intelligent restaurant intent extractor.
