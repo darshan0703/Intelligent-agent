@@ -23,6 +23,7 @@ import json
 import time
 from datetime import date
 import os
+from kiosk_service import process_message
 
 load_dotenv()
 
@@ -39,46 +40,6 @@ class OrderResponse(BaseModel):
 
 #parser = PydanticOutputParser(pydantic_object=OrderResponse)
 
-def handle_decline():
-
-    prompt = f"""
-You are a Burger King India cashier.
-
-Facts:
-- Current cart: {conversation_context['cart']}
-
-Customer declined the previous suggestion.
-
-Rules:
-- Do not greet again
-- Speak naturally
-- Ask whether customer wants checkout or more items
-"""
-
-    response = llm.invoke(prompt)
-
-    return response.content
-
-def handle_correction(item_name):
-
-    if not conversation_context["cart"]:
-        return "Tell me what you'd like to order."
-
-    previous = conversation_context["cart"].pop()
-
-    result = add_to_cart(item_name)
-
-    if result["success"]:
-        conversation_context["cart"].append(result["item"])
-
-        return f"Sure 👍 I've replaced {previous} with {result['item']} for ₹{int(result['price'])}."
-
-    else:
-        conversation_context["cart"].append(previous)
-        return f"I removed {previous}, but {item_name} is not available."
-    
-
-    
 prompt = ChatPromptTemplate.from_messages(
   [
     (
@@ -127,118 +88,22 @@ while True:
 
     if user_input.lower() in ["exit", "quit"]:
      break
-
-    if conversation_context["checkout_pending"]:
-
-     lower = user_input.lower()
-
-     if "cash" in lower:
-        conversation_context["cart"] = []
-        conversation_context["checkout_pending"] = False
-        reply = "You can pay at the counter. Thank you for your order."
-        print("Cashier:", reply)
-        break
-
-     elif "card" in lower:
-        conversation_context["cart"] = []
-        conversation_context["checkout_pending"] = False
-        reply = "Please proceed with card payment at the counter. Thank you for your order."
-        print("Cashier:", reply)
-        break
-     
-    if conversation_context.get("pending_clarification") == "burger_type":
-
-     decision = resolve_burger_clarification(user_input, llm)
-
-     if decision == "veg":
-        conversation_context["burger_type"] = "veg"
-        conversation_context["pending_clarification"] = None
-
-        reply = handle_burger_selection("veg", conversation_context)
-
-        print("Cashier:", reply)
-        continue
-
-     elif decision == "non veg":
-        conversation_context["burger_type"] = "non veg"
-        conversation_context["pending_clarification"] = None
-
-        reply = handle_burger_selection("non veg", conversation_context)
-
-        print("Cashier:", reply)
-        continue
-
-     elif decision == "both":
-        conversation_context["pending_clarification"] = None
-
-        veg_reply = handle_burger_selection("veg", conversation_context)
-        nonveg_reply = handle_burger_selection("non veg", conversation_context)
-
-        reply = veg_reply + "\n\n" + nonveg_reply
-
-        print("Cashier:", reply)
-        continue
-
-     elif decision == "new_intent":
-        conversation_context["pending_clarification"] = None
-
-        # allow normal intent extraction below
-
-     else:
-        print("Cashier: Please choose veg, non veg, or both.")
-        continue
-
-
     turn_start = time.time()
-    intent = extract_intent(user_input, llm, conversation_context)
-    print("Intent:", intent)
 
-    intent_end = time.time()
-    print(f"Intent time: {intent_end - turn_start:.2f}s")
-
-    if intent.action == "show_category" and not intent.category:
-     reply = "Which category would you like — burgers, beverages, desserts, or sides?"
-     print("Cashier:", reply)
-     continue
-
-    if intent.action == "unknown":
-     reply =  "Could you tell me a little more about what you'd like?"
-
-    elif intent.action == "recommend":
-     reply = handle_recommendation(user_input, conversation_context, llm)
-
-    elif intent.action == "expand_context":
-     reply = handle_more_options()
-
-    elif intent.action == "decline_offer":
-     reply = handle_decline()
-
-    elif intent.action == "show_priority_menu":
-     reply = handle_menu(user_input, conversation_context, llm)
-
-    elif intent.action == "show_full_menu":
-     reply = handle_full_menu(conversation_context)
-
-    elif intent.action == "show_category":
-     reply = handle_category(intent.category, conversation_context)
-
-    elif intent.action == "correct_item":
-     reply = handle_correction(intent.item_name)
-
-    elif intent.action == "add_item":
-     reply = handle_order(intent.item_name,intent.quantity,intent.category,conversation_context,llm)
-
-    elif intent.action == "remove_item":
-     reply = handle_remove(intent.item_name,conversation_context)
-
-    elif intent.action == "checkout":
-     reply = handle_checkout(conversation_context, llm)
-
-    else:
-     reply = "I'm sorry, I didn't understand that."
+    reply = process_message(
+        user_input,
+        llm
+    )
 
     reply_end = time.time()
-    print("LAST CATEGORY:", conversation_context["last_category"])
-    print(f"Total response time: {reply_end - turn_start:.2f}s")
+
+    print(
+        "LAST CATEGORY:",
+        conversation_context["last_category"]
+    )
+
+    print(
+        f"Total response time: {reply_end - turn_start:.2f}s"
+    )
 
     print("Cashier:", reply)

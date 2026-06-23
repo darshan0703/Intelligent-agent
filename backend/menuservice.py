@@ -1,6 +1,7 @@
 from db_service import get_available_menu, get_menu_by_category
 from recommendation import get_priority_items
 from state import conversation_context
+from schemas import KioskResponse, ScreenTypes
 
 
 def handle_menu(user_input,conversation_context,llm):
@@ -95,15 +96,52 @@ def handle_burger_selection(burger_type, conversation_context):
 
     conversation_context["last_offer"] = [item["name"] for item in selected]
 
-    lines = [
-        f"• {item['name']} – ₹{int(item['price'])}"
-        for item in selected
-    ]
-    print("BURGER TYPE RECEIVED:", burger_type)
+    priority_burgers = priority[:2]
 
-    print([item["name"] for item in filtered])
+    premium_burgers = []
 
-    return "Top burger picks today:\n\n" + "\n".join(lines)
+    for item in sorted(
+     filtered,
+     key=lambda x: x["price"],
+     reverse=True
+    ):
+     if item not in priority_burgers:
+        premium_burgers.append(item)
+
+     if len(premium_burgers) == 2:
+        break
+
+    additional_burgers = []
+
+    for item in premium:
+
+     if item not in priority_burgers \
+       and item not in premium_burgers:
+
+        additional_burgers.append(item)
+
+     if len(additional_burgers) == 4:
+        break
+    
+    print("PRIORITY")
+    print([x["name"] for x in priority_burgers])
+
+    print("PREMIUM")
+    print([x["name"] for x in premium_burgers])
+
+    print("ADDITIONAL")
+    print([x["name"] for x in additional_burgers])
+    
+     
+    return KioskResponse(
+    screen=ScreenTypes.RECOMMENDED_BURGERS,
+    message="Here are our top burger picks today.",
+    data={
+        "priority": priority_burgers,
+        "premium": premium_burgers,
+        "additional": additional_burgers
+    }
+ )
 
 def handle_full_menu(conversation_context):
 
@@ -142,9 +180,13 @@ def handle_category(category, conversation_context):
     conversation_context["last_category"] = category
 
     if category == "burger":
-        conversation_context["pending_clarification"] = "burger_type"
-        return "Sure — veg or non veg?"
 
+     conversation_context["pending_clarification"] = "burger_type"
+
+     return KioskResponse(
+        screen=ScreenTypes.BURGER_TYPE_SELECTION,
+        message="Sure — veg or non veg?"
+      )
     items = get_menu_by_category(category)
 
     if not items:
