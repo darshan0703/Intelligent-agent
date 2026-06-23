@@ -17,6 +17,28 @@ function Categories() {
 
   const navigate = useNavigate();
 
+  const handleBurgerClick = async () => {
+
+  console.log("BURGER CLICKED");
+
+  const response = await fetch(
+    "http://127.0.0.1:8000/message",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        message: "I want a burger"
+      })
+    }
+  );
+
+  const data = await response.json();
+
+  console.log("BACKEND RESPONSE:", data);
+ };
+
   const phrases = [
     '"What\'s special today?"',
     '"Add Peri Peri Fries"',
@@ -56,7 +78,7 @@ function Categories() {
           src={cb}
           alt="container burger"
           className="cb-image"
-          onClick={() => navigate("/burgers")}
+          onClick={handleBurgerClick}
         />
 
         <img

@@ -66,6 +66,22 @@ Waiting for confirmation:
 
 
 Follow this decision order strictly:
+0. If the customer wants to order a category item
+   but has not specified a concrete item:
+
+Examples:
+- can i get a burger
+- i want a burger
+- give me a burger
+- i'd like a burger
+- can i have a dessert
+- can i get a drink
+
+action = show_category
+
+category = inferred category
+
+Do NOT use recommend.
 
 1. If customer asks for a class/list/group/category of items
    (burgers, desserts, drinks, beverages, sides, options, what do you have, show items):

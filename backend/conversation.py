@@ -1,4 +1,6 @@
+from db_service import add_to_cart
 from state import conversation_context
+
 
 def handle_greeting(user_input,conversation_context, llm):
 
@@ -66,3 +68,54 @@ Rules:
     response = llm.invoke(prompt)
 
     return response.content
+
+def handle_decline(conversation_context, llm):
+
+    prompt = f"""
+You are a Burger King India cashier.
+
+Facts:
+- Current cart: {conversation_context['cart']}
+
+Customer declined the previous suggestion.
+
+Rules:
+- Do not greet again
+- Speak naturally
+- Ask whether customer wants checkout or more items
+"""
+
+    response = llm.invoke(prompt)
+
+    return response.content
+
+
+def handle_correction(item_name, conversation_context):
+
+    if not conversation_context["cart"]:
+        return "Tell me what you'd like to order."
+
+    previous = conversation_context["cart"].pop()
+
+    result = add_to_cart(item_name)
+
+    if result["success"]:
+        conversation_context["cart"].append(
+            result["item"]
+        )
+
+        return (
+            f"Sure 👍 I've replaced "
+            f"{previous} with "
+            f"{result['item']} for "
+            f"₹{int(result['price'])}."
+        )
+
+    conversation_context["cart"].append(
+        previous
+    )
+
+    return (
+        f"I removed {previous}, "
+        f"but {item_name} is not available."
+    )
