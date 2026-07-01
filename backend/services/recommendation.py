@@ -1,5 +1,10 @@
 from datetime import date
-from db_service import get_available_menu, get_menu_by_category
+from services.menu_service import (
+    get_menu,
+    get_available,
+    get_category,
+    add_item
+)
 from knowledgeservice import get_relevant_knowledge
 
 
@@ -29,7 +34,7 @@ def handle_recommendation(user_input, conversation_context, llm):
 
     if conversation_context["last_category"]:
 
-        category_items = get_menu_by_category(conversation_context["last_category"])
+        category_items = get_category(conversation_context["last_category"])
 
         category_names = " ".join(
             [item["name"].lower() for item in category_items]
@@ -39,11 +44,11 @@ def handle_recommendation(user_input, conversation_context, llm):
             items = category_items
             category = conversation_context["last_category"]
         else:
-            items = get_available_menu()
+            items = get_available()
             category = "menu"
 
     else:
-        items = get_available_menu()
+        items = get_available()
         category = "menu"
 
     priority = get_priority_items(items)

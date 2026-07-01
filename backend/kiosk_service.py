@@ -7,9 +7,9 @@ from conversation import (
 from intent import extract_intent
 from state import conversation_context
 
-from recommendation import handle_recommendation
+from services.recommendation import handle_recommendation
 
-from menuservice import (
+from services.menuservice import (
     handle_menu,
     handle_category,
     handle_more_options,
@@ -73,7 +73,7 @@ def process_message(user_input, llm):
             llm
         )
 
-        if decision == "veg":
+        if (decision.action== "clarification_answer"and decision.value == "veg"):
 
             conversation_context["burger_type"] = "veg"
             conversation_context["pending_clarification"] = None
@@ -83,7 +83,7 @@ def process_message(user_input, llm):
                 conversation_context
             )
 
-        elif decision == "non veg":
+        elif (decision.action == "clarification_answer"and decision.value == "non veg"):
 
             conversation_context["burger_type"] = "non veg"
             conversation_context["pending_clarification"] = None
@@ -93,7 +93,7 @@ def process_message(user_input, llm):
                 conversation_context
             )
 
-        elif decision == "both":
+        elif (decision.action == "clarification_answer"and decision.value == "both"):
 
             conversation_context["pending_clarification"] = None
 
@@ -113,16 +113,17 @@ def process_message(user_input, llm):
                 + nonveg_reply
             )
 
-        elif decision == "new_intent":
+        elif (decision.action == "new_intent"):
 
             conversation_context["pending_clarification"] = None
 
-        else:
+        elif decision.action == "unclear":
 
          return KioskResponse(
            screen=ScreenTypes.BURGER_TYPE_SELECTION,
            message="Please choose veg, non veg, or both."
          )
+        print(decision)
 
     # ==========================
     # INTENT EXTRACTION

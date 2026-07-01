@@ -1,5 +1,10 @@
-from db_service import get_available_menu, get_menu_by_category
-from recommendation import get_priority_items
+from services.menu_service import (
+    get_menu,
+    get_available,
+    get_category,
+    add_item
+)
+from services.recommendation import get_priority_items
 from state import conversation_context
 from schemas import KioskResponse, ScreenTypes
 
@@ -7,9 +12,9 @@ from schemas import KioskResponse, ScreenTypes
 def handle_menu(user_input,conversation_context,llm):
 
     if conversation_context["last_category"]:
-        menu = get_menu_by_category(conversation_context["last_category"])
+        menu = get_category(conversation_context["last_category"])
     else:
-        menu = get_available_menu() 
+        menu = get_available() 
 
     priority_items = get_priority_items(menu)
 
@@ -64,7 +69,7 @@ Rules:
 
 def handle_burger_selection(burger_type, conversation_context):
 
-    burgers = get_menu_by_category("burger")
+    burgers = get_category("burger")
 
     if burger_type == "both":
 
@@ -147,6 +152,7 @@ def handle_burger_selection(burger_type, conversation_context):
      ),
      data={
         "selected_type": burger_type,
+        "all_burgers": filtered,
         "priority": priority_burgers,
         "premium": premium_burgers,
         "additional": additional_burgers
@@ -156,7 +162,7 @@ def handle_burger_selection(burger_type, conversation_context):
 def handle_full_menu(conversation_context):
 
     if conversation_context["last_category"]:
-        menu = get_menu_by_category(conversation_context["last_category"])
+        menu = get_category(conversation_context["last_category"])
 
         priority = get_priority_items(menu)
 
@@ -174,7 +180,7 @@ def handle_full_menu(conversation_context):
 
         return response
 
-    menu = get_available_menu()
+    menu = get_available()
 
     response = "Sure, here are all available items today:\n\n"
 
@@ -191,13 +197,11 @@ def handle_category(category, conversation_context):
 
     if category == "burger":
 
-     conversation_context["pending_clarification"] = "burger_type"
-
      return handle_burger_selection(
         "both",
         conversation_context
     )
-    items = get_menu_by_category(category)
+    items = get_category(category)
 
     if not items:
         return f"Sorry, we don't have any {category} available right now."
@@ -219,9 +223,9 @@ def handle_category(category, conversation_context):
 def handle_more_options():
     
     if conversation_context["last_category"]:
-        menu = get_menu_by_category(conversation_context["last_category"])
+        menu = get_category(conversation_context["last_category"])
     else:
-        menu = get_available_menu()
+        menu = get_available()
 
     priority_items = get_priority_items(menu)
 

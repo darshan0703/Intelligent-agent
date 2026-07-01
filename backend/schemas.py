@@ -8,11 +8,11 @@ from typing import Optional, Dict, Any
 
 class OrderIntent(BaseModel):
     action: str
-    item_name: Optional[str] = None
-    category: Optional[str] = None
-    food_type: Optional[str] = None
-    quantity: Optional[int] = 1
-
+    item_text: str | None = None
+    quantity: int = 1
+    category: str | None = None
+    reference: str | None = None
+    preference: str | None = None
 
 # ==========================
 # BACKEND → FRONTEND
@@ -22,6 +22,10 @@ class KioskResponse(BaseModel):
     screen: str
     message: Optional[str] = None
     data: Dict[str, Any] = {}
+
+class ClarificationDecision(BaseModel):
+    action: str
+    value: Optional[str] = None
 
 
 # ==========================

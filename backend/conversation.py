@@ -1,4 +1,9 @@
-from db_service import add_to_cart
+from services.menu_service import (
+    get_menu,
+    get_available,
+    get_category,
+    add_item
+)
 from state import conversation_context
 
 

@@ -1,5 +1,10 @@
 from schemas import OrderIntent
-from db_service import get_available_menu
+from services.menu_service import (
+    get_menu,
+    get_available,
+    get_category,
+    add_item
+)
 from ontology import infer_category_from_text
 
 
@@ -7,7 +12,7 @@ def extract_intent(user_input, llm, conversation_context):
 
     structured_llm = llm.with_structured_output(OrderIntent)
 
-    menu = get_available_menu()
+    menu = get_available()
     menu_names = [item["name"] for item in menu]
 
     situation_block = ""
