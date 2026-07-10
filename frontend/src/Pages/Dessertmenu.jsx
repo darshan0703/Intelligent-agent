@@ -12,9 +12,15 @@ import {
   useEffect
 } from "react";
 
-import { dessertSections } from "../data/desserts";
-
 function Dessertmenu() {
+
+  const [dessertSections, setDessertSections] = useState([]);
+
+  useEffect(() => {
+    fetch("http://127.0.0.1:8000/menu/desserts")
+      .then((res) => res.json())
+      .then(setDessertSections);
+  }, []);
 
   const menuContentRef = useRef(null);
 
@@ -123,7 +129,7 @@ function Dessertmenu() {
 
     };
 
-  }, []);
+  }, [dessertSections]);
 
   return (
 
@@ -176,10 +182,7 @@ function Dessertmenu() {
 
       </div>
 
-      <CartContainer
-        itemCount={0}
-        total={0}
-      />
+      <CartContainer />
 
     </div>
 

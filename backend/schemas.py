@@ -1,22 +1,13 @@
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
 
-
-# ==========================
-# USER → BACKEND
-# ==========================
-
 class OrderIntent(BaseModel):
     action: str
-    item_text: str | None = None
-    quantity: int = 1
-    category: str | None = None
-    reference: str | None = None
-    preference: str | None = None
-
-# ==========================
-# BACKEND → FRONTEND
-# ==========================
+    item_name: Optional[str] = None
+    category: Optional[str] = None
+    reference: Optional[str] = None
+    preference: Optional[str] = None
+    quantity: Optional[int] = 1
 
 class KioskResponse(BaseModel):
     screen: str

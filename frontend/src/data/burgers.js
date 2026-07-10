@@ -26,7 +26,7 @@ export const burgerSections = [
 
       {
         id: 3,
-        name: "Chicken Makhani",
+        name: "Chicken Makhani Burst",
         shortDescription: "Crispy chicken patty with rich makhani sauce.",
         longDescription: "New Premium Black and White Sesame Bun with Crispy Chicken Patty, Fresh Onion and Makhani Sauce. Qty: 125 gms | Kcal: 275 | Carbs: 35 gms | Sugar: 6 gms | Fat: 9 gms | Saturated fat: 4 gms | Protein: 13.3 gms | Sodium: 627 mg",
         price: 89,
@@ -36,7 +36,7 @@ export const burgerSections = [
 
       {
         id: 4,
-        name: "Veg Makhani",
+        name: "Veg Makhani Burst",
         shortDescription: "Veg patty with fresh onion & makhani sauce.",
         longDescription: "New Premium Black & White Sesame Bun with Veg Patty, Fresh Onion and Makhani Sauce.",
         price: 69,
@@ -73,7 +73,7 @@ export const burgerSections = [
     products: [
       {
         id: 7,
-        name: "Veg Whopper",
+        name: "Original Whopper Veg",
         shortDescription: "XL veg whopper with fresh veggies & smoky sauces.",
         longDescription: "XL Size Original Whopper Veg in premium glaze bun. 7 layers of taste: Extra Crunchy Veg patty, fresh onion, crispy lettuce, juicy tomatoes (seasonal), tangy gherkins, creamy & smoky sauces.Qty: 303 gms | Kcal: 367 | Carbs: 48 gms| Sugar: 11 gms| Fat: 13 gms| Saturated fat: 3 gms| Protein: 16 gms| Sodium: 761 mg",
         price: 189,
@@ -83,7 +83,7 @@ export const burgerSections = [
 
       {
         id: 8,
-        name: "Chicken Whopper",
+        name: "Original Whopper Chicken",
         shortDescription: "Flame-grilled chicken with fresh veggies & sauces.",
         longDescription: "XL Size Original Whopper Chicken in premium glaze bun. 7 layers of taste: Flame Grill Chicken patty, fresh onion, crispy lettuce, juicy tomatoes (seasonal), tangy gherkins, creamy & smoky sauces.Qty: 280 Gms| Kcal: 667.2 | Carbs 59.1 Gms| Sugar: 8.7 Gms| Fat: 36.3 Gms| Saturated fat: 8.1 Gms| Protein: 26.2 Gms| Sodium: 1018.7 Mg Contains: Gluten, Soybean, Milk, Sesame seeds.",
         price: 209,
@@ -93,7 +93,7 @@ export const burgerSections = [
 
       {
         id: 9,
-        name: "Grill Chicken Whopper",
+        name: "Grill Chicken Whopper Deluxe",
         shortDescription: "Flame-grilled chicken, lettuce & smoky sauces.",
         longDescription: "Regular Size premium glaze bun with 7 layers of taste: Flame-Grilled Chicken patty, fresh onion, crispy lettuce, juicy tomatoes (seasonal) tangy gherkins, creamy & smoky sauces.Qty: 179 gms | Kcal: 327 | Carbs: 35 gms| Sugar: 1 gms| Fat: 14 gms| Saturated fat: 3 gms| Protein: 14.3 gms| Sodium: 952 mg",
         price: 169,
@@ -103,7 +103,7 @@ export const burgerSections = [
 
       {
         id: 10,
-        name: "Paneer Whopper",
+        name: "Paneer Whopper Deluxe",
         shortDescription: "Crunchy paneer patty with fresh veggies.",
         longDescription: "Reg. size bun with 7 layers of taste: Crunchy Soft Paneer patty, fresh onion, crispy lettuce, juicy tomatoes (seasonal), tangy gherkins, creamy & smoky sauces.Qty: 197 gms | Kcal: 472 | Carbs: 43 gms| Sugar: 8 gms| Fat: 27 gms| Saturated fat: 13 gms| Protein: 16.4 gms| Sodium: 1042 mg",
         price: 169,
@@ -113,7 +113,7 @@ export const burgerSections = [
 
       {
         id: 11,
-        name: "Cheese Whopper",
+        name: "Cheese Whopper Deluxe",
         shortDescription: "Cheese lava patty with fresh veggies & sauces.",
         longDescription: "Reg. size bun with 7 layers of taste: Molten Cheese Lava patty, fresh onion, crispy lettuce, juicy tomatoes (seasonal), tangy gherkins, creamy & smoky sauces.Qty: 201 gms | Kcal: 516 | Carbs: 47 gms| Sugar: 8 gms| Fat: 30 gms| Saturated fat: 13 gms| Protein: 15.3 gms| Sodium: 1530 mg",
         price: 179,

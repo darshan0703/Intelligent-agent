@@ -1,6 +1,8 @@
 import "./CartContainer.css";
+import { useCart } from "../context/CartContext";
 
-function CartContainer({ itemCount, total }) {
+function CartContainer() {
+  const { itemCount, total } = useCart();
 
   return (
 

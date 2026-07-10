@@ -1,9 +1,13 @@
 import "./Categories.css";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useKiosk } from "../context/KioskContext";
+
+import { sendMessage } from "../services/api";
+import { getRoute } from "../utils/navigation";
 
 import Header from "../components/Header";
-
+import CartContainer from "../components/CartContainer";
 
 import cb from "../assets/images/container burger.png";
 import cd from "../assets/images/container drinks.png";
@@ -11,111 +15,102 @@ import cr from "../assets/images/container recommend.png";
 import cf from "../assets/images/container fresh.png";
 import co from "../assets/images/container offers.png";
 import cl from "../assets/images/container light.png";
-import CartContainer from "../components/CartContainer";
 
 function Categories() {
-
   const navigate = useNavigate();
+  const { setRecommendationData } = useKiosk();
+  const handleCategoryClick = async (category) => {
+    try {
+      console.log(`${category.toUpperCase()} CLICKED`);
 
-  const handleBurgerClick = async () => {
+      const data = await sendMessage(`I want a ${category}`);
 
-  console.log("BURGER CLICKED");
+      console.log("BACKEND RESPONSE:", data);
 
-  const response = await fetch(
-    "http://127.0.0.1:8000/message",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        message: "I want a burger"
-      })
+      // Save backend response for the next screen
+      setRecommendationData(data);
+
+      // Backend decides which screen comes next
+      navigate(getRoute(data.screen));
+
+    } catch (error) {
+      console.error(`${category} API Error:`, error);
     }
-  );
-
-  const data = await response.json();
-
-  console.log("BACKEND RESPONSE:", data);
- };
+  };
 
   const phrases = [
-    '"What\'s special today?"',
-    '"Add Peri Peri Fries"',
-    '"Can I have a Cold Coffee?"'
+    "\"What's special today?\"",
+    "\"Add Peri Peri Fries\"",
+    "\"Can I have a Cold Coffee?\""
   ];
 
   const [currentPhrase, setCurrentPhrase] = useState(0);
 
   useEffect(() => {
-
     const interval = setInterval(() => {
-
-      setCurrentPhrase((prev) =>
-        (prev + 1) % phrases.length
-      );
-
+      setCurrentPhrase((prev) => (prev + 1) % phrases.length);
     }, 2000);
 
     return () => clearInterval(interval);
-
   }, []);
 
   return (
-
     <div className="app-wrapper">
 
       <div className="header-glow"></div>
 
       <div className="categories-page">
 
-
-        {/* HEADER */}
         <Header title="Welcome to Burger KING!" />
 
-        {/* CONTAINERS */}
+        {/* BURGER */}
         <img
           src={cb}
           alt="container burger"
           className="cb-image"
-          onClick={handleBurgerClick}
+          onClick={() => handleCategoryClick("burger")}
         />
 
+        {/* DRINKS */}
         <img
           src={cd}
           alt="container drinks"
           className="cd-image"
-          onClick={() => navigate("/drinks")}
+          onClick={() => handleCategoryClick("drink")}
         />
 
+        {/* RECOMMENDED */}
         <img
           src={cr}
           alt="container recommend"
           className="cr-image"
+          onClick={() => handleCategoryClick("dessert")}
         />
 
+        {/* FRESH */}
         <img
           src={cf}
           alt="container fresh"
           className="cf-image"
+          onClick={() => handleCategoryClick("side")}
         />
 
+        {/* OFFERS */}
         <img
           src={co}
           alt="container offers"
           className="co-image"
         />
 
+        {/* LIGHT */}
         <img
           src={cl}
           alt="container light"
           className="cl-image"
         />
 
-        {/* SECOND LINE */}
         <div className="thin-line-two"></div>
 
-        {/* TRY PHRASES */}
         <p className="try-text">
           Try these phrases :
         </p>
@@ -123,13 +118,8 @@ function Categories() {
         <p className="rotating-phrase">
           {phrases[currentPhrase]}
         </p>
-      
 
-
-<CartContainer
-  itemCount={0}
-  total={538}
-/>
+        <CartContainer />
 
       </div>
 

@@ -2,7 +2,8 @@ from repositories.menu_repository import (
     get_menu_sections,
     get_available as repo_get_available,
     get_category as repo_get_category,
-    add_to_cart
+    add_to_cart,
+    get_product as repo_get_product
 )
 
 
@@ -17,3 +18,6 @@ def get_category(category):
 
 def add_item(item_name):
     return add_to_cart(item_name)
+
+def get_product(item_name):
+    return repo_get_product(item_name)

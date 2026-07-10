@@ -13,9 +13,15 @@ import {
   useEffect
 } from "react";
 
-import { drinkSections } from "../data/drinks";
-
 function Drinkmenu() {
+
+  const [drinkSections, setDrinkSections] = useState([]);
+
+ useEffect(() => {
+    fetch("http://127.0.0.1:8000/menu/drinks")
+        .then((res) => res.json())
+        .then(setDrinkSections);
+}, []);
 
   const menuContentRef = useRef(null);
 
@@ -71,7 +77,7 @@ function Drinkmenu() {
 
     }
 
-  }, [activeFilter]);
+  }, [activeFilter, visibleSections.length]);
 
   const scrollToCategory = (categoryTitle) => {
 
@@ -108,10 +114,19 @@ function Drinkmenu() {
       let currentCategory =
         visibleSections[0]?.title;
 
+       console.log({
+    scrollTop: menu.scrollTop,
+    currentCategory,});
+
       visibleSections.forEach(section => {
 
         const element =
           sectionRefs.current[section.id];
+
+           console.log(
+    section.title,
+    element?.offsetTop
+     );
 
         if (
           element &&
@@ -163,7 +178,7 @@ function Drinkmenu() {
 
     };
 
-  }, [activeFilter]);
+  }, [activeFilter,drinkSections]);
 
   return (
 
@@ -216,10 +231,7 @@ function Drinkmenu() {
 
       </div>
 
-      <CartContainer
-        itemCount={0}
-        total={0}
-      />
+      <CartContainer />
 
     </div>
 

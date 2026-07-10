@@ -3,7 +3,9 @@ from repositories.menu_repository import add_to_cart
 
 
 def add_item(item_name, quantity=1):
-
+    if "cart" not in conversation_context:
+        conversation_context["cart"] = []
+        
     cart = conversation_context["cart"]
 
     for _ in range(quantity):
@@ -45,6 +47,7 @@ def add_item(item_name, quantity=1):
 
 
 def remove_item(item_name):
+    print("Conversation Context:", conversation_context)
 
     cart = conversation_context["cart"]
 

@@ -2,6 +2,9 @@ import "./ProductPage.css";
 
 import { useLocation } from "react-router-dom";
 import { useState } from "react";
+import { useCart } from "../context/CartContext";
+import { useKiosk } from "../context/KioskContext";
+
 
 import Header from "../components/Header";
 import PreviousButton from "../components/PreviousButton";
@@ -12,19 +15,83 @@ import nonVegIcon from "../assets/images/nonveg.png";
 
 function ProductPage() {
 
-  const { state } = useLocation();
-
-  const product = state?.product || {
-    name: "Chicken Whopper",
-    shortDescription: "Flame Grilled Chicken Burger",
-    longDescription:
-      "A juicy flame grilled chicken patty topped with fresh lettuce, tomato and creamy mayo.",
-    price: 179,
-    foodType: "nonveg",
-    image: "/src/assets/images/Burgers/Chicken Whopper Deluxe.png"
-  };
+  const { productData } = useKiosk();
+  const { syncCart } = useCart();
+  const { itemCount, total } = useCart();
+  const product = productData?.data?.product;
+  const recommendations = productData?.data?.recommendations || [];
 
   const [quantity, setQuantity] = useState(1);
+  const [loading, setLoading] = useState(false);
+
+  if (!product) {
+
+    return (
+
+      <div className="product-page">
+
+        <Header
+          title="Product Details"
+        />
+
+        <PreviousButton />
+
+        <h2
+          style={{
+            textAlign: "center",
+            marginTop: "200px"
+          }}
+        >
+          No product selected.
+        </h2>
+
+      </div>
+
+    );
+
+  }
+
+  const handleAddToCart = async () => {
+
+    if (loading) return;
+
+    setLoading(true);
+
+    try {
+
+      const response = await fetch(
+        "http://127.0.0.1:8000/cart/add",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            item_name: product.name,
+            quantity: quantity
+          })
+        }
+      );
+
+      const data = await response.json();
+      console.log("PRODUCT RESPONSE:", data);
+      syncCart(data);
+
+      // Next step:
+      // Update global cart
+      // Navigate back to menu
+
+    } catch (error) {
+
+      console.error("Failed to add item:", error);
+
+    } finally {
+
+      setLoading(false);
+
+    }
+
+  };
 
   return (
 
@@ -44,24 +111,40 @@ function ProductPage() {
         className="product-image"
       />
 
-      {/* PRODUCT TITLE + FOOD TYPE */}
+      {/* PRODUCT TITLE */}
 
       <div className="product-title-container">
 
-     <h1 className="product-name">
-      {(() => {
-      const words = product.name.split(" ");
+        <h1 className="product-name">
 
-     const midpoint = Math.ceil(words.length / 2);
+          {(() => {
 
-      return (
-      <>
-        {words.slice(0, midpoint).join(" ")}
-        <br />
-        {words.slice(midpoint).join(" ")}
-         </>
-         );
-        })()}
+            const words = product.name.split(" ");
+
+            const midpoint = Math.ceil(
+              words.length / 2
+            );
+
+            return (
+
+              <>
+
+                {words
+                  .slice(0, midpoint)
+                  .join(" ")}
+
+                <br />
+
+                {words
+                  .slice(midpoint)
+                  .join(" ")}
+
+              </>
+
+            );
+
+          })()}
+
         </h1>
 
         {product.foodType && (
@@ -110,19 +193,18 @@ function ProductPage() {
 
       <div className="recommendations">
 
-        <div className="recommend-card">
-          Fries
+       {recommendations.map((item) => (
+
+        <div
+         key={item.id}
+         className="recommend-card"
+        >
+         {item.name}
         </div>
 
-        <div className="recommend-card">
-          Coke
-        </div>
+  ))}
 
-        <div className="recommend-card">
-          Nuggets
-        </div>
-
-      </div>
+</div>
 
       {/* QUANTITY */}
 
@@ -148,7 +230,9 @@ function ProductPage() {
         <button
           className="qty-btn"
           onClick={() =>
-            setQuantity(prev => prev + 1)
+            setQuantity(prev =>
+              prev + 1
+            )
           }
         >
           +
@@ -160,19 +244,22 @@ function ProductPage() {
 
       <button
         className="add-cart-btn"
+        onClick={handleAddToCart}
+        disabled={loading}
       >
-        Add To Cart • ₹{" "}
-        {product.price * quantity}
+
+        {loading
+          ? "Adding..."
+          : `Add To Cart • ₹ ${product.price * quantity}`}
+
       </button>
 
       {/* CART */}
 
-       <CartContainer
-        itemCount={0}
-        total={0}
-      /> 
+      <CartContainer />
 
     </div>
+  
 
   );
 

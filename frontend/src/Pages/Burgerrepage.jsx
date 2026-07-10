@@ -1,7 +1,9 @@
 import "./Burgerrepage.css";
 
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 
+import Menufilters from "../components/Menufilters";
 import Header from "../components/Header";
 import ProductCard from "../components/ProductCard";
 import fire from "../assets/images/fire.png";
@@ -9,85 +11,45 @@ import crown from "../assets/images/crown.png";
 import CartContainer from "../components/CartContainer";
 import BackButton from "../components/BackButton";
 
+import { useKiosk } from "../context/KioskContext";
+
 function Burger() {
 
   const navigate = useNavigate();
 
-  const expiryRecommendations = [
+  const { recommendationData } = useKiosk();
 
-    {
-      id: 1,
-      name: "Chicken Whopper",
-      description: "Flame grilled chicken burger",
-      price: 189,
-      image: ""
-    },
+  const [selectedType, setSelectedType] =
+    useState("both");
 
-    {
-      id: 2,
-      name: "Veg Whopper",
-      description: "Fresh veg patty",
-      price: 149,
-      image: ""
-    }
+  const allBurgers =
+    recommendationData?.data?.all_burgers || [];
 
-  ];
+  const filteredBurgers =
+    selectedType === "both"
+      ? allBurgers
+      : allBurgers.filter(
+          (burger) =>
+            burger.food_type.toLowerCase() ===
+            selectedType
+        );
 
-  const premiumRecommendations = [
+  const priorityItems =
+    filteredBurgers.slice(0, 2);
 
-    {
-      id: 3,
-      name: "Korean BBQ Whopper",
-      description: "Premium Korean sauce burger",
-      price: 349,
-      image: ""
-    },
+  const premiumItems =
+    filteredBurgers.slice(2, 4);
 
-    {
-      id: 4,
-      name: "Double Patty Supreme",
-      description: "Loaded premium burger",
-      price: 399,
-      image: ""
-    }
+  const additionalItems =
+    filteredBurgers.slice(4, 8);
 
-  ];
+  const handleFilterChange = (filter) => {
 
-  const upsellRecommendations = [
+    setSelectedType(
+      filter.toLowerCase()
+    );
 
-    {
-      id: 5,
-      name: "Crispy Chicken Burger",
-      description: "Crunchy chicken burger",
-      price: 199,
-      image: ""
-    },
-
-    {
-      id: 6,
-      name: "Cheese Burst Burger",
-      description: "Extra cheese loaded",
-      price: 229,
-      image: ""
-    },
-
-    {
-      id: 7,
-      name: "Spicy Paneer Burger",
-      description: "Hot spicy paneer delight",
-      price: 179,
-      image: ""
-    },
-
-    {
-      id: 8,
-      name: "Classic Veg Burger",
-      description: "Classic BK style",
-      price: 129,
-      image: ""
-    }
-
-  ];
+  };
 
   return (
 
@@ -105,66 +67,91 @@ function Burger() {
         className="crown-image"
       />
 
-      {/* HEADER */}
       <Header title="Choose Your Burger" />
 
       <BackButton />
 
-      {/* RECOMMENDATIONS */}
-
-      <ProductCard
-        product={expiryRecommendations[0]}
-        variant="large"
-        className="card-1"
+      <Menufilters
+        filters={[
+          "both",
+          "veg",
+          "non veg"
+        ]}
+        activeFilter={selectedType}
+        onFilterChange={handleFilterChange}
       />
 
-      <ProductCard
-        product={expiryRecommendations[1]}
-        variant="large"
-        className="card-2"
-      />
+      {/* PRIORITY */}
+
+      {priorityItems[0] && (
+        <ProductCard
+          product={priorityItems[0]}
+          variant="large"
+          className="card-1"
+        />
+      )}
+
+      {priorityItems[1] && (
+        <ProductCard
+          product={priorityItems[1]}
+          variant="large"
+          className="card-2"
+        />
+      )}
 
       {/* PREMIUM */}
 
-      <ProductCard
-        product={premiumRecommendations[0]}
-        variant="large"
-        className="card-3"
-      />
+      {premiumItems[0] && (
+        <ProductCard
+          product={premiumItems[0]}
+          variant="large"
+          className="card-3"
+        />
+      )}
 
-      <ProductCard
-        product={premiumRecommendations[1]}
-        variant="large"
-        className="card-4"
-      />
+      {premiumItems[1] && (
+        <ProductCard
+          product={premiumItems[1]}
+          variant="large"
+          className="card-4"
+        />
+      )}
 
-      {/* MORE OPTIONS */}
+      {/* ADDITIONAL */}
 
-      <ProductCard
-        product={upsellRecommendations[0]}
-        variant="small"
-        className="card-5"
-      />
+      {additionalItems[0] && (
+        <ProductCard
+          product={additionalItems[0]}
+          variant="small"
+          className="card-5"
+        />
+      )}
 
-      <ProductCard
-        product={upsellRecommendations[1]}
-        variant="small"
-        className="card-6"
-      />
+      {additionalItems[1] && (
+        <ProductCard
+          product={additionalItems[1]}
+          variant="small"
+          className="card-6"
+        />
+      )}
 
-      <ProductCard
-        product={upsellRecommendations[2]}
-        variant="small"
-        className="card-7"
-      />
+      {additionalItems[2] && (
+        <ProductCard
+          product={additionalItems[2]}
+          variant="small"
+          className="card-7"
+        />
+      )}
 
-      <ProductCard
-        product={upsellRecommendations[3]}
-        variant="small"
-        className="card-8"
-      />
+      {additionalItems[3] && (
+        <ProductCard
+          product={additionalItems[3]}
+          variant="small"
+          className="card-8"
+        />
+      )}
 
-      {/* SECTION TITLES */}
+      {/* TITLES */}
 
       <p className="Recommendation-text">
         Fresh Picks For You
@@ -186,7 +173,7 @@ function Burger() {
 
       <div className="thin-line-3"></div>
 
-      {/* MORE OPTIONS HEADER */}
+      {/* MORE OPTIONS */}
 
       <div className="more-header">
 
@@ -196,23 +183,29 @@ function Burger() {
 
         <button
           className="view-all-btn"
-          onClick={() => navigate("/burgermenu")}
+          onClick={() =>
+            navigate("/burgermenu")
+          }
         >
           View All →
         </button>
 
       </div>
 
-      {/* CART */}
-
-      <CartContainer
-        itemCount={0}
-        total={538}
-      />
-
+      <CartContainer />
+ 
     </div>
-
   );
+
+  console.log(
+  "ALL BURGERS:",
+  recommendationData?.data?.all_burgers
+ );
+
+ console.log(
+  "RECOMMENDATION DATA:",
+  recommendationData
+ );
 }
 
 export default Burger;

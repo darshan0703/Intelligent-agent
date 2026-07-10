@@ -14,9 +14,17 @@ import {
   useEffect
 } from "react";
 
-import { burgerSections } from "../data/burgers";
+
 
 function Burgermenu() {
+
+  const [burgerSections, setBurgerSections] = useState([]);
+
+ useEffect(() => {
+    fetch("http://127.0.0.1:8000/menu/burgers")
+        .then(res => res.json())
+        .then(setBurgerSections);
+ }, []);
 
   const menuContentRef = useRef(null);
 
@@ -72,7 +80,7 @@ function Burgermenu() {
 
     }
 
-  }, [activeFilter]);
+  }, [activeFilter, visibleSections]);
 
   const scrollToCategory = (categoryTitle) => {
 
@@ -166,7 +174,7 @@ function Burgermenu() {
 
     };
 
-  }, [activeFilter]);
+  }, [activeFilter, visibleSections]);
 
   return (
 
@@ -219,10 +227,7 @@ function Burgermenu() {
 
       </div>
 
-      <CartContainer
-        itemCount={0}
-        total={0}
-      />
+      <CartContainer />
 
     </div>
 

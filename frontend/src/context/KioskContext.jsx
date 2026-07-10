@@ -4,13 +4,18 @@ const KioskContext = createContext();
 
 export function KioskProvider({ children }) {
 
-  const [screenData, setScreenData] = useState(null);
+  const [recommendationData, setRecommendationData] = useState(null);
+
+  const [productData, setProductData] = useState(null);
 
   return (
     <KioskContext.Provider
       value={{
-        screenData,
-        setScreenData
+        recommendationData,
+        setRecommendationData,
+
+        productData,
+        setProductData,
       }}
     >
       {children}

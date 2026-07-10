@@ -1,6 +1,9 @@
 import "./ProductCard.css";
 
 import { useNavigate } from "react-router-dom";
+import { useKiosk } from "../context/KioskContext";
+import { getRoute } from "../utils/navigation";import { sendMessage } from "../services/api";
+
 
 function ProductCard({
   product,
@@ -9,18 +12,16 @@ function ProductCard({
 }) {
 
   const navigate = useNavigate();
-
+  const { setProductData } = useKiosk();
   return (
 
     <div
       className={`burger-card ${variant} ${className}`}
-      onClick={() =>
-        navigate("/product", {
-          state: {
-            product
-          }
-        })
-      }
+      onClick={async () => {
+        const data = await sendMessage(product.name);
+        setProductData(data);
+        navigate(getRoute(data.screen));
+      }}
     >
 
       {/* IMAGE */}
@@ -58,13 +59,21 @@ function ProductCard({
       {/* BUTTON */}
 
       <button
-        className={`burger-add-btn ${variant}-button`}
-        onClick={(e) => {
-          e.stopPropagation();
-        }}
-      >
-        +
-      </button>
+  className={`burger-add-btn ${variant}-button`}
+  onClick={async (e) => {
+    e.stopPropagation();
+
+    const data = await sendMessage(product.name);
+    console.log("PRODUCT RESPONSE:", data);
+    console.log("SCREEN:", data.screen);
+    console.log("ROUTE:", getRoute(data.screen));
+    setProductData(data);
+
+    navigate(getRoute(data.screen));
+  }}
+ >
+  +
+ </button>
 
     </div>
 

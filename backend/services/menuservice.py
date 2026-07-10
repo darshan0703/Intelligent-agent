@@ -67,6 +67,34 @@ Rules:
 
     return response.content
 
+def build_recommendations(items):
+
+    priority = get_priority_items(items)
+
+    premium = []
+
+    for item in sorted(
+        items,
+        key=lambda x: x["price"],
+        reverse=True
+    ):
+        if item not in priority:
+            premium.append(item)
+
+        if len(premium) == 2:
+            break
+
+    additional = []
+
+    for item in items:
+        if item not in priority and item not in premium:
+            additional.append(item)
+
+        if len(additional) == 4:
+            break
+
+    return priority, premium, additional
+
 def handle_burger_selection(burger_type, conversation_context):
 
     burgers = get_category("burger")
@@ -85,55 +113,23 @@ def handle_burger_selection(burger_type, conversation_context):
     if not filtered:
         return "Sorry, no matching burgers are available right now."
 
-    priority = get_priority_items(filtered)
-
-    premium = sorted(
-        filtered,
-        key=lambda x: x["price"],
-        reverse=True
-    )
-
+    priority_burgers, premium_burgers, additional_burgers = build_recommendations(filtered)
+    
     selected = []
 
-    if priority:
-        selected.append(priority[0])
+    if priority_burgers:
+     selected.append(priority_burgers[0])
 
-    for item in premium:
-        if item not in selected:
-            selected.append(item)
+    for item in premium_burgers:
+     if item not in selected:
+        selected.append(item)
 
-        if len(selected) == 5:
-            break
-
-    conversation_context["last_offer"] = [item["name"] for item in selected]
-
-    priority_burgers = priority[:2]
-
-    premium_burgers = []
-
-    for item in sorted(
-     filtered,
-     key=lambda x: x["price"],
-     reverse=True
-    ):
-     if item not in priority_burgers:
-        premium_burgers.append(item)
-
-     if len(premium_burgers) == 2:
+     if len(selected) == 5:
         break
 
-    additional_burgers = []
-
-    for item in premium:
-
-     if item not in priority_burgers \
-       and item not in premium_burgers:
-
-        additional_burgers.append(item)
-
-     if len(additional_burgers) == 4:
-        break
-    
+    conversation_context["last_offer"] = [
+     item["name"] for item in selected
+    ]
     print("PRIORITY")
     print([x["name"] for x in priority_burgers])
 
@@ -193,32 +189,47 @@ def handle_full_menu(conversation_context):
 
 def handle_category(category, conversation_context):
 
+    category_map = {
+        "beverage": "drink",
+        "beverages": "drink",
+        "drinks": "drink",
+        "burger": "burger",
+        "burgers": "burger",
+        "side": "side",
+        "sides": "side",
+        "dessert": "dessert",
+        "desserts": "dessert"
+    }
+
+    category = category_map.get(
+        category.lower(),
+        category.lower()
+    )
+
     conversation_context["last_category"] = category
 
     if category == "burger":
-
      return handle_burger_selection(
         "both",
         conversation_context
     )
-    items = get_category(category)
 
-    if not items:
-        return f"Sorry, we don't have any {category} available right now."
+    if category == "drink":
+     return handle_drink_selection(
+        conversation_context
+    )
 
-    priority = get_priority_items(items)
+    if category == "side":
+     return handle_side_selection(
+        conversation_context
+    )
 
-    response = f"Here are our {category} options today:\n\n"
+    if category == "dessert":
+     return handle_dessert_selection(
+        conversation_context
+    )
 
-    for item in priority:
-        response += f"• {item['name']} – ₹{int(item['price'])}\n"
-
-    if len(items) > len(priority):
-        response += "\nWe also have more options in this category if you'd like to see them."
-    else:
-        response += "\nWhat would you like to order?"
-
-    return response
+    return "Unknown category."
 
 def handle_more_options():
     
@@ -243,3 +254,64 @@ def handle_more_options():
 
     return response
 
+def build_category_response(
+    category,
+    title,
+    screen,
+    conversation_context
+):
+
+    items = get_category(category)
+
+    if not items:
+        return KioskResponse(
+            screen=screen,
+            message=f"Sorry, no {title.lower()} are available right now.",
+            data={}
+        )
+
+    priority, premium, additional = build_recommendations(items)
+
+    conversation_context["last_offer"] = [
+        item["name"]
+        for item in priority + premium + additional
+    ]
+
+    return KioskResponse(
+        screen=screen,
+        message=f"Here are our top {title.lower()} picks today.",
+        data={
+            "priority": priority,
+            "premium": premium,
+            "additional": additional
+        }
+    )
+
+def handle_drink_selection(conversation_context):
+
+    return build_category_response(
+        category="drink",
+        title="Drinks",
+        screen=ScreenTypes.RECOMMENDED_DRINKS,
+        conversation_context=conversation_context
+    )
+
+
+def handle_side_selection(conversation_context):
+
+    return build_category_response(
+        category="side",
+        title="Sides",
+        screen=ScreenTypes.RECOMMENDED_SIDES,
+        conversation_context=conversation_context
+    )
+
+
+def handle_dessert_selection(conversation_context):
+
+    return build_category_response(
+        category="dessert",
+        title="Desserts",
+        screen=ScreenTypes.RECOMMENDED_DESSERTS,
+        conversation_context=conversation_context
+    )

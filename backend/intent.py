@@ -77,10 +77,10 @@ Available menu items:
 {menu_names}
 
 Current cart:
-{conversation_context["cart"]}
+{conversation_context.get("cart", [])}
 
 Current category:
-{conversation_context["last_category"]}
+{conversation_context.get("last_category",None)}
 
 Last offered items:
 {conversation_context.get("last_offer")}

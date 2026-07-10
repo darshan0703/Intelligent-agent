@@ -1,17 +1,21 @@
+import uuid
+
 from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from kiosk_service import process_message
-from state import conversation_context
+from state import conversation_context, reset_conversation
 from schemas import KioskResponse
 from langchain_groq import ChatGroq
 from dotenv import load_dotenv
+
 from services.menu_service import (
     get_menu,
     get_available,
     get_category,
     add_item
 )
+
 from services.cart_service import (
     add_item as cart_add_item,
     get_cart,
@@ -21,6 +25,7 @@ from services.cart_service import (
 load_dotenv()
 
 app = FastAPI()
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -40,6 +45,7 @@ llm = ChatGroq(
 class MessageRequest(BaseModel):
     message: str
 
+
 class AddToCartRequest(BaseModel):
     item_name: str
     quantity: int = 1
@@ -47,38 +53,50 @@ class AddToCartRequest(BaseModel):
 
 @app.get("/health")
 def health():
-
     return {
         "status": "running"
     }
 
+
+@app.post("/session/start")
+def start_session():
+
+    session_id = str(uuid.uuid4())
+
+    reset_conversation(session_id)
+    print("SESSION STARTED")
+    print(conversation_context)
+    return {
+        "success": True,
+        "session_id": session_id,
+        "message": "Welcome to Burger King",
+        "voice_enabled": True
+    }
+
+
 @app.get("/menu/burgers")
 def burgers():
-
     return get_menu("burger")
 
 
 @app.get("/menu/drinks")
 def drinks():
-
     return get_menu("drink")
 
 
 @app.get("/menu/sides")
 def sides():
-
-    return  get_menu("side")
-
-@app.get("/cart")
-def cart():
-
-    return get_cart()
+    return get_menu("side")
 
 
 @app.get("/menu/desserts")
 def desserts():
-
     return get_menu("dessert")
+
+
+@app.get("/cart")
+def cart():
+    return get_cart()
 
 
 @app.post("/message")
@@ -98,6 +116,7 @@ def message(request: MessageRequest):
         "cart": conversation_context["cart"]
     }
 
+
 @app.post("/cart/add")
 def cart_add(request: AddToCartRequest):
 
@@ -105,6 +124,7 @@ def cart_add(request: AddToCartRequest):
         request.item_name,
         request.quantity
     )
+
 
 @app.post("/cart/clear")
 def cart_clear():

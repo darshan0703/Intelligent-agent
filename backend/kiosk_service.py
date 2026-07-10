@@ -16,21 +16,16 @@ from services.menuservice import (
     handle_full_menu,
     handle_burger_selection
 )
-
 from orderservice import (
     handle_order,
     handle_remove
 )
-
-from itemclassifiers import (
-    resolve_burger_clarification
-)
-
+from itemclassifiers import resolve_burger_clarification
 from schemas import (
     KioskResponse,
     ScreenTypes
 )
-
+from services.productservice import handle_product
 
 def process_message(user_input, llm):
 
@@ -38,7 +33,7 @@ def process_message(user_input, llm):
     # CHECKOUT FLOW
     # ==========================
 
-    if conversation_context["checkout_pending"]:
+    if conversation_context.get("checkout_pending",False):
 
         lower = user_input.lower()
 
@@ -208,6 +203,21 @@ def process_message(user_input, llm):
         )
 
     elif intent.action == "add_item":
+     print("=" * 50)
+     print("Conversation:", conversation_context)
+     print("Intent:", intent)
+     print("Last Category:", conversation_context.get("last_category"))
+     print("=" * 50)
+    # If customer is browsing, open product page
+     if conversation_context.get("last_category"):
+        print("Opening Product Details")
+        reply = handle_product(
+            intent.item_name
+        )
+
+    # Otherwise customer is ordering directly
+     else:
+        print("Going to Handle Order")
 
         reply = handle_order(
             intent.item_name,
@@ -216,7 +226,7 @@ def process_message(user_input, llm):
             conversation_context,
             llm
         )
-
+        
     elif intent.action == "remove_item":
 
         reply = handle_remove(

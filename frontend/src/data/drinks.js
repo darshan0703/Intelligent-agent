@@ -9,9 +9,10 @@ export const drinkSections = [
       {
         id: 12,
         name: "Classic Cold Coffee",
-        description: "Our signature BK Café Coffee ice blended with milk & cream",
+        shortDescription: "Refreshing classic cold coffee with milk.",
+        longDescription: "Our signature BK Café Coffee ice blended with milk & cream.",
         price: 189,
-        image: "src/assets/images/Drinks/Cold Coffee PM.png",
+        image: "src/assets/images/Drinks/Classic Cold Coffee.png",
         type: "cold",
         foodType: "veg"
       },
@@ -19,9 +20,10 @@ export const drinkSections = [
       {
         id: 13,
         name: "Iced Latte",
-        description: "100% Arabica Espresso poured over milk and ice.",
+        shortDescription: "Chilled espresso blended with creamy milk.",
+        longDescription: "100% Arabica Espresso poured over milk and ice.",
         price: 199,
-        image: "src/assets/images/Drinks/Iced Latted.png",
+        image: "src/assets/images/Drinks/Iced Latte.png",
         type: "cold",
         foodType: "veg"
       },
@@ -29,9 +31,10 @@ export const drinkSections = [
       {
         id: 14,
         name: "Mocha Frappe",
-        description: "Chocolate flavoured Cold Coffee topped with Vanilla Softie.Qty: 355 gms| Kcal: 293 | Carbs: 52.2 gms| Sugar: 45.7 gms| Fat: 7.5 gms| Saturated fat: 5.5 gms| Protein: 4.3 gms|",
+        shortDescription: "Chocolate coffee frappe topped with vanilla soft serve.",
+        longDescription: "Chocolate flavoured Cold Coffee topped with Vanilla Softie.Qty: 355 gms| Kcal: 293 | Carbs: 52.2 gms| Sugar: 45.7 gms| Fat: 7.5 gms| Saturated fat: 5.5 gms| Protein: 4.3 gms|",
         price: 249,
-        image: "src/assets/images/Drinks/Moccha frappe.png",
+        image: "src/assets/images/Drinks/Mocha Frappe.png",
         type: "cold",
         foodType: "veg"
       },
@@ -39,9 +42,10 @@ export const drinkSections = [
       {
         id: 15,
         name: "Espresso (Single Shot)",
-        description: "Rich Shot of our signature BK Café Coffee without milk.",
+        shortDescription: "Bold single shot of rich espresso.",
+        longDescription: "Rich Shot of our signature BK Café Coffee without milk.",
         price: 109,
-        image: "src/assets/images/Drinks/Espresso.png",
+        image: "src/assets/images/Drinks/Espresso (Single Shot).png",
         type: "hot",
         foodType: "veg"
       },
@@ -49,9 +53,10 @@ export const drinkSections = [
       {
         id: 16,
         name: "Americano (Regular)",
-        description: "Our signature BK Café Coffee with Sweet Caramel Flavour",
+        shortDescription: "Rich espresso with hot water.",
+        longDescription: "Our signature BK Café Coffee with Sweet Caramel Flavour.",
         price: 189,
-        image: "src/assets/images/Drinks/Americano.png",
+        image: "src/assets/images/Drinks/Americano (Regular).png",
         type: "hot",
         foodType: "veg"
       },
@@ -59,9 +64,10 @@ export const drinkSections = [
       {
         id: 17,
         name: "Cafe Latte (Regular)",
-        description: "Our signature BK Café Coffee with steamed milk.",
+        shortDescription: "Smooth espresso with steamed milk.",
+        longDescription: "Our signature BK Café Coffee with steamed milk.",
         price: 189,
-        image: "src/assets/images/Drinks/Cafe Latte.png",
+        image: "src/assets/images/Drinks/Cafe Latte (Regular).png",
         type: "hot",
         foodType: "veg"
       },
@@ -69,9 +75,10 @@ export const drinkSections = [
       {
         id: 18,
         name: "Cappuccino (Small)",
-        description: "Our signature BK Café Coffee with steamed milk & milk froth.",
+        shortDescription: "Creamy cappuccino with milk foam.",
+        longDescription: "Our signature BK Café Coffee with steamed milk & milk froth.",
         price: 149,
-        image: "src/assets/images/Drinks/Cappuccino.png",
+        image: "src/assets/images/Drinks/Cappuccino (Small).png",
         type: "hot",
         foodType: "veg"
       },
@@ -79,9 +86,10 @@ export const drinkSections = [
       {
         id: 19,
         name: "Mocha Cappuccino (Small)",
-        description: "Our signature BK Café Coffee with Rich Chocolate Flavour",
+        shortDescription: "Chocolate cappuccino with rich mocha flavor.",
+        longDescription: "Our signature BK Café Coffee with Rich Chocolate Flavour.",
         price: 195,
-        image: "src/assets/images/Drinks/MOCHA CAPPUCCINO.png",
+        image: "src/assets/images/Drinks/Mocha Cappuccino (Small).png",
         type: "hot",
         foodType: "veg"
       },
@@ -89,73 +97,79 @@ export const drinkSections = [
       {
         id: 20,
         name: "Hot Chocolate",
-        description: "The chocolate which you can drink. Rich Creamy Chocolate with steamed milk.",
+        shortDescription: "Creamy hot chocolate made with rich cocoa.",
+        longDescription: "The chocolate which you can drink. Rich Creamy Chocolate with steamed milk.",
         price: 179,
         image: "src/assets/images/Drinks/Hot Chocolate.png",
         type: "hot",
         foodType: "veg"
-        },
+      },
 
       {
         id: 21,
         name: "Espresso (Double Shot)",
-        description: "Rich Shot of our signature BK Café Coffee without milk.",
+        shortDescription: "Bold double shot of rich espresso.",
+        longDescription: "Rich Shot of our signature BK Café Coffee without milk.",
         price: 109,
-        image: "src/assets/images/Drinks/Espresso.png",
+        image: "src/assets/images/Drinks/Espresso (Double Shot).png",
         type: "hot",
         foodType: "veg"
-        },
-
+      },
 
       {
         id: 22,
         name: "Americano (Small)",
-        description: "Our signature BK Café Coffee with Sweet Caramel Flavour",
+        shortDescription: "Small serving of rich Americano.",
+        longDescription: "Our signature BK Café Coffee with Sweet Caramel Flavour.",
         price: 189,
-        image: "src/assets/images/Drinks/Americano.png",
+        image: "src/assets/images/Drinks/Americano (Small).png",
         type: "hot",
         foodType: "veg"
-        },
+      },
 
       {
         id: 23,
         name: "Iced Americano",
-        description: "Our signature Arabica espresso with ice",
+        shortDescription: "Refreshing iced Americano coffee.",
+        longDescription: "Our signature Arabica espresso with ice.",
         price: 159,
-        image: "src/assets/images/Drinks/Iced americano.png",
+        image: "src/assets/images/Drinks/Iced Americano.png",
         type: "cold",
         foodType: "veg"
-        },
+      },
 
       {
         id: 24,
         name: "Cafe Latte (Small)",
-        description: "Our signature BK Café Coffee with steamed milk.",
+        shortDescription: "Small creamy latte with steamed milk.",
+        longDescription: "Our signature BK Café Coffee with steamed milk.",
         price: 159,
-        image: "src/assets/images/Drinks/Cafe Latte.png",
+        image: "src/assets/images/Drinks/Cafe Latte (Small).png",
         type: "hot",
         foodType: "veg"
-        },
+      },
 
       {
         id: 25,
         name: "Cappuccino (Regular)",
-        description: "Espresso with steamed milk & milk froth.",
+        shortDescription: "Regular cappuccino with milk foam.",
+        longDescription: "Espresso with steamed milk & milk froth.",
         price: 179,
-        image: "src/assets/images/Drinks/Cappuccino.png",
+        image: "src/assets/images/Drinks/Cappuccino (Regular).png",
         type: "hot",
         foodType: "veg"
-        },
+      },
 
       {
         id: 26,
         name: "Mocha Cappuccino (Regular)",
-        description: "Rich Chocolate Flavoured Coffee",
+        shortDescription: "Regular mocha cappuccino with chocolate flavor.",
+        longDescription: "Rich Chocolate Flavoured Coffee.",
         price: 219,
-        image: "src/assets/images/Drinks/MOCHA CAPPUCCINO.png",
+        image: "src/assets/images/Drinks/Mocha Cappuccino (Regular).png",
         type: "hot",
         foodType: "veg"
-        }
+      }
 
     ]
   },
@@ -169,9 +183,10 @@ export const drinkSections = [
       {
         id: 1,
         name: "Coca Cola",
-        description: "Coca Cola",
+        shortDescription: "Classic chilled Coca-Cola soft drink.",
+        longDescription: "Coca Cola.",
         price: 111,
-        image: "src/assets/images/Drinks/Cola.png",
+        image: "src/assets/images/Drinks/Coca Cola.png",
         type: "cold",
         foodType: "veg"
       },
@@ -179,9 +194,10 @@ export const drinkSections = [
       {
         id: 2,
         name: "Sprite",
-        description: "Sprite",
+        shortDescription: "Refreshing lemon-lime soft drink.",
+        longDescription: "Sprite.",
         price: 111,
-        image: "src/assets/images/Drinks/Spirite.png",
+        image: "src/assets/images/Drinks/Sprite.png",
         type: "cold",
         foodType: "veg"
       },
@@ -189,7 +205,8 @@ export const drinkSections = [
       {
         id: 3,
         name: "Fanta",
-        description: "Fanta",
+        shortDescription: "Refreshing orange flavored soft drink.",
+        longDescription: "Fanta.",
         price: 111,
         image: "src/assets/images/Drinks/Fanta.png",
         type: "cold",
@@ -199,7 +216,8 @@ export const drinkSections = [
       {
         id: 4,
         name: "Large Thums Up",
-        description: "Thums Up",
+        shortDescription: "Large bold and fizzy cola drink.",
+        longDescription: "Thums Up.",
         price: 111,
         image: "src/assets/images/Drinks/Large Thums Up.png",
         type: "cold",
@@ -209,7 +227,8 @@ export const drinkSections = [
       {
         id: 5,
         name: "Masala Fizz",
-        description: "A fizzy twist to your favourite Coke — now with full on Masala flavour.Qty: 450ml| Kcal: 88.34 | Carbs: 22.08 gms| Sugar: 22.07 gms| Fat: 0.0 gms| Saturated fat: 0 gms| Protein: 0.0 gms| Sodium: 734.00 mg",
+        shortDescription: "Sparkling masala flavored fizzy drink.",
+        longDescription: "A fizzy twist to your favourite Coke — now with full on Masala flavour.Qty: 450ml| Kcal: 88.34 | Carbs: 22.08 gms| Sugar: 22.07 gms| Fat: 0.0 gms| Saturated fat: 0 gms| Protein: 0.0 gms| Sodium: 734.00 mg",
         price: 129,
         image: "src/assets/images/Drinks/Masala Fizz.png",
         type: "cold",
@@ -228,9 +247,10 @@ export const drinkSections = [
       {
         id: 6,
         name: "Cola Float",
-        description: "Coke + Ice Cream = Bliss",
+        shortDescription: "Classic cola with vanilla soft serve.",
+        longDescription: "Coke + Ice Cream = Bliss.",
         price: 52,
-        image: "src/assets/images/Drinks/Cola float.png",
+        image: "src/assets/images/Drinks/Cola Float.png",
         type: "cold",
         foodType: "veg"
       },
@@ -238,9 +258,10 @@ export const drinkSections = [
       {
         id: 7,
         name: "Fanta Float",
-        description: "Fanta + Ice Cream = Bliss",
+        shortDescription: "Refreshing Fanta with vanilla soft serve.",
+        longDescription: "Fanta + Ice Cream = Bliss.",
         price: 52,
-        image: "src/assets/images/Drinks/Fanta float.png",
+        image: "src/assets/images/Drinks/Fanta Float.png",
         type: "cold",
         foodType: "veg"
       }
@@ -256,40 +277,44 @@ export const drinkSections = [
 
       {
         id: 8,
-        name: "Berry Blast Shake",
-        description: "Rich Creamy Black Currant Thick shake",
+        name: "Berry Blast Thickshake",
+        shortDescription: "Creamy black currant thick shake.",
+        longDescription: "Rich Creamy Black Currant Thick shake.",
         price: 189,
-        image: "src/assets/images/Drinks/Berry blast shake.png",
+        image: "src/assets/images/Drinks/Berry Blast Shake.png",
         type: "cold",
         foodType: "veg"
       },
 
       {
         id: 9,
-        name: "Mango Shake",
-        description: "Rich Creamy Mango Thick shake",
+        name: "Mango Thickshake",
+        shortDescription: "Rich and creamy mango thick shake.",
+        longDescription: "Rich Creamy Mango Thick shake.",
         price: 189,
-        image: "src/assets/images/Drinks/Mango shake.png",
+        image: "src/assets/images/Drinks/Mango Shake.png",
         type: "cold",
         foodType: "veg"
       },
 
       {
         id: 10,
-        name: "Chocolate Shake",
-        description: "Rich Creamy Chocolate Thick shake",
+        name: "Chocolate Thick Shake",
+        shortDescription: "Rich and creamy chocolate thick shake.",
+        longDescription: "Rich Creamy Chocolate Thick shake.",
         price: 189,
-        image: "src/assets/images/Drinks/Chocolate shake.png",
+        image: "src/assets/images/Drinks/Chocolate Shake.png",
         type: "cold",
         foodType: "veg"
       },
 
       {
         id: 11,
-        name: "KitKat Shake",
-        description: "Made with Kit Kat, enjoy our reach creamy fusion thick shake.Qty: 378ml| Kcal: 591 | Carbs: 92 gms| Sugar: 77 gms| Fat: 20 gms| Saturated fat: 15 gms| Protein: 10.6 gms| Sodium: 270 mg",
+        name: "BK Fusion Shake (made with KitKat)",
+        shortDescription: "Creamy KitKat blended thick shake.",
+        longDescription: "Made with Kit Kat, enjoy our rich creamy fusion thick shake.Qty: 378ml| Kcal: 591 | Carbs: 92 gms| Sugar: 77 gms| Fat: 20 gms| Saturated fat: 15 gms| Protein: 10.6 gms| Sodium: 270 mg",
         price: 249,
-        image: "src/assets/images/Drinks/KITKAT Shake.png",
+        image: "src/assets/images/Drinks/KitKat Shake.png",
         type: "cold",
         foodType: "veg"
       }

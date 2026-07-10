@@ -3,7 +3,7 @@ import os
 KNOWLEDGE_PATH = "knowledge"
 
 
-def get_relevant_knowledge(user_input, llm):
+def relevant_knowledge(user_input, llm):
 
     candidate_docs = []
 

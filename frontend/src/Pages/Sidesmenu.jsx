@@ -13,9 +13,15 @@ import {
   useEffect
 } from "react";
 
-import { sidesSections } from "../data/sides";
-
 function Sidesmenu() {
+
+  const [sidesSections, setSidesSections] = useState([]);
+
+  useEffect(() => {
+    fetch("http://127.0.0.1:8000/menu/sides")
+      .then((res) => res.json())
+      .then(setSidesSections);
+  }, []);
 
   const menuContentRef = useRef(null);
 
@@ -71,7 +77,7 @@ function Sidesmenu() {
 
     }
 
-  }, [activeFilter]);
+  }, [activeFilter,sidesSections]);
 
   const scrollToCategory = (categoryTitle) => {
 
@@ -166,7 +172,7 @@ function Sidesmenu() {
 
     };
 
-  }, [activeFilter]);
+  }, [activeFilter,sidesSections]);
 
   return (
 
@@ -219,10 +225,7 @@ function Sidesmenu() {
 
       </div>
 
-      <CartContainer
-        itemCount={0}
-        total={0}
-      />
+      <CartContainer />
 
     </div>
 
