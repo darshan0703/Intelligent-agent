@@ -9,7 +9,7 @@ const screenRoutes = {
   side_menu: "/sidemenu",
   dessert_menu: "/dessertmenu",
 
-  product_details: "/product",
+  product: "/product",
 
   cart: "/cart",
   checkout: "/checkout"

@@ -29,11 +29,12 @@ import time
 from datetime import date
 import os
 from kiosk_service import process_message
+from services.cart_service import add_meal
 
 load_dotenv()
 
 
-llm = ChatGroq(model="meta-llama/llama-4-scout-17b-16e-instruct",temperature=0)
+llm = ChatGroq(model="openai/gpt-oss-20b",temperature=0)
 
 class OrderResponse(BaseModel):
   topic: str

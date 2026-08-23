@@ -1,0 +1,291 @@
+.cart-page {
+    position: relative;
+
+    width: 1080px;
+    height: 1920px;
+
+    overflow: hidden;
+
+    background: var(--bg);
+}
+
+.cart-page-items {
+    position: absolute;
+
+    left: 60px;
+    right: 60px;
+
+    top: 300px;
+    bottom: 980px;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 25px;
+
+    overflow-y: auto;
+
+    scrollbar-width: none;
+
+    overscroll-behavior: contain;
+}
+
+.cart-page-items::-webkit-scrollbar {
+    display: none;
+}
+
+.cart-page-item {
+    min-height: 120px;
+
+    padding: 20px 10px;
+
+    display: grid;
+
+    grid-template-columns: 1fr 180px 150px 60px;
+
+    align-items: center;
+
+    column-gap: 30px;
+}
+
+.cart-page-item-info h2 {
+    margin: 0;
+
+    color: var(--bk-brown);
+
+    font-family: "Flame";
+
+    font-size: 32px;
+}
+
+.cart-page-item-info p {
+    margin: 8px 0 0;
+
+    color: #888;
+
+    font-family: "Flame";
+
+    font-size: 22px;
+}
+
+.cart-page-item-quantity {
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 18px;
+
+    color: var(--bk-brown);
+
+    font-family: "Flame";
+
+    font-size: 30px;
+}
+
+.cart-page-item-quantity span {
+    min-width: 35px;
+
+    text-align: center;
+
+    font-size: 30px;
+}
+
+.cart-page-item-quantity button {
+    width: 55px;
+    height: 55px;
+
+    border: 2px solid rgba(91, 43, 17, 0.15);
+
+    border-radius: 16px;
+
+    background: white;
+
+    color: var(--bk-brown);
+
+    font-family: "Flame";
+
+    font-size: 30px;
+
+    font-weight: 700;
+
+    cursor: pointer;
+}
+
+.cart-page-item-quantity button:active {
+    transform: scale(0.95);
+}
+
+.cart-page-item-price {
+    text-align: right;
+
+    color: var(--bk-brown);
+
+    font-family: "Flame";
+
+    font-size: 30px;
+
+    font-weight: 700;
+
+    white-space: nowrap;
+}
+
+.cart-page-remove {
+    width: 50px;
+    height: 50px;
+
+    padding: 0;
+
+    border: none;
+
+    background: transparent;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    cursor: pointer;
+}
+
+.cart-page-remove img {
+    width: 32px;
+    height: 32px;
+
+    object-fit: contain;
+}
+
+.cart-page-remove:active {
+    transform: scale(0.9);
+}
+
+.cart-page-total {
+    position: absolute;
+
+    left: 60px;
+    right: 60px;
+
+    top: 930px;
+
+    padding-top: 25px;
+
+    border-top: 2px solid rgba(91, 43, 17, 0.12);
+
+    display: flex;
+
+    justify-content: space-between;
+    align-items: center;
+
+    color: var(--bk-brown);
+
+    font-family: "Flame";
+
+    font-size: 36px;
+
+    font-weight: 700;
+}
+
+.payment-section {
+    position: absolute;
+
+    left: 60px;
+    right: 60px;
+
+    top: 1050px;
+}
+
+.payment-section h2 {
+    margin: 0 0 30px;
+
+    color: var(--bk-brown);
+
+    font-family: "Flame";
+
+    font-size: 32px;
+
+    text-align: center;
+}
+
+.payment-options {
+    display: grid;
+
+    grid-template-columns: repeat(3, 1fr);
+
+    gap: 25px;
+}
+
+.payment-option {
+    height: 170px;
+
+    border: 3px solid rgba(91, 43, 17, 0.12);
+
+    border-radius: 25px;
+
+    background: white;
+
+    color: var(--bk-brown);
+
+    font-family: "Flame";
+
+    font-size: 28px;
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 15px;
+
+    cursor: pointer;
+}
+
+.payment-option.active {
+    border-color: var(--bk-orange);
+
+    background: rgba(255, 141, 40, 0.08);
+
+    box-shadow: 0 0 0 3px rgba(255, 141, 40, 0.15);
+}
+
+.payment-icon {
+    font-size: 45px;
+}
+
+.continue-payment-btn {
+    display: block;
+
+    width: 500px;
+    height: 80px;
+
+    margin: 55px auto 0;
+
+    border: none;
+
+    border-radius: 22px;
+
+    background: var(--bk-orange);
+
+    color: white;
+
+    font-family: "Flame";
+
+    font-size: 30px;
+
+    font-weight: 700;
+
+    cursor: pointer;
+}
+
+.continue-payment-btn:active {
+    transform: scale(0.98);
+}
+
+.continue-payment-btn.disabled {
+    background: #d8d8d8;
+
+    color: #999;
+
+    cursor: not-allowed;
+}

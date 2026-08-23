@@ -1,5 +1,4 @@
 import uuid
-
 from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,18 +7,20 @@ from state import conversation_context, reset_conversation
 from schemas import KioskResponse
 from langchain_groq import ChatGroq
 from dotenv import load_dotenv
-
 from services.menu_service import (
     get_menu,
     get_available,
     get_category,
     add_item
 )
-
+from services.meal_service import get_meal_options
 from services.cart_service import (
     add_item as cart_add_item,
+    add_meal,
     get_cart,
-    clear_cart
+    clear_cart,
+    update_cart_item,
+    complete_order
 )
 
 load_dotenv()
@@ -29,7 +30,7 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173"
+        "http://localhost:5174"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -37,7 +38,7 @@ app.add_middleware(
 )
 
 llm = ChatGroq(
-    model="meta-llama/llama-4-scout-17b-16e-instruct",
+    model="openai/gpt-oss-20b",
     temperature=0
 )
 
@@ -101,7 +102,7 @@ def cart():
 
 @app.post("/message")
 def message(request: MessageRequest):
-
+    print("USER MESSAGE:", request.message)
     response = process_message(
         request.message,
         llm
@@ -130,3 +131,48 @@ def cart_add(request: AddToCartRequest):
 def cart_clear():
 
     return clear_cart()
+
+@app.post("/meal/options")
+def meal_options(request: dict):
+
+    item_id = request.get("item_id")
+
+    if item_id is None:
+        return {
+            "success": False,
+            "message": "item_id is required"
+        }
+
+    offer = get_meal_options(item_id)
+
+    if not offer:
+        return {
+            "success": False,
+            "message": "Meal not available."
+        }
+
+    return offer
+
+@app.post("/cart/add-meal")
+def cart_add_meal(request: dict):
+    return add_meal(
+        request["meal"],
+        request.get("quantity", 1)
+    )
+
+
+@app.patch("/cart/item")
+def update_cart_item_endpoint(request: dict):
+    return update_cart_item(
+        request.get("item_index"),
+        request.get("action")
+    )
+
+@app.post("/order/complete")
+def complete_order_endpoint():
+
+    result = complete_order(
+        conversation_context.get("cart", [])
+    )
+
+    return result

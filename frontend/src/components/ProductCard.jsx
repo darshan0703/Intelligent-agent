@@ -1,27 +1,45 @@
 import "./ProductCard.css";
 
-import { useNavigate } from "react-router-dom";
-import { useKiosk } from "../context/KioskContext";
-import { getRoute } from "../utils/navigation";import { sendMessage } from "../services/api";
-
+import { useLocation, useNavigate } from "react-router-dom";import { useKiosk } from "../context/KioskContext";
+import { getRoute } from "../utils/navigation";
 
 function ProductCard({
   product,
   variant,
-  className
+  className,
+  returnTo,
 }) {
 
-  const navigate = useNavigate();
-  const { setProductData } = useKiosk();
+const navigate = useNavigate();
+const location = useLocation();
+const { setProductData } = useKiosk();
+const origin = location.state?.origin || "/";
+
+  const handleProductClick = () => {
+    console.log("CLICKED");
+
+    setProductData({
+      screen: "product",
+      data: {
+        product,
+        recommendations: [],
+      },
+    });
+    console.log(getRoute("product"));
+
+    navigate(getRoute("product"), {
+  state: {
+    origin: location.pathname,
+  },
+  });
+
+  };
+
   return (
 
     <div
       className={`burger-card ${variant} ${className}`}
-      onClick={async () => {
-        const data = await sendMessage(product.name);
-        setProductData(data);
-        navigate(getRoute(data.screen));
-      }}
+      onClick={handleProductClick}
     >
 
       {/* IMAGE */}
@@ -56,24 +74,17 @@ function ProductCard({
         ₹ {product.price}
       </p>
 
-      {/* BUTTON */}
+      {/* ADD BUTTON */}
 
       <button
-  className={`burger-add-btn ${variant}-button`}
-  onClick={async (e) => {
-    e.stopPropagation();
-
-    const data = await sendMessage(product.name);
-    console.log("PRODUCT RESPONSE:", data);
-    console.log("SCREEN:", data.screen);
-    console.log("ROUTE:", getRoute(data.screen));
-    setProductData(data);
-
-    navigate(getRoute(data.screen));
-  }}
- >
-  +
- </button>
+        className={`burger-add-btn ${variant}-button`}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleProductClick();
+        }}
+      >
+        +
+      </button>
 
     </div>
 

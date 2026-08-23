@@ -5,7 +5,7 @@ from repositories.menu_repository import (
     add_to_cart,
     get_product as repo_get_product
 )
-
+from services.meal_service import get_meal_options
 
 def get_menu(category):
     return get_menu_sections(category)
@@ -21,3 +21,4 @@ def add_item(item_name):
 
 def get_product(item_name):
     return repo_get_product(item_name)
+

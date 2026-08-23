@@ -7,6 +7,7 @@ from conversation import (
 from intent import extract_intent
 from state import conversation_context
 
+from services.cart_service import complete_order
 from services.recommendation import handle_recommendation
 
 from services.menuservice import (
@@ -29,38 +30,42 @@ from services.productservice import handle_product
 
 def process_message(user_input, llm):
 
-    # ==========================
-    # CHECKOUT FLOW
-    # ==========================
-
-    if conversation_context.get("checkout_pending",False):
+    if conversation_context.get("checkout_pending", False):
 
         lower = user_input.lower()
 
+        if "cash" in lower or "card" in lower:
+
+         from repositories.order_repository import complete_order
+
+         result = complete_order(
+            conversation_context["cart"]
+         )
+
+        if not result["success"]:
+            conversation_context["checkout_pending"] = False
+
+            return result["message"]
+
+        conversation_context["cart"] = []
+        conversation_context["checkout_pending"] = False
+
         if "cash" in lower:
-
-            conversation_context["cart"] = []
-            conversation_context["checkout_pending"] = False
-
-            return (
-                "You can pay at the counter. "
-                "Thank you for your order."
+            return KioskResponse(
+                screen=ScreenTypes.ORDER_COMPLETE,
+                message=(
+                    "Your order has been placed successfully. "
+                    "Please pay at the counter. Thank you!"
+                )
             )
 
-        elif "card" in lower:
-
-            conversation_context["cart"] = []
-            conversation_context["checkout_pending"] = False
-
-            return (
-                "Please proceed with card payment "
-                "at the counter. Thank you for your order."
+        return KioskResponse(
+            screen=ScreenTypes.PAYMENT,
+            message=(
+                "Your order has been placed successfully. "
+                "Please proceed with card payment. Thank you!"
             )
-
-    # ==========================
-    # BURGER CLARIFICATION FLOW
-    # ==========================
-
+        )
     if conversation_context.get("pending_clarification") == "burger_type":
 
         decision = resolve_burger_clarification(

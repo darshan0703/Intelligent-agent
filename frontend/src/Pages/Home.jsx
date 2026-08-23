@@ -23,14 +23,15 @@ function Home() {
 
       navigate("/Categories");
     } catch (err) {
-      console.error(err);
-      alert("Backend is not running.");
-    }
+  console.error("START SESSION ERROR:", err);
+  alert(`Could not start session: ${err.message}`);
+}
   };
 
   return (
     <div className="home">
-      <h1>Welcome to</h1>
+      <h1 className="home-title"
+      >Welcome to</h1>
 
       <img
         src={rc}

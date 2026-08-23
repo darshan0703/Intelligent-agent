@@ -192,7 +192,7 @@ function Sidesmenu() {
         filters={[
           "both",
           "veg",
-          "nonveg"
+          "non veg"
         ]}
         activeFilter={activeFilter}
         onFilterChange={setActiveFilter}

@@ -24,6 +24,7 @@ def serialize_menu_item(menu_item, inventory):
         "longDescription": menu_item.long_description,
         "price": float(menu_item.price),
         "image": menu_item.image,
+        "meal_image": menu_item.meal_image,
 
         "type": (
             menu_item.serving_type
@@ -33,11 +34,13 @@ def serialize_menu_item(menu_item, inventory):
 
         "foodType": menu_item.food_type,
 
+        # NEW
+        "is_meal_available": menu_item.is_meal_available,
+
         "stock": inventory.stock,
         "expiry": inventory.expiry_date,
         "category": menu_item.category,
     }
-
 
 # ==========================================================
 # MENU SECTIONS
@@ -180,6 +183,43 @@ def add_to_cart(item_name):
         "item": serialize_menu_item(menu_item, inventory)
     }
 
+def deduct_inventory(item_id, quantity):
+    session = Session()
+
+    inventory = (
+        session.query(Inventory)
+        .filter(Inventory.item_id == item_id)
+        .filter(Inventory.branch_id == BRANCH_ID)
+        .first()
+    )
+
+    if not inventory:
+        session.close()
+        return {
+            "success": False,
+            "message": "Inventory record not found."
+        }
+
+    if inventory.stock < quantity:
+        session.close()
+        return {
+            "success": False,
+            "message": "Not enough stock."
+        }
+
+    inventory.stock -= quantity
+
+    session.commit()
+
+    remaining_stock = inventory.stock
+
+    session.close()
+
+    return {
+        "success": True,
+        "remaining_stock": remaining_stock
+    }
+
 def get_product(item_name):
 
     session = Session()
@@ -213,6 +253,7 @@ def get_product(item_name):
         ),
         "foodType": menu_item.food_type,
         "category": menu_item.category,
+        "is_meal_available": menu_item.is_meal_available,
         "stock": inventory.stock,
         "expiry": inventory.expiry_date
     }

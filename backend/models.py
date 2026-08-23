@@ -39,6 +39,8 @@ class MenuItem(Base):
     section = Column(String)          
     food_type = Column(String)
     serving_type = Column(String)
+    meal_role = Column(String)
+    meal_size = Column(String)
 
     # Ordering
     section_order = Column(Integer)
@@ -48,6 +50,9 @@ class MenuItem(Base):
     is_meal_available = Column(Boolean, default=False)
     is_available = Column(Boolean, default=True)
 
+    image = Column(String)
+    meal_image = Column(String)
+
 class Inventory(Base):
     __tablename__ = "inventory"
     id = Column(Integer, primary_key=True)
@@ -55,34 +60,6 @@ class Inventory(Base):
     item_id = Column(Integer, ForeignKey("menu_items.id"), nullable=False)
     stock = Column(Integer, nullable=False)
     expiry_date = Column(Date)
-
-class MealOffer(Base):
-    __tablename__ = "meal_offers"
-
-    id = Column(Integer, primary_key=True)
-
-    burger_id = Column(
-        Integer,
-        ForeignKey("menu_items.id"),
-        nullable=False
-    )
-
-    side_id = Column(
-        Integer,
-        ForeignKey("menu_items.id"),
-        nullable=False
-    )
-
-    drink_id = Column(
-        Integer,
-        ForeignKey("menu_items.id"),
-        nullable=False
-    )
-
-    upgrade_price = Column(
-        Numeric,
-        nullable=False
-    )
 
 class CrossSell(Base):
     __tablename__ = "cross_sell"
@@ -102,3 +79,54 @@ class CrossSell(Base):
      )
 
     priority = Column(Integer, default=1)
+
+class MealDefault(Base):
+    __tablename__ = "meal_defaults"
+
+    id = Column(Integer, primary_key=True)
+
+    meal_size = Column(
+        String,
+        nullable=False,
+        unique=True
+    )
+
+    default_side_id = Column(
+        Integer,
+        ForeignKey("menu_items.id"),
+        nullable=False
+    )
+
+    default_drink_id = Column(
+        Integer,
+        ForeignKey("menu_items.id"),
+        nullable=False
+    )
+
+
+class MealUpgradeRule(Base):
+    __tablename__ = "meal_upgrade_rules"
+
+    id = Column(Integer, primary_key=True)
+
+    item_id = Column(
+        Integer,
+        ForeignKey("menu_items.id"),
+        nullable=False
+    )
+
+    meal_size = Column(
+        String,
+        nullable=False
+    )
+
+    extra_price = Column(
+        Numeric,
+        nullable=False
+    )
+
+    is_enabled = Column(
+        Boolean,
+        nullable=False,
+        default=True
+    )

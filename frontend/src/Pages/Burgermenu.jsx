@@ -194,7 +194,7 @@ function Burgermenu() {
         filters={[
           "both",
           "veg",
-          "nonveg"
+          "non veg"
         ]}
         activeFilter={activeFilter}
         onFilterChange={setActiveFilter}

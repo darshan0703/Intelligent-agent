@@ -4,9 +4,16 @@ const KioskContext = createContext();
 
 export function KioskProvider({ children }) {
 
+  // Recommendation Screen
   const [recommendationData, setRecommendationData] = useState(null);
 
+  // Product Page
   const [productData, setProductData] = useState(null);
+
+  // Meal Flow
+  const [mealData, setMealData] = useState(null);
+  const [mealPopupOpen, setMealPopupOpen] = useState(false);
+  const [selectedMeal, setSelectedMeal] = useState(null);
 
   return (
     <KioskContext.Provider
@@ -16,6 +23,15 @@ export function KioskProvider({ children }) {
 
         productData,
         setProductData,
+
+        mealData,
+        setMealData,
+
+        mealPopupOpen,
+        setMealPopupOpen,
+
+        selectedMeal,
+        setSelectedMeal,
       }}
     >
       {children}

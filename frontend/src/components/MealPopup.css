@@ -1,0 +1,246 @@
+/* ========================================= */
+/* OVERLAY */
+/* ========================================= */
+
+.meal-popup-overlay {
+  position: fixed;
+  inset: 0;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  background: rgba(0, 0, 0, 0.55);
+
+  z-index: 99999;
+
+  animation: fadeIn .2s ease;
+}
+
+/* ========================================= */
+/* POPUP */
+/* ========================================= */
+
+.meal-popup {
+  width: 950px;
+  max-width: 92vw;
+
+  background: white;
+
+  border-radius: 36px;
+
+  padding: 60px;
+
+  box-sizing: border-box;
+
+  animation: popupIn .25s ease;
+}
+
+/* ========================================= */
+/* HEADER */
+/* ========================================= */
+
+.meal-popup-title {
+  display: block;
+  margin: 0;
+  margin-bottom: 20px;
+  text-align: center;
+  font-family: Flame;
+  font-size: 60px;
+  line-height: 1.2;
+}
+
+.meal-popup-subtitle {
+  display: block;
+  margin: 0 auto 60px;
+
+  width: 650px;
+
+  text-align: center;
+  font-family: "Flame";
+  font-size: 28px;
+  line-height: 1.4;
+
+  color: #666;
+}
+/* ========================================= */
+/* MEAL OPTIONS */
+/* ========================================= */
+
+.meal-options {
+
+  display: flex;
+
+  justify-content: center;
+
+  gap: 40px;
+
+}
+
+/* ========================================= */
+/* MEAL CARD */
+/* ========================================= */
+
+.meal-card {
+
+  width: 420px;
+  height: 520px;
+
+  border: 3px solid #ececec;
+
+  border-radius: 32px;
+
+  cursor: pointer;
+
+  transition: .2s;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  padding: 25px;
+
+  box-sizing: border-box;
+
+}
+
+.meal-card:hover {
+
+  border-color: var(--bk-orange);
+
+  transform: translateY(-5px);
+
+}
+
+/* ========================================= */
+/* CARD CONTENT */
+/* ========================================= */
+
+.meal-size {
+
+  margin: 0;
+
+  font-family: "Flame";
+
+  font-size: 38px;
+
+  color: var(--bk-brown);
+
+}
+
+.meal-image {
+
+  margin-top: 25px;
+
+  width: 260px;
+  height: 200px;
+
+  object-fit: contain;
+
+}
+
+.meal-image-large {
+
+  transform: scale(1.08);
+
+}
+
+.meal-price {
+
+  margin-top: auto;
+
+  font-family: "Flame";
+
+  font-size: 48px;
+
+  color: var(--bk-orange);
+
+}
+
+/* ========================================= */
+/* FOOTER */
+/* ========================================= */
+
+.meal-popup-footer {
+
+  margin-top: 60px;
+
+  display: flex;
+
+  justify-content: space-between;
+
+}
+
+.meal-secondary-btn,
+.meal-primary-btn {
+
+  width: 430px;
+  height: 90px;
+
+  border-radius: 22px;
+
+  font-family: "Flame";
+
+  font-size: 32px;
+
+  cursor: pointer;
+
+}
+
+.meal-secondary-btn {
+
+  background: white;
+
+  border: 2px solid #ddd;
+
+  color: var(--bk-brown);
+
+}
+
+.meal-primary-btn {
+
+  border: none;
+
+  background: var(--bk-orange);
+
+  color: white;
+
+}
+
+.meal-card.selected {
+
+  border-color: var(--bk-orange);
+
+  transform: scale(1.03);
+
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.12);
+
+}
+
+.meal-primary-btn:disabled {
+
+  opacity: 0.5;
+
+  cursor: not-allowed;
+
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes popupIn {
+  from {
+    opacity: 0;
+    transform: scale(.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

@@ -2,7 +2,7 @@ import "./Categories.css";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useKiosk } from "../context/KioskContext";
-
+import { useCart } from "../context/CartContext";
 import { sendMessage } from "../services/api";
 import { getRoute } from "../utils/navigation";
 
@@ -18,6 +18,7 @@ import cl from "../assets/images/container light.png";
 
 function Categories() {
   const navigate = useNavigate();
+  const { cart, itemCount, total } = useCart();
   const { setRecommendationData } = useKiosk();
   const handleCategoryClick = async (category) => {
     try {

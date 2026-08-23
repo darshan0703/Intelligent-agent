@@ -1,13 +1,13 @@
 from schemas import KioskResponse, ScreenTypes
-from services.menu_service import (
-    get_product,
-    get_category
-)
+from services.menu_service import (get_product,get_category)
 
 
 def handle_product(item_name):
 
     product = get_product(item_name)
+
+    meal_offer = None
+
 
     if not product:
         return KioskResponse(

@@ -1,28 +1,102 @@
 import "./ProductPage.css";
 
-import { useLocation } from "react-router-dom";
-import { useState } from "react";
-import { useCart } from "../context/CartContext";
+import { useState, useEffect } from "react";
 import { useKiosk } from "../context/KioskContext";
-
-
+import { useCart } from "../context/CartContext";
+import { useLocation, useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import PreviousButton from "../components/PreviousButton";
 import CartContainer from "../components/CartContainer";
+import MealPopup from "../components/MealPopup";
 
 import vegIcon from "../assets/images/veg.png";
 import nonVegIcon from "../assets/images/nonveg.png";
 
 function ProductPage() {
 
-  const { productData } = useKiosk();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const origin = location.state?.origin || "/";        
+  const handleContinue = (mealSize) => {
+
+  navigate("/mealpage", {
+    state: {
+      meal: mealData.meals[mealSize],
+      origin: origin,
+    },
+  });
+
+};
+
+  const {
+    productData,
+    mealData,
+    setMealData,
+    mealPopupOpen,
+    setMealPopupOpen,
+  } = useKiosk();
+
   const { syncCart } = useCart();
   const { itemCount, total } = useCart();
+
   const product = productData?.data?.product;
-  const recommendations = productData?.data?.recommendations || [];
+  const recommendations =
+    productData?.data?.recommendations || [];
 
   const [quantity, setQuantity] = useState(1);
-  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+
+    if (!product) return;
+
+    const checkMealOffer = async () => {
+
+      console.log("REQUEST:", {
+    id: product.id,
+    name: product.name,
+});
+      try {
+
+        const response = await fetch(
+          "http://localhost:8000/meal/options",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              item_id: product.id,
+            }),
+          }
+        );
+
+        const data = await response.json();
+
+        console.log("MEAL OFFER:", data);
+        if (
+          data.success &&
+          data.is_meal_available
+        ) {
+            setMealData(data);
+            setMealPopupOpen(true);
+        }
+
+      } catch (error) {
+
+        console.error(
+          "Failed to load meal offer:",
+          error
+        );
+        
+
+      }
+
+    };
+
+    checkMealOffer();
+
+  }, [product]);
 
   if (!product) {
 
@@ -30,16 +104,14 @@ function ProductPage() {
 
       <div className="product-page">
 
-        <Header
-          title="Product Details"
-        />
+        <Header title="Product Details" />
 
         <PreviousButton />
 
         <h2
           style={{
             textAlign: "center",
-            marginTop: "200px"
+            marginTop: "200px",
           }}
         >
           No product selected.
@@ -50,56 +122,48 @@ function ProductPage() {
     );
 
   }
-
   const handleAddToCart = async () => {
-
-    if (loading) return;
-
-    setLoading(true);
 
     try {
 
-      const response = await fetch(
-        "http://127.0.0.1:8000/cart/add",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            item_name: product.name,
-            quantity: quantity
-          })
+        const response = await fetch(
+            "http://127.0.0.1:8000/cart/add",
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json",
+                },
+
+                body: JSON.stringify({
+                    item_name: product.name,
+                    quantity: quantity,
+                }),
+            }
+        );
+
+        const data = await response.json();
+
+        console.log("ADD TO CART:", data);
+
+        if (data.success) {
+          syncCart(data);
+          navigate(origin);
         }
-      );
-
-      const data = await response.json();
-      console.log("PRODUCT RESPONSE:", data);
-      syncCart(data);
-
-      // Next step:
-      // Update global cart
-      // Navigate back to menu
 
     } catch (error) {
 
-      console.error("Failed to add item:", error);
-
-    } finally {
-
-      setLoading(false);
+        console.error(error);
 
     }
 
-  };
+};
 
   return (
 
     <div className="product-page">
 
-      <Header
-        title="Product Details"
-      />
+      <Header title="Product Details" />
 
       <PreviousButton />
 
@@ -119,11 +183,13 @@ function ProductPage() {
 
           {(() => {
 
-            const words = product.name.split(" ");
+            const words =
+              product.name.split(" ");
 
-            const midpoint = Math.ceil(
-              words.length / 2
-            );
+            const midpoint =
+              Math.ceil(
+                words.length / 2
+              );
 
             return (
 
@@ -144,10 +210,7 @@ function ProductPage() {
             );
 
           })()}
-
-        </h1>
-
-        {product.foodType && (
+          {product.foodType && (
 
           <img
             src={
@@ -160,6 +223,9 @@ function ProductPage() {
           />
 
         )}
+
+        </h1>
+
 
       </div>
 
@@ -193,18 +259,18 @@ function ProductPage() {
 
       <div className="recommendations">
 
-       {recommendations.map((item) => (
+        {recommendations.map((item) => (
 
-        <div
-         key={item.id}
-         className="recommend-card"
-        >
-         {item.name}
-        </div>
+          <div
+            key={item.id}
+            className="recommend-card"
+          >
+            {item.name}
+          </div>
 
-  ))}
+        ))}
 
-</div>
+      </div>
 
       {/* QUANTITY */}
 
@@ -245,21 +311,28 @@ function ProductPage() {
       <button
         className="add-cart-btn"
         onClick={handleAddToCart}
-        disabled={loading}
       >
-
-        {loading
-          ? "Adding..."
-          : `Add To Cart • ₹ ${product.price * quantity}`}
-
+        {`Add To Cart • ₹ ${product.price * quantity}`}
       </button>
 
       {/* CART */}
 
       <CartContainer />
 
+      {/* MEAL POPUP */}
+
+      <MealPopup
+        open={mealPopupOpen}
+        meals={mealData}
+        onClose={() => {
+
+          setMealPopupOpen(false);
+
+        }}
+        onContinue={handleContinue}
+      />
+
     </div>
-  
 
   );
 

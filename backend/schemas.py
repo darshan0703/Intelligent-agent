@@ -1,8 +1,21 @@
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
+from typing import Optional, Literal,Dict, Any
 
 class OrderIntent(BaseModel):
-    action: str
+    action: Literal[
+        "show_category",
+        "add_item",
+        "recommend",
+        "remove_item",
+        "expand_context",
+        "decline_offer",
+        "checkout",
+        "correct_item",
+        "greeting",
+        "exit",
+        "unknown"
+    ]
+
     item_name: Optional[str] = None
     category: Optional[str] = None
     reference: Optional[str] = None
@@ -45,6 +58,8 @@ class ScreenTypes:
 
     # Product screen
     PRODUCT_DETAILS = "product_details"
+
+    MEAL_CONVERSION = "meal_conversion"
 
     # Order flow
     UPSELL = "upsell"

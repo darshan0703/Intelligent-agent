@@ -14,7 +14,6 @@ import BackButton from "../components/BackButton";
 import { useKiosk } from "../context/KioskContext";
 
 function Burger() {
-
   const navigate = useNavigate();
 
   const { recommendationData } = useKiosk();
@@ -30,8 +29,12 @@ function Burger() {
       ? allBurgers
       : allBurgers.filter(
           (burger) =>
-            burger.food_type.toLowerCase() ===
+            (burger.foodType ?? "")
+              .trim()
+              .toLowerCase() ===
             selectedType
+              .trim()
+              .toLowerCase()
         );
 
   const priorityItems =
@@ -44,15 +47,10 @@ function Burger() {
     filteredBurgers.slice(4, 8);
 
   const handleFilterChange = (filter) => {
-
-    setSelectedType(
-      filter.toLowerCase()
-    );
-
+    setSelectedType(filter.toLowerCase());
   };
 
   return (
-
     <div className="burger-page">
 
       <img
@@ -75,7 +73,7 @@ function Burger() {
         filters={[
           "both",
           "veg",
-          "non veg"
+          "non veg",
         ]}
         activeFilter={selectedType}
         onFilterChange={handleFilterChange}
@@ -172,8 +170,7 @@ function Burger() {
       </p>
 
       <div className="thin-line-3"></div>
-
-      {/* MORE OPTIONS */}
+            {/* MORE OPTIONS */}
 
       <div className="more-header">
 
@@ -193,19 +190,9 @@ function Burger() {
       </div>
 
       <CartContainer />
- 
+
     </div>
   );
-
-  console.log(
-  "ALL BURGERS:",
-  recommendationData?.data?.all_burgers
- );
-
- console.log(
-  "RECOMMENDATION DATA:",
-  recommendationData
- );
 }
 
 export default Burger;

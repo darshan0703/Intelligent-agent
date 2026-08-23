@@ -47,14 +47,34 @@ Rules:
 
 def handle_checkout(conversation_context, llm):
 
-    if not conversation_context["cart"]:
+    cart = conversation_context.get("cart", [])
+
+    if not cart:
         return "Your cart is empty."
 
-    total = sum(item["price"] for item in conversation_context["cart"])
+    total = sum(
+        item.get("subtotal", 0)
+        for item in cart
+    )
 
     conversation_context["checkout_pending"] = True
 
-    items = ", ".join([item["name"] for item in conversation_context["cart"]])
+    item_names = []
+
+    for item in cart:
+
+        if item.get("type") == "meal":
+            name = item.get("name", "Meal")
+        else:
+            name = item.get("name", "Item")
+
+        quantity = item.get("quantity", 1)
+
+        item_names.append(
+            f"{quantity} x {name}"
+        )
+
+    items = ", ".join(item_names)
 
     prompt = f"""
 You are a Burger King India cashier.
@@ -65,9 +85,10 @@ Facts:
 
 Rules:
 - Speak naturally like a cashier
-- Mention total correctly
-- Ask customer whether they will pay by cash or card
-- Do not change total
+- Mention the total correctly
+- Ask the customer whether they will pay by cash or card
+- Do not change the total
+- Do not add or remove any items
 """
 
     response = llm.invoke(prompt)
@@ -80,14 +101,15 @@ def handle_decline(conversation_context, llm):
 You are a Burger King India cashier.
 
 Facts:
-- Current cart: {conversation_context['cart']}
+- Current cart: {conversation_context.get('cart', [])}
 
 Customer declined the previous suggestion.
 
 Rules:
 - Do not greet again
 - Speak naturally
-- Ask whether customer wants checkout or more items
+- Do not change the cart
+- Ask whether the customer wants checkout or more items
 """
 
     response = llm.invoke(prompt)
@@ -97,30 +119,35 @@ Rules:
 
 def handle_correction(item_name, conversation_context):
 
-    if not conversation_context["cart"]:
+    cart = conversation_context.get("cart", [])
+
+    if not cart:
         return "Tell me what you'd like to order."
 
-    previous = conversation_context["cart"].pop()
+    previous = cart.pop()
 
     result = add_to_cart(item_name)
 
     if result["success"]:
-        conversation_context["cart"].append(
-            result["item"]
-        )
+
+        new_item = result["item"]
+
+        cart.append({
+            **new_item,
+            "quantity": previous.get("quantity", 1)
+        })
 
         return (
             f"Sure 👍 I've replaced "
-            f"{previous} with "
-            f"{result['item']} for "
-            f"₹{int(result['price'])}."
+            f"{previous.get('name', 'that item')} with "
+            f"{new_item['name']} for "
+            f"₹{int(new_item['price'])}."
         )
 
-    conversation_context["cart"].append(
-        previous
-    )
+    cart.append(previous)
 
     return (
-        f"I removed {previous}, "
-        f"but {item_name} is not available."
+        f"{item_name} is not available, so I kept "
+        f"{previous.get('name', 'your previous item')} "
+        f"in your cart."
     )
