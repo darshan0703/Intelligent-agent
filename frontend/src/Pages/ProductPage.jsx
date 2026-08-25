@@ -52,47 +52,57 @@ function ProductPage() {
 
     const checkMealOffer = async () => {
 
-      console.log("REQUEST:", {
+  console.log("REQUEST:", {
     id: product.id,
     name: product.name,
-});
-      try {
+  });
 
-        const response = await fetch(
-          "http://localhost:8000/meal/options",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              item_id: product.id,
-            }),
-          }
-        );
+  try {
 
-        const data = await response.json();
-
-        console.log("MEAL OFFER:", data);
-        if (
-          data.success &&
-          data.is_meal_available
-        ) {
-            setMealData(data);
-            setMealPopupOpen(true);
-        }
-
-      } catch (error) {
-
-        console.error(
-          "Failed to load meal offer:",
-          error
-        );
-        
-
+    const response = await fetch(
+      "http://localhost:8000/meal/options",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          item_id: product.id,
+        }),
       }
+    );
 
-    };
+    const data = await response.json();
+
+    console.log("MEAL OFFER:", data);
+
+    if (data.success && data.is_meal_available) {
+
+      console.log("OPENING MEAL POPUP");
+
+      setMealData(data);
+      setMealPopupOpen(true);
+
+    } else {
+
+      console.log("NO MEAL POPUP");
+
+      setMealPopupOpen(false);
+
+    }
+
+  } catch (error) {
+
+    console.error(
+      "Failed to load meal offer:",
+      error
+    );
+
+    setMealPopupOpen(false);
+
+  }
+
+};
 
     checkMealOffer();
 

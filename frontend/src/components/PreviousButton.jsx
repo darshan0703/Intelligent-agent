@@ -2,15 +2,25 @@ import "./PreviousButton.css";
 
 import { useNavigate } from "react-router-dom";
 
-function PreviousButton() {
+function PreviousButton({ onClick }) {
 
   const navigate = useNavigate();
+
+  const handleBack = () => {
+
+    if (onClick) {
+      onClick();
+      return;
+    }
+
+    navigate(-1);
+  };
 
   return (
 
     <button
       className="previous-button"
-      onClick={() => navigate(-1)}
+      onClick={handleBack}
     >
 
       <span className="previous-icon">
@@ -22,7 +32,6 @@ function PreviousButton() {
       </span>
 
     </button>
-    
 
   );
 

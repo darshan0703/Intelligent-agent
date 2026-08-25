@@ -217,7 +217,8 @@ def process_message(user_input, llm):
      if conversation_context.get("last_category"):
         print("Opening Product Details")
         reply = handle_product(
-            intent.item_name
+            intent.item_name,
+            conversation_context
         )
 
     # Otherwise customer is ordering directly

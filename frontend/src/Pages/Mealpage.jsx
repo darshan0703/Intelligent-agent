@@ -110,13 +110,32 @@ const handleAddMeal = async () => {
     }
 
 };
+const handleDeclineMeal = async () => {
+  try {
+    const response = await fetch(
+      "http://127.0.0.1:8000/meal/decline",
+      {
+        method: "POST",
+      }
+    );
+
+    const data = await response.json();
+
+    console.log("MEAL DECLINED:", data);
+
+  } catch (error) {
+    console.error("Failed to decline meal:", error);
+  } finally {
+    navigate(origin);
+  }
+};
     return (
 
         <div className="meal-page">
 
             <Header title="Meal Builder" />
 
-            <PreviousButton />
+            <PreviousButton onClick={handleDeclineMeal} />
 
             {burger && (
 

@@ -143,6 +143,21 @@ def meal_options(request: dict):
             "message": "item_id is required"
         }
 
+    # Check whether this burger's CURRENT meal offer
+    # was already declined
+    meal_flow = conversation_context.get("meal_flow")
+
+    if (
+        meal_flow
+        and meal_flow.get("item_id") == item_id
+        and meal_flow.get("status") == "declined"
+    ):
+        return {
+            "success": True,
+            "is_meal_available": False,
+            "message": "Meal offer was declined."
+        }
+
     offer = get_meal_options(item_id)
 
     if not offer:
@@ -151,7 +166,31 @@ def meal_options(request: dict):
             "message": "Meal not available."
         }
 
+    # Start a meal decision flow for this product instance
+    conversation_context["meal_flow"] = {
+        "item_id": item_id,
+        "status": "pending"
+    }
+
     return offer
+
+@app.post("/meal/decline")
+def decline_meal():
+
+    meal_flow = conversation_context.get("meal_flow")
+
+    if not meal_flow:
+        return {
+            "success": False,
+            "message": "No active meal flow."
+        }
+
+    meal_flow["status"] = "declined"
+
+    return {
+        "success": True,
+        "meal_flow": meal_flow
+    }
 
 @app.post("/cart/add-meal")
 def cart_add_meal(request: dict):

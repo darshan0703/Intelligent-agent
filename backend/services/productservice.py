@@ -1,19 +1,29 @@
 from schemas import KioskResponse, ScreenTypes
-from services.menu_service import (get_product,get_category)
+from services.menu_service import get_product, get_category
 
 
-def handle_product(item_name):
+def handle_product(item_name, conversation_context):
 
     product = get_product(item_name)
-
-    meal_offer = None
-
 
     if not product:
         return KioskResponse(
             screen=ScreenTypes.HOME,
             message="Sorry, I couldn't find that item."
         )
+
+    # ==========================================
+    # START A NEW PRODUCT / MEAL INTERACTION
+    # ==========================================
+
+    conversation_context["meal_flow"] = {
+        "item_id": product["id"],
+        "status": "pending"
+    }
+
+    # ==========================================
+    # RECOMMENDATIONS
+    # ==========================================
 
     recommendations = []
 

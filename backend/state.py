@@ -24,4 +24,5 @@ def reset_conversation(session_id=None):
 
         # Checkout
         "checkout_pending": False,
+        "meal_flow": None
     })
