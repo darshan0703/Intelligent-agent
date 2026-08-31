@@ -1,4 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { UIActionProvider } from "./context/UIActionContext";
+import { KioskProvider } from "./context/KioskContext";
+import { VoiceConversationProvider } from "./context/VoiceConversationProvider";
 
 import Home from "./Pages/Home";
 import Categories from "./Pages/Categories";
@@ -22,35 +25,35 @@ import OrderCompletePage from "./Pages/OrderCompletePage";
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        {/* Home */}
-        <Route path="/" element={<Home />} />
+      <KioskProvider>
+        <UIActionProvider>
+        <VoiceConversationProvider>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/Categories" element={<Categories />} />
 
-        {/* Categories */}
-        <Route path="/Categories" element={<Categories />} />
+            <Route path="/burgers" element={<Burger />} />
+            <Route path="/drinks" element={<Drink />} />
+            <Route path="/desserts" element={<Dessert />} />
+            <Route path="/sides" element={<Sides />} />
 
-        {/* Recommended category pages */}
-        <Route path="/burgers" element={<Burger />} />
-        <Route path="/drinks" element={<Drink />} />
-        <Route path="/desserts" element={<Dessert />} />
-        <Route path="/sides" element={<Sides />} />
+            <Route path="/burgermenu" element={<Burgermenu />} />
+            <Route path="/drinkmenu" element={<Drinkmenu />} />
+            <Route path="/dessertmenu" element={<Dessertmenu />} />
+            <Route path="/sidesmenu" element={<Sidesmenu />} />
 
-        {/* Full menu pages */}
-        <Route path="/burgermenu" element={<Burgermenu />} />
-        <Route path="/drinkmenu" element={<Drinkmenu />} />
-        <Route path="/dessertmenu" element={<Dessertmenu />} />
-        <Route path="/sidesmenu" element={<Sidesmenu />} />
+            <Route path="/product" element={<ProductPage />} />
+            <Route path="/mealpage" element={<MealPage />} />
 
-        {/* Product */}
-        <Route path="/product" element={<ProductPage />} />
-
-        {/* Meal conversion */}
-        <Route path="/mealpage" element={<MealPage />} />
-
-        {/* Cart and payment */}
-        <Route path="/cart" element={<CartPage />} />
-        <Route path="/order-complete" element={<OrderCompletePage />} />
-      </Routes>
+            <Route path="/cart" element={<CartPage />} />
+            <Route
+              path="/order-complete"
+              element={<OrderCompletePage />}
+            />
+          </Routes>
+        </VoiceConversationProvider>
+        </UIActionProvider>
+      </KioskProvider>
     </BrowserRouter>
   );
 }

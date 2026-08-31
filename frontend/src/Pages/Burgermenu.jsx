@@ -13,8 +13,7 @@ import {
   useState,
   useEffect
 } from "react";
-
-
+import { syncScreen } from "../services/screenService";
 
 function Burgermenu() {
 
@@ -25,7 +24,11 @@ function Burgermenu() {
         .then(res => res.json())
         .then(setBurgerSections);
  }, []);
+ useEffect(() => {
 
+  syncScreen("burger_menu");
+
+  }, []);
   const menuContentRef = useRef(null);
 
   const sectionRefs = useRef({});

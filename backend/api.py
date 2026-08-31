@@ -22,6 +22,10 @@ from services.cart_service import (
     update_cart_item,
     complete_order
 )
+from screen_controls import get_screen_controls
+import os
+import requests
+from fastapi.responses import Response
 
 load_dotenv()
 
@@ -72,6 +76,38 @@ def start_session():
         "session_id": session_id,
         "message": "Welcome to Burger King",
         "voice_enabled": True
+    }
+
+@app.post("/screen")
+def update_screen(request: dict):
+
+    screen = request.get("screen")
+
+    if not screen:
+        return {
+            "success": False,
+            "message": "screen is required"
+        }
+
+    conversation_context["current_screen"] = screen
+
+    conversation_context["available_controls"] = (
+        get_screen_controls(screen)
+    )
+
+    print("SCREEN SYNC:", screen)
+
+    print(
+        "AVAILABLE CONTROLS:",
+        conversation_context["available_controls"]
+    )
+
+    return {
+        "success": True,
+        "screen": screen,
+        "available_controls": (
+            conversation_context["available_controls"]
+        )
     }
 
 
@@ -215,3 +251,81 @@ def complete_order_endpoint():
     )
 
     return result
+
+@app.post("/tts")
+def text_to_speech(request: dict):
+    text = request.get("text")
+
+    print("TTS REQUEST:", text)
+
+    if not text:
+        return Response(
+            content=b"",
+            media_type="audio/mpeg",
+            status_code=400,
+        )
+
+    api_key = os.getenv("ELEVENLABS_API_KEY")
+    voice_id = os.getenv("ELEVENLABS_VOICE_ID")
+
+    print("VOICE ID PRESENT:", bool(voice_id))
+    print("API KEY PRESENT:", bool(api_key))
+
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+
+    headers = {
+        "xi-api-key": api_key,
+        "Content-Type": "application/json",
+        "Accept": "audio/mpeg",
+    }
+
+    payload = {
+        "text": text,
+        "model_id": "eleven_multilingual_v2",
+    }
+
+    print("CALLING ELEVENLABS...")
+
+    try:
+        response = requests.post(
+            url,
+            headers=headers,
+            json=payload,
+            timeout=30,
+        )
+
+        print(
+            "ELEVENLABS STATUS:",
+            response.status_code
+        )
+
+        if not response.ok:
+            print(
+                "ELEVENLABS ERROR:",
+                response.text
+            )
+
+        response.raise_for_status()
+
+        print(
+            "ELEVENLABS AUDIO RECEIVED:",
+            len(response.content),
+            "bytes"
+        )
+
+        return Response(
+            content=response.content,
+            media_type="audio/mpeg",
+        )
+
+    except requests.RequestException as e:
+        print(
+            "ELEVENLABS TTS ERROR:",
+            repr(e)
+        )
+
+        return Response(
+            content=b"TTS request failed",
+            media_type="text/plain",
+            status_code=502,
+        )

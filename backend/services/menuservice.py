@@ -107,7 +107,7 @@ def handle_burger_selection(burger_type, conversation_context):
 
      filtered = [
         item for item in burgers
-        if item["food_type"].lower() == burger_type
+        if item["foodType"].lower() == burger_type
      ]
 
     if not filtered:

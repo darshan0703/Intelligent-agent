@@ -40,9 +40,10 @@ class ScreenTypes:
 
     # Startup
     HOME = "home"
-
+ 
     # Clarification
     BURGER_TYPE_SELECTION = "burger_type_selection"
+    CATEGORY_SELECTION = "category_selection"
 
     # Recommended category screens
     RECOMMENDED_BURGERS = "recommended_burgers"

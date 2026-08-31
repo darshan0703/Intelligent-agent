@@ -16,5 +16,5 @@ const screenRoutes = {
 };
 
 export function getRoute(screen) {
-  return screenRoutes[screen] || "/Categories";
+  return screenRoutes[screen];
 }
