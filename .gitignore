@@ -11,7 +11,19 @@ dist/
 
 # Local files
 .env
+.env.*
 *.mp3
+
+# macOS
+.DS_Store
+
+# Voice/audio test files
+backend/test.json
+backend/test.m4a
+backend/test.srt
+backend/test.tsv
+backend/test.txt
+backend/test.vtt
 
 # Python tooling
 .python-version
