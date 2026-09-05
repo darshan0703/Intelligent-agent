@@ -1,6 +1,9 @@
 import {
   createContext,
+  useCallback,
   useContext,
+  useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -13,168 +16,223 @@ import {
   startListening,
   stopListening,
   speak,
-} from "../services/voiceService";
+  setInterruptionHandler,
+} from "../services/voice/voiceService";
 
-import {
-  processCustomerMessage,
-} from "../services/conversationService";
+import { processCustomerMessage } from "../services/conversationService";
+import { handleKioskResponse } from "../services/responseHandler";
 
-import {
-  handleKioskResponse,
-} from "../services/responseHandler";
+const VoiceConversationContext = createContext(null);
 
-
-const VoiceConversationContext =
-  createContext();
-
-
-export function VoiceConversationProvider({
-  children
-}) {
-
+export function VoiceConversationProvider({ children }) {
   const navigate = useNavigate();
-
 
   const {
     setRecommendationData,
     setProductData,
   } = useKiosk();
 
-
   const {
     executeUIAction,
   } = useUIAction();
 
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
 
-  const [
-    voiceActive,
-    setVoiceActive
-  ] = useState(false);
+  // True for the entire voice interaction.
+  // It represents the voice interface being enabled,
+  // NOT an individual browser recognition session.
+  const voiceEnabledRef = useRef(false);
 
+  // Prevent multiple customer messages from being
+  // processed at the same time.
+  const processingRef = useRef(false);
 
-  // ==========================================
-  // START VOICE CONVERSATION
-  // ==========================================
+  const listenForCustomer = useCallback(() => {
+    if (
+      !voiceEnabledRef.current ||
+      processingRef.current
+    ) {
+      return;
+    }
 
-  const startVoiceConversation = () => {
+    console.log("STARTING CUSTOMER LISTENING");
 
-    if (voiceActive) return;
+    startListening(async (transcript) => {
+      if (
+        !voiceEnabledRef.current ||
+        processingRef.current
+      ) {
+        return;
+      }
 
-    setVoiceActive(true);
+      processingRef.current = true;
 
+      try {
+        console.log(
+          "VOICE TRANSCRIPT:",
+          transcript
+        );
 
-    startListening(
-      async (transcript) => {
+        // Stop the current recording/listening cycle.
+        stopListening();
 
-        try {
-
-          console.log(
-            "VOICE TRANSCRIPT:",
+        // Send the same customer message through
+        // the normal TheAtom conversation pipeline.
+        const data =
+          await processCustomerMessage(
             transcript
           );
 
+        console.log(
+          "VOICE BACKEND RESPONSE:",
+          data
+        );
 
-          // ==========================================
-          // SEND CUSTOMER MESSAGE TO BACKEND
-          // ==========================================
-
-          const data =
-            await processCustomerMessage(
-              transcript
-            );
-
-
-          console.log(
-            "VOICE BACKEND RESPONSE:",
-            data
-          );
-
-
-          // ==========================================
-          // SPEAK BACK TO CUSTOMER
-          // ==========================================
-
-          if (data?.message) {
-
-            speak(data.message);
-
+        // Apply exactly the same screen/UI response
+        // used by the rest of the kiosk.
+        handleKioskResponse(
+          data,
+          {
+            navigate,
+            setRecommendationData,
+            setProductData,
+            executeUIAction,
           }
+        );
 
+        // Speak the backend's response.
+        if (data?.message) {
+          speak(
+            data.message,
+            () => {
+              processingRef.current = false;
 
-          // ==========================================
-          // EXECUTE UI ACTION
-          // ==========================================
-
-          handleKioskResponse(
-            data,
-            {
-              navigate,
-              setRecommendationData,
-              setProductData,
-              executeUIAction,
+              // Continue the same voice interaction.
+              // This does NOT create a new transaction.
+              if (voiceEnabledRef.current) {
+                listenForCustomer();
+              }
             }
           );
+        } else {
+          processingRef.current = false;
 
-
-        } catch (error) {
-
-          console.error(
-            "VOICE MESSAGE ERROR:",
-            error
-          );
-
+          if (voiceEnabledRef.current) {
+            listenForCustomer();
+          }
         }
+      } catch (error) {
+        console.error(
+          "VOICE MESSAGE ERROR:",
+          error
+        );
 
+        processingRef.current = false;
+
+        if (voiceEnabledRef.current) {
+          listenForCustomer();
+        }
       }
-    );
+    });
+  }, [
+    navigate,
+    setRecommendationData,
+    setProductData,
+    executeUIAction,
+  ]);
 
-  };
+  /*
+   * Barge-in:
+   *
+   * voiceService detects the customer speaking while
+   * the kiosk is talking. It stops TTS and calls this.
+   */
+  useEffect(() => {
+    setInterruptionHandler(() => {
+      if (!voiceEnabledRef.current) {
+        return;
+      }
 
+      console.log(
+        "CUSTOMER TOOK THE TURN"
+      );
 
-  // ==========================================
-  // STOP VOICE CONVERSATION
-  // ==========================================
+      // The previous cashier response is no longer
+      // relevant once the customer interrupts.
+      processingRef.current = false;
 
-  const stopVoiceConversation = () => {
+      listenForCustomer();
+    });
 
-    stopListening();
+    return () => {
+      setInterruptionHandler(null);
+    };
+  }, [listenForCustomer]);
 
-    setVoiceActive(false);
+  const startVoiceConversation =
+    useCallback(() => {
+      if (voiceEnabledRef.current) {
+        return;
+      }
 
-  };
+      voiceEnabledRef.current = true;
+      processingRef.current = false;
 
+      setVoiceEnabled(true);
 
-  // ==========================================
-  // PROVIDER
-  // ==========================================
+      console.log(
+        "VOICE INTERFACE ENABLED"
+      );
+
+      // Initial cashier greeting.
+      speak(
+        "Hi! Welcome to Burger King. What can I get for you today?",
+        () => {
+          if (voiceEnabledRef.current) {
+            listenForCustomer();
+          }
+        }
+      );
+    }, [listenForCustomer]);
+
+  const stopVoiceConversation =
+    useCallback(() => {
+      voiceEnabledRef.current = false;
+      processingRef.current = false;
+
+      stopListening();
+
+      setVoiceEnabled(false);
+
+      console.log(
+        "VOICE INTERFACE DISABLED"
+      );
+    }, []);
 
   return (
-
     <VoiceConversationContext.Provider
       value={{
-
-        voiceActive,
-
+        voiceActive: voiceEnabled,
         startVoiceConversation,
-
         stopVoiceConversation,
-
       }}
     >
-
       {children}
-
     </VoiceConversationContext.Provider>
-
   );
-
 }
 
-
 export function useVoiceConversation() {
+  const context =
+    useContext(
+      VoiceConversationContext
+    );
 
-  return useContext(
-    VoiceConversationContext
-  );
+  if (!context) {
+    throw new Error(
+      "useVoiceConversation must be used inside VoiceConversationProvider"
+    );
+  }
 
+  return context;
 }

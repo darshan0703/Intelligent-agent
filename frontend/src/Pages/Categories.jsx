@@ -68,11 +68,6 @@ function Categories() {
 
     try {
 
-      console.log(
-        `${category.toUpperCase()} CLICKED`
-      );
-
-
       const data = await sendMessage(
         `I want a ${category}`
       );
