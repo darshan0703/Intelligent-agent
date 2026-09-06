@@ -1,14 +1,17 @@
+import io
 import os
 import subprocess
 import tempfile
 import uuid
 from pathlib import Path
 
-import requests
+import numpy as np
+import soundfile as sf
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
+from kokoro import KPipeline
 from langchain_groq import ChatGroq
 from pydantic import BaseModel
 
@@ -32,19 +35,32 @@ from services.menu_service import (
 )
 from state import conversation_context, reset_conversation
 
+
 load_dotenv()
 
+
+print("INITIALIZING KOKORO TTS...")
+
+tts_pipeline = KPipeline(
+    lang_code="a"
+)
+
+print("KOKORO TTS READY")
+
+
 app = FastAPI()
+
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5174"
+        "http://localhost:5175"
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 llm = ChatGroq(
     model="openai/gpt-oss-20b",
@@ -102,6 +118,7 @@ def update_screen(request: dict):
     )
 
     print("SCREEN SYNC:", screen)
+
     print(
         "AVAILABLE CONTROLS:",
         conversation_context["available_controls"],
@@ -156,7 +173,7 @@ def message(request: MessageRequest):
     return {
         "screen": None,
         "message": response,
-        "cart": conversation_context["cart"],
+        "cart": conversation_context.get("cart", []),
     }
 
 
@@ -259,6 +276,10 @@ def complete_order_endpoint():
     return result
 
 
+# ============================================================
+# LOCAL KOKORO TEXT TO SPEECH
+# ============================================================
+
 @app.post("/tts")
 def text_to_speech(request: dict):
     text = request.get("text")
@@ -268,85 +289,74 @@ def text_to_speech(request: dict):
     if not text:
         return Response(
             content=b"",
-            media_type="audio/mpeg",
+            media_type="audio/wav",
             status_code=400,
         )
 
-    api_key = os.getenv("ELEVENLABS_API_KEY")
-    voice_id = os.getenv("ELEVENLABS_VOICE_ID")
-
-    print(
-        "VOICE ID PRESENT:",
-        bool(voice_id),
-    )
-
-    print(
-        "API KEY PRESENT:",
-        bool(api_key),
-    )
-
-    url = (
-        "https://api.elevenlabs.io/v1/"
-        f"text-to-speech/{voice_id}"
-    )
-
-    headers = {
-        "xi-api-key": api_key,
-        "Content-Type": "application/json",
-        "Accept": "audio/mpeg",
-    }
-
-    payload = {
-        "text": text,
-        "model_id": "eleven_multilingual_v2",
-    }
-
-    print("CALLING ELEVENLABS...")
-
     try:
-        response = requests.post(
-            url,
-            headers=headers,
-            json=payload,
-            timeout=30,
+        print("GENERATING KOKORO AUDIO...")
+
+        generator = tts_pipeline(
+            text,
+            voice="af_heart",
         )
 
-        print(
-            "ELEVENLABS STATUS:",
-            response.status_code,
-        )
+        audio_segments = []
 
-        if not response.ok:
-            print(
-                "ELEVENLABS ERROR:",
-                response.text,
+        for _, _, audio in generator:
+            audio_segments.append(
+                np.asarray(audio)
             )
 
-        response.raise_for_status()
+        if not audio_segments:
+            raise RuntimeError(
+                "Kokoro generated no audio."
+            )
+
+        audio_data = np.concatenate(
+            audio_segments
+        )
+
+        audio_buffer = io.BytesIO()
+
+        sf.write(
+            audio_buffer,
+            audio_data,
+            24000,
+            format="WAV",
+        )
+
+        audio_buffer.seek(0)
+
+        audio_bytes = audio_buffer.read()
 
         print(
-            "ELEVENLABS AUDIO RECEIVED:",
-            len(response.content),
+            "KOKORO AUDIO GENERATED:",
+            len(audio_bytes),
             "bytes",
         )
 
         return Response(
-            content=response.content,
-            media_type="audio/mpeg",
+            content=audio_bytes,
+            media_type="audio/wav",
         )
 
-    except requests.RequestException as e:
+    except Exception as e:
         print(
-            "ELEVENLABS TTS ERROR:",
+            "KOKORO TTS ERROR:",
             repr(e),
         )
 
         return Response(
-            content=b"TTS request failed",
+            content=b"TTS generation failed",
             media_type="text/plain",
-            status_code=502,
+            status_code=500,
         )
 
+
+# ============================================================
+# LOCAL WHISPER SPEECH TO TEXT
+# ============================================================
 
 @app.post("/stt")
 async def speech_to_text(
