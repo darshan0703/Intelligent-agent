@@ -1,5 +1,4 @@
 from schemas import OrderIntent
-from services.menu_service import get_available
 from ontology import infer_category_from_text
 
 
@@ -75,13 +74,6 @@ def parse_intent_response(raw_response):
 
 def extract_intent(user_input, llm, conversation_context):
 
-    menu = get_available()
-
-    menu_names = [
-        item["name"]
-        for item in menu
-    ]
-
     current_category = conversation_context.get(
         "last_category"
     )
@@ -131,9 +123,6 @@ PENDING SUGGESTION:
 
 CURRENT CART:
 {cart}
-
-AVAILABLE MENU ITEMS:
-{menu_names}
 
 CUSTOMER MESSAGE:
 {user_input}

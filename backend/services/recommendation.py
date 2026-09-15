@@ -1,74 +1,72 @@
 from datetime import date
-from services.menu_service import (
-    get_available,
-    get_category,
-)
-from pprint import pprint
+from services.menu_service import get_available, get_category
 
 def get_priority_items(menu):
     today = date.today()
-    
 
     for item in menu:
         days_to_expiry = (item["expiry"] - today).days
         expiry_score = max(0, 30 - days_to_expiry)
         item["priority"] = item["stock"] + expiry_score
-
+        
     menu_sorted = sorted(
         menu,
         key=lambda x: x["priority"],
         reverse=True
     )
-    pprint(menu_sorted[0])
 
     return menu_sorted[:2]
 
 
-def handle_recommendation(user_input, conversation_context, llm):
-    """
-    Version 1 Recommendation Engine
-
-    - No Restaurant Knowledge
-    - No Semantic Discovery
-    - Recommend using current category
-    - Fallback to full menu if no category selected
-    """
-
-    if conversation_context["last_category"]:
-        items = get_category(conversation_context["last_category"])
-        category = conversation_context["last_category"]
-    else:
-        items = get_available()
-        category = "menu"
-
+def build_recommendations(items):
     priority = get_priority_items(items)
 
-    if not priority:
-        return "Sorry, there are no recommendations available right now."
+    premium = []
 
-    priority_text = "\n".join(
-        [f"{item['name']} – ₹{int(item['price'])}" for item in priority]
-    )
+    for item in sorted(items, key=lambda x: x["price"], reverse=True):
+        if item not in priority:
+            premium.append(item)
 
-    prompt = f"""
-You are a friendly Burger King India cashier.
+        if len(premium) == 2:
+            break
 
-The customer said:
-{user_input}
+    additional = []
 
-Current category:
-{category}
+    for item in items:
+        if item not in priority and item not in premium:
+            additional.append(item)
 
-Recommended items:
-{priority_text}
+        if len(additional) == 4:
+            break
 
-Rules:
-- Recommend ONLY from the list above.
-- Do not invent menu items.
-- Keep the response short (1-2 sentences).
-- Sound natural and friendly.
-"""
+    return priority, premium, additional
 
-    response = llm.invoke(prompt)
 
-    return response.content
+def get_agent_recommendations(category=None, food_type=None):
+    if category:
+        items = get_category(category)
+    else:
+        items = get_available()
+
+    if food_type:
+        normalized_food_type = food_type.lower().replace("_", " ").strip()
+
+        items = [
+            item for item in items
+            if item.get("foodType", "").lower() == normalized_food_type
+        ]
+
+    if not items:
+        return {
+            "category": category,
+            "recommended": None,
+            "premium": None
+        }
+
+    priority, premium, _ = build_recommendations(items)
+
+    return {
+        "category": category,
+        "recommended": priority[0] if priority else None,
+        "premium": premium[0] if premium else None
+    }

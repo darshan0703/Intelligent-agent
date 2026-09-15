@@ -36,8 +36,60 @@ function Burger() {
   ] = useState("both");
 
 
-  const allBurgers =
-    recommendationData?.data?.all_burgers || [];
+  const data =
+    recommendationData?.data || {};
+
+
+  // ==========================================
+  // ALL BACKEND RECOMMENDATION DATA
+  // ==========================================
+
+  const bothRecommendations =
+    data.both || {
+      priority: [],
+      premium: [],
+      additional: []
+    };
+
+
+  const vegRecommendations =
+    data.veg || {
+      priority: [],
+      premium: [],
+      additional: []
+    };
+
+
+  const nonVegRecommendations =
+    data.non_veg || {
+      priority: [],
+      premium: [],
+      additional: []
+    };
+
+
+  // ==========================================
+  // SELECT THE DATASET FOR CURRENT FILTER
+  // ==========================================
+
+  const selectedRecommendations =
+    selectedType === "veg"
+      ? vegRecommendations
+      : selectedType === "non veg"
+        ? nonVegRecommendations
+        : bothRecommendations;
+
+
+  const priorityItems =
+    selectedRecommendations.priority || [];
+
+
+  const premiumItems =
+    selectedRecommendations.premium || [];
+
+
+  const additionalItems =
+    selectedRecommendations.additional || [];
 
 
   // ==========================================
@@ -58,15 +110,18 @@ function Burger() {
   const handleFilterChange =
     useCallback((filter) => {
 
+      const normalizedFilter =
+        filter
+          .trim()
+          .toLowerCase();
+
       console.log(
         "CHANGING BURGER FILTER:",
-        filter
+        normalizedFilter
       );
 
       setSelectedType(
-        filter
-          .trim()
-          .toLowerCase()
+        normalizedFilter
       );
 
     }, []);
@@ -176,40 +231,6 @@ function Burger() {
   ]);
 
 
-  // ==========================================
-  // FILTER EXISTING DATA
-  // ==========================================
-
-  const filteredBurgers =
-    selectedType === "both"
-      ? allBurgers
-      : allBurgers.filter(
-          (burger) =>
-            (burger.foodType ?? "")
-              .trim()
-              .toLowerCase() ===
-            selectedType
-              .trim()
-              .toLowerCase()
-        );
-
-
-  // ==========================================
-  // DISPLAY GROUPS
-  // ==========================================
-
-  const priorityItems =
-    filteredBurgers.slice(0, 2);
-
-
-  const premiumItems =
-    filteredBurgers.slice(2, 4);
-
-
-  const additionalItems =
-    filteredBurgers.slice(4, 8);
-
-
   return (
 
     <div className="burger-page">
@@ -234,7 +255,9 @@ function Burger() {
       <BackButton />
 
 
-      {/* FILTERS */}
+      {/* ======================================
+          FILTERS
+          ====================================== */}
 
       <Menufilters
         filters={[
@@ -249,7 +272,9 @@ function Burger() {
       />
 
 
-      {/* PRIORITY */}
+      {/* ======================================
+          PRIORITY
+          ====================================== */}
 
       {priorityItems[0] && (
 
@@ -273,7 +298,9 @@ function Burger() {
       )}
 
 
-      {/* PREMIUM */}
+      {/* ======================================
+          PREMIUM
+          ====================================== */}
 
       {premiumItems[0] && (
 
@@ -297,7 +324,9 @@ function Burger() {
       )}
 
 
-      {/* ADDITIONAL */}
+      {/* ======================================
+          ADDITIONAL
+          ====================================== */}
 
       {additionalItems[0] && (
 
@@ -343,7 +372,9 @@ function Burger() {
       )}
 
 
-      {/* TITLES */}
+      {/* ======================================
+          TITLES
+          ====================================== */}
 
       <p className="Recommendation-text">
         Fresh Picks For You
@@ -371,7 +402,9 @@ function Burger() {
       <div className="thin-line-3"></div>
 
 
-      {/* MORE OPTIONS */}
+      {/* ======================================
+          MORE OPTIONS
+          ====================================== */}
 
       <div className="more-header">
 

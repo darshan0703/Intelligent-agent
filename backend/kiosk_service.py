@@ -8,8 +8,6 @@ from intent import extract_intent
 from screen_intent import extract_screen_intent
 from state import conversation_context
 
-from services.recommendation import handle_recommendation
-
 from services.menuservice import (
     handle_menu,
     handle_category,
@@ -32,6 +30,10 @@ from schemas import (
 from services.productservice import handle_product
 from screen_controls import get_screen_controls
 from services.cashier_response import generate_cashier_response
+
+from langchain_core.tools import tool
+
+
 # ==========================================
 # SCREEN TRACKING
 # ==========================================
@@ -63,17 +65,26 @@ def track_screen(response):
 # CREATE UI ACTION RESPONSE
 # ==========================================
 
-def create_ui_action(control, value=None):
+def create_ui_action(
+    control,
+    value=None,
+    user_input=None,
+    llm=None
+):
 
     current_screen = conversation_context.get(
         "current_screen"
     )
 
+    available_controls = conversation_context.get(
+        "available_controls",
+        []
+    )
+
     ui_action = control
 
-
     # ==========================================
-    # SEMANTIC FILTER
+    # SEMANTIC FILTER → FRONTEND ACTION
     # ==========================================
 
     if control == "filter":
@@ -99,13 +110,36 @@ def create_ui_action(control, value=None):
 
             return None
 
+    # ==========================================
+    # NATURAL CASHIER RESPONSE
+    # ==========================================
+
+    message = None
+
+    if user_input and llm:
+
+        message = generate_cashier_response(
+            user_input=user_input,
+            screen_intent=type(
+                "ScreenAction",
+                (),
+                {
+                    "control": control,
+                    "value": value
+                }
+            )(),
+            current_screen=current_screen,
+            available_controls=available_controls,
+            llm=llm
+        )
 
     # ==========================================
-    # CREATE FRONTEND UI ACTION
+    # RETURN UI ACTION + SPOKEN RESPONSE
     # ==========================================
 
     return KioskResponse(
         screen=current_screen,
+        message=message,
         data={
             "ui_action": ui_action
         }
@@ -113,11 +147,152 @@ def create_ui_action(control, value=None):
 
 
 # ==========================================
+# AGENT SCREEN ACTION TOOL
+# ==========================================
+
+def create_screen_action_tool(conversation_context):
+
+    @tool
+    def screen_action(
+        control: str,
+        value: str | None = None
+    ):
+        """
+        Perform an action on the current kiosk screen.
+
+        Use this when the customer's request can be fulfilled
+        by one of the capabilities available on the current
+        screen.
+
+        The control must be one of the current screen's available
+        UI capabilities.
+
+        For the filter capability, value must be:
+        veg, non_veg, or both.
+
+        This tool operates the kiosk UI. It does not retrieve
+        the menu or database contents.
+
+        Args:
+            control:
+                The UI capability to perform.
+
+            value:
+                Optional value required by the capability.
+
+        Returns:
+            A small action result for the agent.
+            The complete KioskResponse remains inside the
+            application for the frontend.
+        """
+
+        current_screen = conversation_context.get(
+            "current_screen"
+        )
+
+        available_controls = conversation_context.get(
+            "available_controls",
+            []
+        )
+
+        # ==========================================
+        # VALIDATE CURRENT SCREEN
+        # ==========================================
+
+        if not current_screen:
+
+            return {
+                "success": False,
+                "error": "No current kiosk screen is available."
+            }
+
+        # ==========================================
+        # VALIDATE CONTROL
+        # ==========================================
+
+        if control not in available_controls:
+
+            return {
+                "success": False,
+                "error": (
+                    f"Control '{control}' is not available "
+                    f"on the current screen."
+                ),
+                "available_controls": available_controls
+            }
+
+        # ==========================================
+        # NORMALIZE FILTER VALUE
+        # ==========================================
+
+        if control == "filter":
+
+            if value:
+
+                value = (
+                    value
+                    .lower()
+                    .replace(" ", "_")
+                    .strip()
+                )
+
+            if value not in [
+                "veg",
+                "non_veg",
+                "both"
+            ]:
+
+                return {
+                    "success": False,
+                    "error": (
+                        "Filter value must be "
+                        "veg, non_veg, or both."
+                    )
+                }
+
+        # ==========================================
+        # EXECUTE EXISTING UI BRIDGE
+        # ==========================================
+
+        response = create_ui_action(
+            control,
+            value
+        )
+
+        if response is None:
+
+            return {
+                "success": False,
+                "error": "The kiosk could not perform this action."
+            }
+
+        # ==========================================
+        # KEEP FULL RESPONSE INSIDE APPLICATION
+        # ==========================================
+
+        conversation_context[
+            "_last_kiosk_response"
+        ] = response
+
+        # ==========================================
+        # RETURN ONLY AGENT-RELEVANT INFORMATION
+        # ==========================================
+
+        return {
+            "success": True,
+            "screen": current_screen,
+            "control": control,
+            "value": value
+        }
+
+    return screen_action
+
+
+# ==========================================
 # MAIN MESSAGE PROCESSOR
 # ==========================================
 
 def process_message(user_input, llm):
-
 
     # ==========================================
     # 1. CHECKOUT PAYMENT FLOW
@@ -146,13 +321,11 @@ def process_message(user_input, llm):
 
                 return result["message"]
 
-
             conversation_context["cart"] = []
 
             conversation_context[
                 "checkout_pending"
             ] = False
-
 
             if "cash" in lower:
 
@@ -165,7 +338,6 @@ def process_message(user_input, llm):
                 )
 
                 return track_screen(reply)
-
 
             reply = KioskResponse(
                 screen=ScreenTypes.PAYMENT,
@@ -374,7 +546,7 @@ def process_message(user_input, llm):
                 screen_intent.value,
                 user_input,
                 llm
-                )
+            )
 
 
             if reply:
@@ -421,15 +593,6 @@ def process_message(user_input, llm):
         reply = (
             "Could you tell me a little more "
             "about what you'd like?"
-        )
-
-
-    elif intent.action == "recommend":
-
-        reply = handle_recommendation(
-            user_input,
-            conversation_context,
-            llm
         )
 
 
@@ -566,86 +729,10 @@ def process_message(user_input, llm):
     # ==========================================
     # 6. SAVE NEW SCREEN
     # ==========================================
-    print("FINAL BACKEND RESPONSE:", reply)
+
+    print(
+        "FINAL BACKEND RESPONSE:",
+        reply
+    )
 
     return track_screen(reply)
-
-def create_ui_action(
-    control,
-    value=None,
-    user_input=None,
-    llm=None
-):
-
-    current_screen = conversation_context.get(
-        "current_screen"
-    )
-
-    available_controls = conversation_context.get(
-        "available_controls",
-        []
-    )
-
-    ui_action = control
-
-    # ==========================================
-    # SEMANTIC FILTER → FRONTEND ACTION
-    # ==========================================
-
-    if control == "filter":
-
-        if value == "veg":
-
-            ui_action = "filter_veg"
-
-        elif value == "non_veg":
-
-            ui_action = "filter_non_veg"
-
-        elif value == "both":
-
-            ui_action = "filter_both"
-
-        else:
-
-            print(
-                "UNKNOWN FILTER VALUE:",
-                value
-            )
-
-            return None
-
-    # ==========================================
-    # NATURAL CASHIER RESPONSE
-    # ==========================================
-
-    message = None
-
-    if user_input and llm:
-
-        message = generate_cashier_response(
-            user_input=user_input,
-            screen_intent=type(
-                "ScreenAction",
-                (),
-                {
-                    "control": control,
-                    "value": value
-                }
-            )(),
-            current_screen=current_screen,
-            available_controls=available_controls,
-            llm=llm
-        )
-
-    # ==========================================
-    # RETURN UI ACTION + SPOKEN RESPONSE
-    # ==========================================
-
-    return KioskResponse(
-        screen=current_screen,
-        message=message,
-        data={
-            "ui_action": ui_action
-        }
-    )

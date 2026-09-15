@@ -71,8 +71,6 @@ class ScreenTypes:
     # Completion
     ORDER_COMPLETE = "order_complete"
 
-    HOME = "home"
-
     BURGER_TYPE_SELECTION = "burger_type_selection"
 
     BURGER_MENU = "burger_menu"

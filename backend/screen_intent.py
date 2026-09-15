@@ -25,18 +25,19 @@ class ScreenIntent(BaseModel):
 SCREEN_CAPABILITIES = {
 
     "filter": (
-        "Change the currently displayed items based on "
-        "a customer's preference such as vegetarian, "
-        "non-vegetarian, or all."
+        "Change which products are currently displayed "
+        "according to the customer's food preference. "
+        "The value must describe the requested preference."
     ),
 
     "select_product": (
-        "Select a product that is currently displayed "
+        "Select a product that is currently visible "
         "on the screen."
     ),
 
     "view_more": (
-        "Open the complete menu for the current category."
+        "Show additional products or open the complete "
+        "menu for the current category."
     ),
 
     "open_cart": (
@@ -52,19 +53,23 @@ SCREEN_CAPABILITIES = {
     ),
 
     "accept_meal": (
-        "Accept the meal conversion or meal suggestion."
+        "Accept the meal conversion or meal suggestion "
+        "currently being offered."
     ),
 
     "decline_meal": (
-        "Decline the meal conversion or meal suggestion."
+        "Decline the meal conversion or meal suggestion "
+        "currently being offered."
     ),
 
     "increase_quantity": (
-        "Increase the quantity of an item in the cart."
+        "Increase the quantity of an item currently "
+        "being managed on the screen."
     ),
 
     "decrease_quantity": (
-        "Decrease the quantity of an item in the cart."
+        "Decrease the quantity of an item currently "
+        "being managed on the screen."
     ),
 
     "remove_item": (
@@ -72,7 +77,7 @@ SCREEN_CAPABILITIES = {
     ),
 
     "checkout": (
-        "Proceed from the cart to checkout."
+        "Proceed from the current cart state to checkout."
     ),
 }
 
@@ -84,18 +89,15 @@ SCREEN_CAPABILITIES = {
 def parse_screen_intent(raw_response):
 
     if not raw_response:
-
         return ScreenIntent(
             action="global_intent"
         )
-
 
     text = raw_response.strip()
 
     action = None
     control = None
     value = None
-
 
     # ==========================================
     # READ EACH LINE
@@ -108,43 +110,29 @@ def parse_screen_intent(raw_response):
         if not line:
             continue
 
-
         if "=" not in line:
             continue
 
-
-        key, val = line.split(
-            "=",
-            1
-        )
+        key, val = line.split("=", 1)
 
         key = key.strip().lower()
         val = val.strip()
-
 
         if val.lower() in [
             "none",
             "null",
             ""
         ]:
-
             val = None
 
-
         if key == "action":
-
             action = val.lower() if val else None
 
-
         elif key == "control":
-
             control = val.lower() if val else None
 
-
         elif key == "value":
-
             value = val.lower() if val else None
-
 
     # ==========================================
     # SAFETY
@@ -154,24 +142,20 @@ def parse_screen_intent(raw_response):
         "screen_action",
         "global_intent"
     ]:
-
         return ScreenIntent(
             action="global_intent"
         )
-
 
     # ==========================================
     # GLOBAL INTENT
     # ==========================================
 
     if action == "global_intent":
-
         return ScreenIntent(
             action="global_intent",
             control=None,
             value=None
         )
-
 
     # ==========================================
     # SCREEN ACTION
@@ -199,190 +183,95 @@ def extract_screen_intent(
 
     for control in available_controls:
 
-        description = SCREEN_CAPABILITIES.get(
-            control,
-            "Perform this action on the current screen."
+        capability_descriptions[control] = (
+            SCREEN_CAPABILITIES.get(
+                control,
+                "Perform this action on the current screen."
+            )
         )
-
-        capability_descriptions[
-            control
-        ] = description
-
 
     prompt = f"""
 You are the screen-level understanding system
 for an intelligent restaurant kiosk.
 
-The customer is currently looking at:
+Your job is to determine whether the customer's
+request can be performed by the capabilities
+available on the current screen.
 
 CURRENT SCREEN:
 {current_screen}
 
-The current screen can perform these actions:
-
+AVAILABLE SCREEN CAPABILITIES:
 {capability_descriptions}
 
 CUSTOMER MESSAGE:
 {user_input}
 
 
-YOUR JOB
+UNDERSTANDING RULES
 
-Understand what the customer means in the context
-of the current screen.
+Understand the customer's meaning naturally.
 
-The customer will speak naturally.
+Do not require exact command words.
 
-Do NOT require exact command words.
+Do not rely on keyword matching.
 
-If the customer's request can be performed by
-one of the CURRENT SCREEN CAPABILITIES, classify it
-as a screen_action.
+Use the meaning of the customer's request,
+the current screen, and the capability descriptions
+to determine whether a screen action is appropriate.
 
-If it cannot be performed by the current screen,
-classify it as a global_intent.
-
-
-------------------------------------------
-FILTER
-------------------------------------------
-
-If the current screen has the capability:
-
-filter
-
-Then understand the customer's preference.
-
-Examples:
-
-"Show me vegetarian burgers"
+If the request can be performed using one of the
+AVAILABLE SCREEN CAPABILITIES:
 
 ACTION=screen_action
-CONTROL=filter
-VALUE=veg
 
-"Can I see non vegetarian options?"
+and select the appropriate:
 
-ACTION=screen_action
-CONTROL=filter
-VALUE=non_veg
+CONTROL=<capability>
 
-"Show me everything"
-
-ACTION=screen_action
-CONTROL=filter
-VALUE=both
-
-
-------------------------------------------
-GO BACK
-------------------------------------------
-
-If the current screen has:
-
-go_back
-
-Then:
-
-"Go back"
-
-ACTION=screen_action
-CONTROL=go_back
-VALUE=None
-
-"Take me to the previous screen"
-
-ACTION=screen_action
-CONTROL=go_back
-VALUE=None
-
-"Can I go back?"
-
-ACTION=screen_action
-CONTROL=go_back
-VALUE=None
-
-
-------------------------------------------
-VIEW MORE
-------------------------------------------
-
-If the current screen has:
-
-view_more
-
-Then:
-
-"Show me more options"
-
-ACTION=screen_action
-CONTROL=view_more
-VALUE=None
-
-"I want to see all the burgers"
-
-ACTION=screen_action
-CONTROL=view_more
-VALUE=None
-
-
-------------------------------------------
-OPEN CART
-------------------------------------------
-
-If the current screen has:
-
-open_cart
-
-Then:
-
-"Show my cart"
-
-ACTION=screen_action
-CONTROL=open_cart
-VALUE=None
-
-
-------------------------------------------
-GLOBAL REQUESTS
-------------------------------------------
-
-If the current screen cannot perform the
-requested operation, use global_intent.
-
-Examples:
-
-"I want desserts"
+If the request cannot be performed by any available
+screen capability:
 
 ACTION=global_intent
-CONTROL=None
-VALUE=None
 
-"Can I get a drink?"
-
-ACTION=global_intent
-CONTROL=None
-VALUE=None
-
-"I want a chicken burger"
-
-ACTION=global_intent
 CONTROL=None
 VALUE=None
 
 
-------------------------------------------
+VALUE RULE
+
+Only provide a value when the selected capability
+requires one.
+
+For the "filter" capability, normalize the customer's
+food preference to one of:
+
+veg
+non_veg
+both
+
+For capabilities that do not require a value:
+
+VALUE=None
+
+
 IMPORTANT
-------------------------------------------
 
-Only choose a control that exists in:
+Only select a control that exists in:
 
 {available_controls}
 
-Do not invent controls.
+Never invent a control.
 
-Do not force a request into a screen action
-if the current screen cannot perform it.
+Do not force a request into a screen action simply
+because the request is related to the current screen.
+
+A request for a product, category, recommendation,
+or other operation that the current screen cannot
+perform should be classified as:
+
+ACTION=global_intent
+
 
 Return EXACTLY these three lines:
 
@@ -392,7 +281,6 @@ VALUE=<value or None>
 
 Do not write anything else.
 """
-
 
     # ==========================================
     # NORMAL LLM CALL
@@ -409,11 +297,9 @@ Do not write anything else.
             raw_response
         )
 
-
         result = parse_screen_intent(
             raw_response
         )
-
 
         # ======================================
         # VALIDATE CONTROL
@@ -432,14 +318,12 @@ Do not write anything else.
                     action="global_intent"
                 )
 
-
         print(
             "Screen Intent Result:",
             result
         )
 
         return result
-
 
     except Exception as e:
 
@@ -448,14 +332,9 @@ Do not write anything else.
             e
         )
 
-        # --------------------------------------
-        # IMPORTANT:
-        #
-        # An unintelligible screen request should
-        # NOT crash the kiosk.
-        #
-        # Let global intent handle it.
-        # --------------------------------------
+        # ======================================
+        # FAIL SAFE
+        # ======================================
 
         return ScreenIntent(
             action="global_intent"

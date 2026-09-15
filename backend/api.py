@@ -4,6 +4,7 @@ import subprocess
 import tempfile
 import uuid
 from pathlib import Path
+from services.cashier_agent import run_cashier_agent
 
 import numpy as np
 import soundfile as sf
@@ -54,7 +55,7 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5175"
+        "http://localhost:5174"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -162,6 +163,69 @@ def cart():
 def message(request: MessageRequest):
     print("USER MESSAGE:", request.message)
 
+    # Clear any response left by a previous agent turn.
+    conversation_context.pop(
+        "_last_kiosk_response",
+        None,
+    )
+
+    # ==========================================================
+    # CASHIER AGENT
+    # ==========================================================
+
+    agent_response = run_cashier_agent(
+        request.message,
+        conversation_context,
+    )
+
+    # ==========================================================
+    # CHECK WHETHER THE AGENT PERFORMED A KIOSK ACTION
+    # ==========================================================
+
+    kiosk_response = conversation_context.pop(
+        "_last_kiosk_response",
+        None,
+    )
+
+    if kiosk_response is not None:
+
+        # The KioskResponse belongs to the application.
+        #
+        # The LLM only generated the natural-language message.
+        kiosk_response.message = agent_response
+
+        return kiosk_response.model_dump()
+
+    # ==========================================================
+    # AGENT-ONLY CONVERSATION
+    # ==========================================================
+    #
+    # The agent may handle a request conversationally without
+    # performing a kiosk action. In that case there is no
+    # _last_kiosk_response, but the agent response is still valid.
+    #
+    # Do NOT send the same request to the legacy system, otherwise
+    # the old intent router can execute an unintended action.
+    # ==========================================================
+
+    if agent_response and agent_response.strip():
+        return {
+            "screen": conversation_context.get("current_screen"),
+            "message": agent_response,
+            "cart": conversation_context.get(
+                "cart",
+                [],
+            ),
+        }
+
+    # ==========================================================
+    # OLD SYSTEM FALLBACK
+    # ==========================================================
+    #
+    # Only fall back when the new agent genuinely produced no
+    # response. This allows capabilities to be migrated gradually.
+    # ==========================================================
+
     response = process_message(
         request.message,
         llm,
@@ -173,9 +237,11 @@ def message(request: MessageRequest):
     return {
         "screen": None,
         "message": response,
-        "cart": conversation_context.get("cart", []),
+        "cart": conversation_context.get(
+            "cart",
+            [],
+        ),
     }
-
 
 @app.post("/cart/add")
 def cart_add(request: AddToCartRequest):

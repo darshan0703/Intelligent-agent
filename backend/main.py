@@ -2,7 +2,7 @@ from typing import List
 from dotenv import load_dotenv
 from pydantic import BaseModel
 from intent import extract_intent
-from services.recommendation import get_priority_items,handle_recommendation
+from services.recommendation import get_priority_items
 from services.menuservice import handle_menu, handle_category, handle_more_options, handle_full_menu, handle_burger_selection
 from orderservice import handle_order, handle_remove
 from conversation import handle_greeting, handle_checkout
