@@ -1,14 +1,29 @@
 # Python
 venv/
+venv*/
+.venv/
 __pycache__/
-*.pyc
+*.py[cod]
 
-# Environment variables
+# Node
+node_modules/
+dist/
+
+# Local files
 .env
+.env.*
+*.mp3
 
 # macOS
 .DS_Store
 
-# Frontend
-node_modules/
-dist/
+# Voice/audio test files
+backend/test.json
+backend/test.m4a
+backend/test.srt
+backend/test.tsv
+backend/test.txt
+backend/test.vtt
+
+# Python tooling
+.python-version

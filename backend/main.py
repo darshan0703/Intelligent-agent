@@ -2,8 +2,8 @@ from typing import List
 from dotenv import load_dotenv
 from pydantic import BaseModel
 from intent import extract_intent
-from recommendation import get_priority_items,handle_recommendation
-from menuservice import handle_menu, handle_category, handle_more_options, handle_full_menu, handle_burger_selection
+from services.recommendation import get_priority_items
+from services.menuservice import handle_menu, handle_category, handle_more_options, handle_full_menu, handle_burger_selection
 from orderservice import handle_order, handle_remove
 from conversation import handle_greeting, handle_checkout
 from state import conversation_context
@@ -14,7 +14,12 @@ from langchain.agents import create_tool_calling_agent, AgentExecutor
 from langchain.memory import ConversationBufferMemory
 #from tools import search_tool
 from tools import fetch_menu, add_item_to_cart
-from db_service import add_to_cart, get_available_menu ,get_menu_by_category
+from services.menu_service import (
+    get_menu,
+    get_available,
+    get_category,
+    add_item
+)
 from langchain_groq import ChatGroq
 from schemas import OrderIntent
 from itemclassifiers import resolve_burger_clarification
@@ -24,11 +29,12 @@ import time
 from datetime import date
 import os
 from kiosk_service import process_message
+from services.cart_service import add_meal
 
 load_dotenv()
 
 
-llm = ChatGroq(model="meta-llama/llama-4-scout-17b-16e-instruct",temperature=0)
+llm = ChatGroq(model="openai/gpt-oss-20b",temperature=0)
 
 class OrderResponse(BaseModel):
   topic: str

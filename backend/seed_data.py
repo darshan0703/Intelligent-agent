@@ -1,37 +1,31 @@
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
-from models import Brand, Branch, MenuItem, Inventory
+from sqlalchemy.orm import sessionmaker
+
+from models import Brand, Branch
 
 engine = create_engine("postgresql://darshan@localhost/restaurant_ai")
+
 Session = sessionmaker(bind=engine)
 session = Session()
 
-# Create Brand
-brand = Brand(name="Demo Burger Brand")
-session.add(brand)
-session.commit()
+# Prevent duplicate data
+brand = session.query(Brand).filter_by(name="Burger King").first()
 
-# Create Branch
-branch = Branch(name="Bangalore Branch", brand_id=brand.id)
-session.add(branch)
-session.commit()
+if not brand:
+    brand = Brand(name="Burger King")
+    session.add(brand)
+    session.commit()
 
-# Add Menu Items
-items = [
-    MenuItem(name="Whopper", price=189, brand_id=brand.id),
-    MenuItem(name="Whopper Jr", price=129, brand_id=brand.id),
-    MenuItem(name="Fries Small", price=79, brand_id=brand.id),
-    MenuItem(name="Iced Tea", price=59, brand_id=brand.id),
-]
+branch = session.query(Branch).filter_by(name="Bangalore Branch").first()
 
-session.add_all(items)
-session.commit()
+if not branch:
+    branch = Branch(
+        name="Bangalore Branch",
+        brand_id=brand.id
+    )
+    session.add(branch)
+    session.commit()
 
-# Add Inventory
-for item in items:
-    inventory = Inventory(branch_id=branch.id, item_id=item.id, stock=20)
-    session.add(inventory)
+print("✅ Brand and Branch created successfully.")
 
-session.commit()
-
-print("Seed data inserted successfully.")
+session.close()

@@ -1,29 +1,86 @@
+from schemas import ClarificationDecision
+
 def resolve_burger_clarification(answer, llm):
+
+    structured_llm = llm.with_structured_output(
+        ClarificationDecision
+    )
 
     prompt = f"""
 You are resolving a burger clarification answer.
 
-Possible outputs:
-veg
-non veg
-both
-new_intent
-unknown
+Context:
+The cashier previously asked:
 
-Customer answer:
-{answer}
+"Would you like veg, non veg, or both?"
+
+Determine whether the customer:
+
+1. Answered the question
+2. Started a new request
+3. Gave an unclear answer
 
 Rules:
 
-- veg = customer wants veg burgers
-- non veg = customer wants non veg burgers
-- both = customer wants both veg and non veg
-- new_intent = customer switched to ordering something else
-- unknown = unclear answer
+If the customer answered:
 
-Return only one word.
+Veg examples:
+- veg
+- vegetarian
+- veggie
+- no meat
+
+Return:
+
+action = clarification_answer
+value = veg
+
+Non Veg examples:
+- non veg
+- chicken
+- meat
+
+Return:
+
+action = clarification_answer
+value = non veg
+
+Both examples:
+- both
+- either
+- any
+
+Return:
+
+action = clarification_answer
+value = both
+
+If customer started a new request:
+
+Examples:
+- show drinks
+- show desserts
+- i want a burger
+- add fries
+- checkout
+
+Return:
+
+action = new_intent
+
+If unclear:
+
+Examples:
+- maybe
+- not sure
+- hmm
+
+Return:
+
+action = unclear
+
+Customer:
+{answer}
 """
 
-    result = llm.invoke(prompt).content.strip().lower()
-
-    return result
+    return structured_llm.invoke(prompt)

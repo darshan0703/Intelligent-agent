@@ -1,26 +1,45 @@
 import "./ProductCard.css";
 
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";import { useKiosk } from "../context/KioskContext";
+import { getRoute } from "../utils/navigation";
 
 function ProductCard({
   product,
   variant,
-  className
+  className,
+  returnTo,
 }) {
 
-  const navigate = useNavigate();
+const navigate = useNavigate();
+const location = useLocation();
+const { setProductData } = useKiosk();
+const origin = location.state?.origin || "/";
+
+  const handleProductClick = () => {
+    console.log("CLICKED");
+
+    setProductData({
+      screen: "product",
+      data: {
+        product,
+        recommendations: [],
+      },
+    });
+    console.log(getRoute("product"));
+
+    navigate(getRoute("product"), {
+  state: {
+    origin: location.pathname,
+  },
+  });
+
+  };
 
   return (
 
     <div
       className={`burger-card ${variant} ${className}`}
-      onClick={() =>
-        navigate("/product", {
-          state: {
-            product
-          }
-        })
-      }
+      onClick={handleProductClick}
     >
 
       {/* IMAGE */}
@@ -55,12 +74,13 @@ function ProductCard({
         ₹ {product.price}
       </p>
 
-      {/* BUTTON */}
+      {/* ADD BUTTON */}
 
       <button
         className={`burger-add-btn ${variant}-button`}
         onClick={(e) => {
           e.stopPropagation();
+          handleProductClick();
         }}
       >
         +

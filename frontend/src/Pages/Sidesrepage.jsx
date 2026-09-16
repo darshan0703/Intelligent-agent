@@ -3,97 +3,27 @@ import "./Sidesrepage.css";
 import Header from "../components/Header";
 import ProductCard from "../components/ProductCard";
 import CartContainer from "../components/CartContainer";
+import BackButton from "../components/BackButton";
 
 import fire from "../assets/images/fire.png";
 import crown from "../assets/images/crown.png";
-import BackButton from "../components/BackButton";
-import { useNavigate } from "react-router-dom";
 
+import { useNavigate } from "react-router-dom";
+import { useKiosk } from "../context/KioskContext";
 
 function Sides() {
-    const navigate = useNavigate();
 
+  const navigate = useNavigate();
 
-  const hotSides = [
+  const { recommendationData } = useKiosk();
 
-    {
-      id: 1,
-      name: "Peri Peri Fries",
-      description: "Crispy fries with peri peri seasoning",
-      price: 129,
-      image: ""
-    },
-
-    {
-      id: 2,
-      name: "Cheesy Loaded Fries",
-      description: "Loaded with creamy cheese",
-      price: 169,
-      image: ""
-    }
-
-  ];
-
-  const premiumSides = [
-
-    {
-      id: 3,
-      name: "Chicken Nuggets",
-      description: "Premium crispy nuggets",
-      price: 249,
-      image: ""
-    },
-
-    {
-      id: 4,
-      name: "Chicken Wings",
-      description: "Juicy spicy wings",
-      price: 299,
-      image: ""
-    }
-
-  ];
-
-  const moreSides = [
-
-    {
-      id: 5,
-      name: "Hash Browns",
-      description: "",
-      price: 89,
-      image: ""
-    },
-
-    {
-      id: 6,
-      name: "Onion Rings",
-      description: "",
-      price: 109,
-      image: ""
-    },
-
-    {
-      id: 7,
-      name: "Veg Nuggets",
-      description: "",
-      price: 119,
-      image: ""
-    },
-
-    {
-      id: 8,
-      name: "Cheese Dip",
-      description: "",
-      price: 49,
-      image: ""
-    }
-
-  ];
+  const hotSides = recommendationData?.data?.priority || [];
+  const premiumSides = recommendationData?.data?.premium || [];
+  const moreSides = recommendationData?.data?.additional || [];
 
   return (
 
     <div className="sides-page">
-
 
       {/* SECTION ICONS */}
       <img
@@ -110,58 +40,78 @@ function Sides() {
 
       {/* HEADER */}
       <Header title="Choose Your Sides" />
+
       <BackButton />
 
-      {/* HOT PICKS */}
-      <ProductCard
-        product={hotSides[0]}
-        variant="large"
-        className="card-1"
-      />
+      {/* PRIORITY */}
 
-      <ProductCard
-        product={hotSides[1]}
-        variant="large"
-        className="card-2"
-      />
+      {hotSides[0] && (
+        <ProductCard
+          product={hotSides[0]}
+          variant="large"
+          className="card-1"
+        />
+      )}
+
+      {hotSides[1] && (
+        <ProductCard
+          product={hotSides[1]}
+          variant="large"
+          className="card-2"
+        />
+      )}
 
       {/* PREMIUM */}
-      <ProductCard
-        product={premiumSides[0]}
-        variant="large"
-        className="card-3"
-      />
 
-      <ProductCard
-        product={premiumSides[1]}
-        variant="large"
-        className="card-4"
-      />
+      {premiumSides[0] && (
+        <ProductCard
+          product={premiumSides[0]}
+          variant="large"
+          className="card-3"
+        />
+      )}
 
-      {/* MORE OPTIONS */}
-      <ProductCard
-        product={moreSides[0]}
-        variant="small"
-        className="card-5"
-      />
+      {premiumSides[1] && (
+        <ProductCard
+          product={premiumSides[1]}
+          variant="large"
+          className="card-4"
+        />
+      )}
 
-      <ProductCard
-        product={moreSides[1]}
-        variant="small"
-        className="card-6"
-      />
+      {/* ADDITIONAL */}
 
-      <ProductCard
-        product={moreSides[2]}
-        variant="small"
-        className="card-7"
-      />
+      {moreSides[0] && (
+        <ProductCard
+          product={moreSides[0]}
+          variant="small"
+          className="card-5"
+        />
+      )}
 
-      <ProductCard
-        product={moreSides[3]}
-        variant="small"
-        className="card-8"
-      />
+      {moreSides[1] && (
+        <ProductCard
+          product={moreSides[1]}
+          variant="small"
+          className="card-6"
+        />
+      )}
+
+      {moreSides[2] && (
+        <ProductCard
+          product={moreSides[2]}
+          variant="small"
+          className="card-7"
+        />
+      )}
+
+      {moreSides[3] && (
+        <ProductCard
+          product={moreSides[3]}
+          variant="small"
+          className="card-8"
+        />
+      )}
 
       {/* TITLES */}
 
@@ -185,27 +135,22 @@ function Sides() {
 
       <div className="thin-line-3"></div>
 
-<p className="more-text">
-    More Sides Options
-  </p>
-        
-<div className="more-header">
+      <p className="more-text">
+        More Side Options
+      </p>
 
-  <p className="more-text">
-    More Side Options
-  </p>
+      <div className="more-header">
 
-  <button className="view-all-btn"
-  onClick={() => navigate("/sidesmenu")}>
-    View All →
-  </button>
+        <button
+          className="view-all-btn"
+          onClick={() => navigate("/sidesmenu")}
+        >
+          View All →
+        </button>
 
-</div>
+      </div>
 
-        <CartContainer
-  itemCount={0}
-  total={538}
-/>
+      <CartContainer />
 
     </div>
   );

@@ -1,11 +1,15 @@
 from datetime import datetime
 from langchain.tools import tool
-from db_service import get_available_menu, add_to_cart
-
+from services.menu_service import (
+    get_menu,
+    get_available,
+    get_category,
+    add_item
+)
 @tool
 def fetch_menu():
     """Fetch available menu items"""
-    return get_available_menu()
+    return get_available()
 
 @tool
 def add_item_to_cart(item_name: str):

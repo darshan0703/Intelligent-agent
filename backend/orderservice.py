@@ -1,6 +1,12 @@
-from db_service import add_to_cart, get_available_menu
-from recommendation import get_priority_items
+from services.menu_service import (
+    get_menu,
+    get_available,
+    get_category,
+    add_item
+)
+from services.recommendation import get_priority_items
 from semanticresolver import semantic_resolve
+from services.cart_service import add_item as cart_add_item
 
 
 def find_best_match(clean_item, menu):
@@ -41,7 +47,7 @@ def handle_order(item_name, quantity, category, conversation_context, llm):
     if not item_name:
         return "Could you tell me which item you'd like?"
 
-    menu = get_available_menu()
+    menu = get_available()
 
     resolved = semantic_resolve(
         item_name,
@@ -53,6 +59,7 @@ def handle_order(item_name, quantity, category, conversation_context, llm):
         conversation_context["pending_suggestion"] = [
             item["name"] for item in resolved["candidates"]
         ]
+
         return resolved["clarification_question"]
 
     if not resolved["resolved_item"]:
@@ -60,16 +67,13 @@ def handle_order(item_name, quantity, category, conversation_context, llm):
 
     exact_match = resolved["resolved_item"]
 
-    for _ in range(quantity):
-        result = add_to_cart(exact_match["name"])
+    result = cart_add_item(
+        exact_match["name"],
+        quantity
+    )
 
-        if not result["success"]:
-            return result["message"]
-
-        conversation_context["cart"].append({
-            "name": exact_match["name"],
-            "price": exact_match["price"]
-        })
+    if not result["success"]:
+        return result["message"]
 
     conversation_context["pending_suggestion"] = None
     conversation_context["last_item"] = exact_match["name"]
@@ -78,23 +82,32 @@ def handle_order(item_name, quantity, category, conversation_context, llm):
     item_name = exact_match["name"]
 
     if quantity > 1:
-        base_reply = f"You've added {quantity} {item_name} to your order, that's ₹{int(total_price)}."
+        base_reply = (
+            f"You've added {quantity} {item_name} "
+            f"to your order, that's ₹{int(total_price)}."
+        )
     else:
-        base_reply = f"You've added {item_name} to your order, that's ₹{int(total_price)}."
+        base_reply = (
+            f"You've added {item_name} "
+            f"to your order, that's ₹{int(total_price)}."
+        )
 
     priority_items = get_priority_items(menu)
 
     upsell = None
+
     for item in priority_items:
         if item["name"] != item_name:
             upsell = item["name"]
             break
 
     if upsell:
-        return base_reply + f" Would you like to try our {upsell} with that?"
+        return (
+            base_reply +
+            f" Would you like to try our {upsell} with that?"
+        )
 
     return base_reply
-
 
 def handle_remove(item_name, conversation_context):
 

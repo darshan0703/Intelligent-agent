@@ -2,6 +2,15 @@ import "./Burgerrepage.css";
 
 import { useNavigate } from "react-router-dom";
 
+import {
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
+
+import { syncScreen } from "../services/screenService";
+
+import Menufilters from "../components/Menufilters";
 import Header from "../components/Header";
 import ProductCard from "../components/ProductCard";
 import fire from "../assets/images/fire.png";
@@ -9,89 +18,223 @@ import crown from "../assets/images/crown.png";
 import CartContainer from "../components/CartContainer";
 import BackButton from "../components/BackButton";
 
+import { useKiosk } from "../context/KioskContext";
+
+
 function Burger() {
 
   const navigate = useNavigate();
 
-  const expiryRecommendations = [
+  const {
+    recommendationData,
+  } = useKiosk();
 
-    {
-      id: 1,
-      name: "Chicken Whopper",
-      description: "Flame grilled chicken burger",
-      price: 189,
-      image: ""
-    },
 
-    {
-      id: 2,
-      name: "Veg Whopper",
-      description: "Fresh veg patty",
-      price: 149,
-      image: ""
-    }
+  const [
+    selectedType,
+    setSelectedType
+  ] = useState("both");
 
-  ];
 
-  const premiumRecommendations = [
+  const data =
+    recommendationData?.data || {};
 
-    {
-      id: 3,
-      name: "Korean BBQ Whopper",
-      description: "Premium Korean sauce burger",
-      price: 349,
-      image: ""
-    },
 
-    {
-      id: 4,
-      name: "Double Patty Supreme",
-      description: "Loaded premium burger",
-      price: 399,
-      image: ""
-    }
+  // ==========================================
+  // ALL BACKEND RECOMMENDATION DATA
+  // ==========================================
 
-  ];
+  const bothRecommendations =
+    data.both || {
+      priority: [],
+      premium: [],
+      additional: []
+    };
 
-  const upsellRecommendations = [
 
-    {
-      id: 5,
-      name: "Crispy Chicken Burger",
-      description: "Crunchy chicken burger",
-      price: 199,
-      image: ""
-    },
+  const vegRecommendations =
+    data.veg || {
+      priority: [],
+      premium: [],
+      additional: []
+    };
 
-    {
-      id: 6,
-      name: "Cheese Burst Burger",
-      description: "Extra cheese loaded",
-      price: 229,
-      image: ""
-    },
 
-    {
-      id: 7,
-      name: "Spicy Paneer Burger",
-      description: "Hot spicy paneer delight",
-      price: 179,
-      image: ""
-    },
+  const nonVegRecommendations =
+    data.non_veg || {
+      priority: [],
+      premium: [],
+      additional: []
+    };
 
-    {
-      id: 8,
-      name: "Classic Veg Burger",
-      description: "Classic BK style",
-      price: 129,
-      image: ""
-    }
 
-  ];
+  // ==========================================
+  // SELECT THE DATASET FOR CURRENT FILTER
+  // ==========================================
+
+  const selectedRecommendations =
+    selectedType === "veg"
+      ? vegRecommendations
+      : selectedType === "non veg"
+        ? nonVegRecommendations
+        : bothRecommendations;
+
+
+  const priorityItems =
+    selectedRecommendations.priority || [];
+
+
+  const premiumItems =
+    selectedRecommendations.premium || [];
+
+
+  const additionalItems =
+    selectedRecommendations.additional || [];
+
+
+  // ==========================================
+  // SCREEN SYNC
+  // ==========================================
+
+  useEffect(() => {
+
+    syncScreen("recommended_burgers");
+
+  }, []);
+
+
+  // ==========================================
+  // FILTER CHANGES
+  // ==========================================
+
+  const handleFilterChange =
+    useCallback((filter) => {
+
+      const normalizedFilter =
+        filter
+          .trim()
+          .toLowerCase();
+
+      console.log(
+        "CHANGING BURGER FILTER:",
+        normalizedFilter
+      );
+
+      setSelectedType(
+        normalizedFilter
+      );
+
+    }, []);
+
+
+  // ==========================================
+  // VOICE UI ACTION LISTENER
+  // ==========================================
+
+  useEffect(() => {
+
+    const handleVoiceUIAction = (event) => {
+
+      const action =
+        event.detail?.action;
+
+
+      console.log(
+        "BURGER PAGE RECEIVED UI ACTION:",
+        action
+      );
+
+
+      // ======================================
+      // VEG
+      // ======================================
+
+      if (action === "filter_veg") {
+
+        handleFilterChange("veg");
+
+      }
+
+
+      // ======================================
+      // NON VEG
+      // ======================================
+
+      else if (
+        action === "filter_non_veg"
+      ) {
+
+        handleFilterChange("non veg");
+
+      }
+
+
+      // ======================================
+      // BOTH
+      // ======================================
+
+      else if (
+        action === "filter_both"
+      ) {
+
+        handleFilterChange("both");
+
+      }
+
+
+      // ======================================
+      // VIEW MORE
+      // ======================================
+
+      else if (
+        action === "view_more"
+      ) {
+
+        navigate("/burgermenu");
+
+      }
+
+
+      // ======================================
+      // GO BACK
+      // ======================================
+
+      else if (
+        action === "go_back"
+      ) {
+
+        navigate(-1);
+
+      }
+
+    };
+
+
+    window.addEventListener(
+      "kiosk-ui-action",
+      handleVoiceUIAction
+    );
+
+
+    return () => {
+
+      window.removeEventListener(
+        "kiosk-ui-action",
+        handleVoiceUIAction
+      );
+
+    };
+
+  }, [
+    handleFilterChange,
+    navigate
+  ]);
+
 
   return (
 
     <div className="burger-page">
+
 
       <img
         src={fire}
@@ -99,94 +242,169 @@ function Burger() {
         className="fire-image"
       />
 
+
       <img
         src={crown}
         alt="crown"
         className="crown-image"
       />
 
-      {/* HEADER */}
+
       <Header title="Choose Your Burger" />
 
       <BackButton />
 
-      {/* RECOMMENDATIONS */}
 
-      <ProductCard
-        product={expiryRecommendations[0]}
-        variant="large"
-        className="card-1"
+      {/* ======================================
+          FILTERS
+          ====================================== */}
+
+      <Menufilters
+        filters={[
+          "both",
+          "veg",
+          "non veg",
+        ]}
+        activeFilter={selectedType}
+        onFilterChange={
+          handleFilterChange
+        }
       />
 
-      <ProductCard
-        product={expiryRecommendations[1]}
-        variant="large"
-        className="card-2"
-      />
 
-      {/* PREMIUM */}
+      {/* ======================================
+          PRIORITY
+          ====================================== */}
 
-      <ProductCard
-        product={premiumRecommendations[0]}
-        variant="large"
-        className="card-3"
-      />
+      {priorityItems[0] && (
 
-      <ProductCard
-        product={premiumRecommendations[1]}
-        variant="large"
-        className="card-4"
-      />
+        <ProductCard
+          product={priorityItems[0]}
+          variant="large"
+          className="card-1"
+        />
 
-      {/* MORE OPTIONS */}
+      )}
 
-      <ProductCard
-        product={upsellRecommendations[0]}
-        variant="small"
-        className="card-5"
-      />
 
-      <ProductCard
-        product={upsellRecommendations[1]}
-        variant="small"
-        className="card-6"
-      />
+      {priorityItems[1] && (
 
-      <ProductCard
-        product={upsellRecommendations[2]}
-        variant="small"
-        className="card-7"
-      />
+        <ProductCard
+          product={priorityItems[1]}
+          variant="large"
+          className="card-2"
+        />
 
-      <ProductCard
-        product={upsellRecommendations[3]}
-        variant="small"
-        className="card-8"
-      />
+      )}
 
-      {/* SECTION TITLES */}
+
+      {/* ======================================
+          PREMIUM
+          ====================================== */}
+
+      {premiumItems[0] && (
+
+        <ProductCard
+          product={premiumItems[0]}
+          variant="large"
+          className="card-3"
+        />
+
+      )}
+
+
+      {premiumItems[1] && (
+
+        <ProductCard
+          product={premiumItems[1]}
+          variant="large"
+          className="card-4"
+        />
+
+      )}
+
+
+      {/* ======================================
+          ADDITIONAL
+          ====================================== */}
+
+      {additionalItems[0] && (
+
+        <ProductCard
+          product={additionalItems[0]}
+          variant="small"
+          className="card-5"
+        />
+
+      )}
+
+
+      {additionalItems[1] && (
+
+        <ProductCard
+          product={additionalItems[1]}
+          variant="small"
+          className="card-6"
+        />
+
+      )}
+
+
+      {additionalItems[2] && (
+
+        <ProductCard
+          product={additionalItems[2]}
+          variant="small"
+          className="card-7"
+        />
+
+      )}
+
+
+      {additionalItems[3] && (
+
+        <ProductCard
+          product={additionalItems[3]}
+          variant="small"
+          className="card-8"
+        />
+
+      )}
+
+
+      {/* ======================================
+          TITLES
+          ====================================== */}
 
       <p className="Recommendation-text">
         Fresh Picks For You
       </p>
 
+
       <p className="Recommendation-text2">
         Recommended based on availability
       </p>
 
+
       <div className="thin-line-2"></div>
+
 
       <p className="Premium-text">
         Premium Collection
       </p>
 
+
       <p className="Premium-text2">
         Handpicked just for you
       </p>
 
+
       <div className="thin-line-3"></div>
 
-      {/* MORE OPTIONS HEADER */}
+
+      {/* ======================================
+          MORE OPTIONS
+          ====================================== */}
 
       <div className="more-header">
 
@@ -194,25 +412,26 @@ function Burger() {
           More Burger Options
         </p>
 
+
         <button
           className="view-all-btn"
-          onClick={() => navigate("/burgermenu")}
+          onClick={() =>
+            navigate("/burgermenu")
+          }
         >
           View All →
         </button>
 
       </div>
 
-      {/* CART */}
 
-      <CartContainer
-        itemCount={0}
-        total={538}
-      />
+      <CartContainer />
 
     </div>
 
   );
+
 }
+
 
 export default Burger;

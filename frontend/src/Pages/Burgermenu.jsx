@@ -13,11 +13,22 @@ import {
   useState,
   useEffect
 } from "react";
-
-import { burgerSections } from "../data/burgers";
+import { syncScreen } from "../services/screenService";
 
 function Burgermenu() {
 
+  const [burgerSections, setBurgerSections] = useState([]);
+
+ useEffect(() => {
+    fetch("http://127.0.0.1:8000/menu/burgers")
+        .then(res => res.json())
+        .then(setBurgerSections);
+ }, []);
+ useEffect(() => {
+
+  syncScreen("burger_menu");
+
+  }, []);
   const menuContentRef = useRef(null);
 
   const sectionRefs = useRef({});
@@ -72,7 +83,7 @@ function Burgermenu() {
 
     }
 
-  }, [activeFilter]);
+  }, [activeFilter, visibleSections]);
 
   const scrollToCategory = (categoryTitle) => {
 
@@ -166,7 +177,7 @@ function Burgermenu() {
 
     };
 
-  }, [activeFilter]);
+  }, [activeFilter, visibleSections]);
 
   return (
 
@@ -186,7 +197,7 @@ function Burgermenu() {
         filters={[
           "both",
           "veg",
-          "nonveg"
+          "non veg"
         ]}
         activeFilter={activeFilter}
         onFilterChange={setActiveFilter}
@@ -219,10 +230,7 @@ function Burgermenu() {
 
       </div>
 
-      <CartContainer
-        itemCount={0}
-        total={0}
-      />
+      <CartContainer />
 
     </div>
 

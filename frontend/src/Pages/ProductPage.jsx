@@ -1,38 +1,179 @@
 import "./ProductPage.css";
 
-import { useLocation } from "react-router-dom";
-import { useState } from "react";
-
+import { useState, useEffect } from "react";
+import { useKiosk } from "../context/KioskContext";
+import { useCart } from "../context/CartContext";
+import { useLocation, useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import PreviousButton from "../components/PreviousButton";
 import CartContainer from "../components/CartContainer";
+import MealPopup from "../components/MealPopup";
 
 import vegIcon from "../assets/images/veg.png";
 import nonVegIcon from "../assets/images/nonveg.png";
 
 function ProductPage() {
 
-  const { state } = useLocation();
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  const product = state?.product || {
-    name: "Chicken Whopper",
-    shortDescription: "Flame Grilled Chicken Burger",
-    longDescription:
-      "A juicy flame grilled chicken patty topped with fresh lettuce, tomato and creamy mayo.",
-    price: 179,
-    foodType: "nonveg",
-    image: "/src/assets/images/Burgers/Chicken Whopper Deluxe.png"
-  };
+  const origin = location.state?.origin || "/";        
+  const handleContinue = (mealSize) => {
+
+  navigate("/mealpage", {
+    state: {
+      meal: mealData.meals[mealSize],
+      origin: origin,
+    },
+  });
+
+};
+
+  const {
+    productData,
+    mealData,
+    setMealData,
+    mealPopupOpen,
+    setMealPopupOpen,
+  } = useKiosk();
+
+  const { syncCart } = useCart();
+  const { itemCount, total } = useCart();
+
+  const product = productData?.data?.product;
+  const recommendations =
+    productData?.data?.recommendations || [];
 
   const [quantity, setQuantity] = useState(1);
+
+  useEffect(() => {
+
+    if (!product) return;
+
+    const checkMealOffer = async () => {
+
+  console.log("REQUEST:", {
+    id: product.id,
+    name: product.name,
+  });
+
+  try {
+
+    const response = await fetch(
+      "http://localhost:8000/meal/options",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          item_id: product.id,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    console.log("MEAL OFFER:", data);
+
+    if (data.success && data.is_meal_available) {
+
+      console.log("OPENING MEAL POPUP");
+
+      setMealData(data);
+      setMealPopupOpen(true);
+
+    } else {
+
+      console.log("NO MEAL POPUP");
+
+      setMealPopupOpen(false);
+
+    }
+
+  } catch (error) {
+
+    console.error(
+      "Failed to load meal offer:",
+      error
+    );
+
+    setMealPopupOpen(false);
+
+  }
+
+};
+
+    checkMealOffer();
+
+  }, [product]);
+
+  if (!product) {
+
+    return (
+
+      <div className="product-page">
+
+        <Header title="Product Details" />
+
+        <PreviousButton />
+
+        <h2
+          style={{
+            textAlign: "center",
+            marginTop: "200px",
+          }}
+        >
+          No product selected.
+        </h2>
+
+      </div>
+
+    );
+
+  }
+  const handleAddToCart = async () => {
+
+    try {
+
+        const response = await fetch(
+            "http://127.0.0.1:8000/cart/add",
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json",
+                },
+
+                body: JSON.stringify({
+                    item_name: product.name,
+                    quantity: quantity,
+                }),
+            }
+        );
+
+        const data = await response.json();
+
+        console.log("ADD TO CART:", data);
+
+        if (data.success) {
+          syncCart(data);
+          navigate(origin);
+        }
+
+    } catch (error) {
+
+        console.error(error);
+
+    }
+
+};
 
   return (
 
     <div className="product-page">
 
-      <Header
-        title="Product Details"
-      />
+      <Header title="Product Details" />
 
       <PreviousButton />
 
@@ -44,27 +185,42 @@ function ProductPage() {
         className="product-image"
       />
 
-      {/* PRODUCT TITLE + FOOD TYPE */}
+      {/* PRODUCT TITLE */}
 
       <div className="product-title-container">
 
-     <h1 className="product-name">
-      {(() => {
-      const words = product.name.split(" ");
+        <h1 className="product-name">
 
-     const midpoint = Math.ceil(words.length / 2);
+          {(() => {
 
-      return (
-      <>
-        {words.slice(0, midpoint).join(" ")}
-        <br />
-        {words.slice(midpoint).join(" ")}
-         </>
-         );
-        })()}
-        </h1>
+            const words =
+              product.name.split(" ");
 
-        {product.foodType && (
+            const midpoint =
+              Math.ceil(
+                words.length / 2
+              );
+
+            return (
+
+              <>
+
+                {words
+                  .slice(0, midpoint)
+                  .join(" ")}
+
+                <br />
+
+                {words
+                  .slice(midpoint)
+                  .join(" ")}
+
+              </>
+
+            );
+
+          })()}
+          {product.foodType && (
 
           <img
             src={
@@ -77,6 +233,9 @@ function ProductPage() {
           />
 
         )}
+
+        </h1>
+
 
       </div>
 
@@ -110,17 +269,16 @@ function ProductPage() {
 
       <div className="recommendations">
 
-        <div className="recommend-card">
-          Fries
-        </div>
+        {recommendations.map((item) => (
 
-        <div className="recommend-card">
-          Coke
-        </div>
+          <div
+            key={item.id}
+            className="recommend-card"
+          >
+            {item.name}
+          </div>
 
-        <div className="recommend-card">
-          Nuggets
-        </div>
+        ))}
 
       </div>
 
@@ -148,7 +306,9 @@ function ProductPage() {
         <button
           className="qty-btn"
           onClick={() =>
-            setQuantity(prev => prev + 1)
+            setQuantity(prev =>
+              prev + 1
+            )
           }
         >
           +
@@ -160,17 +320,27 @@ function ProductPage() {
 
       <button
         className="add-cart-btn"
+        onClick={handleAddToCart}
       >
-        Add To Cart • ₹{" "}
-        {product.price * quantity}
+        {`Add To Cart • ₹ ${product.price * quantity}`}
       </button>
 
       {/* CART */}
 
-       <CartContainer
-        itemCount={0}
-        total={0}
-      /> 
+      <CartContainer />
+
+      {/* MEAL POPUP */}
+
+      <MealPopup
+        open={mealPopupOpen}
+        meals={mealData}
+        onClose={() => {
+
+          setMealPopupOpen(false);
+
+        }}
+        onContinue={handleContinue}
+      />
 
     </div>
 

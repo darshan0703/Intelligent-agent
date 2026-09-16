@@ -9,7 +9,7 @@
   overflow: hidden;
 }
 
-h1 {
+.home-title {
   position: absolute;
 
   color: #5B2B11;

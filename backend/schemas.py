@@ -1,27 +1,35 @@
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
-
-
-# ==========================
-# USER → BACKEND
-# ==========================
+from typing import Optional, Literal,Dict, Any
 
 class OrderIntent(BaseModel):
-    action: str
+    action: Literal[
+        "show_category",
+        "add_item",
+        "recommend",
+        "remove_item",
+        "expand_context",
+        "decline_offer",
+        "checkout",
+        "correct_item",
+        "greeting",
+        "exit",
+        "unknown"
+    ]
+
     item_name: Optional[str] = None
     category: Optional[str] = None
-    food_type: Optional[str] = None
+    reference: Optional[str] = None
+    preference: Optional[str] = None
     quantity: Optional[int] = 1
-
-
-# ==========================
-# BACKEND → FRONTEND
-# ==========================
 
 class KioskResponse(BaseModel):
     screen: str
     message: Optional[str] = None
     data: Dict[str, Any] = {}
+
+class ClarificationDecision(BaseModel):
+    action: str
+    value: Optional[str] = None
 
 
 # ==========================
@@ -32,9 +40,10 @@ class ScreenTypes:
 
     # Startup
     HOME = "home"
-
+ 
     # Clarification
     BURGER_TYPE_SELECTION = "burger_type_selection"
+    CATEGORY_SELECTION = "category_selection"
 
     # Recommended category screens
     RECOMMENDED_BURGERS = "recommended_burgers"
@@ -51,6 +60,8 @@ class ScreenTypes:
     # Product screen
     PRODUCT_DETAILS = "product_details"
 
+    MEAL_CONVERSION = "meal_conversion"
+
     # Order flow
     UPSELL = "upsell"
     CART = "cart"
@@ -59,8 +70,6 @@ class ScreenTypes:
 
     # Completion
     ORDER_COMPLETE = "order_complete"
-
-    HOME = "home"
 
     BURGER_TYPE_SELECTION = "burger_type_selection"
 
