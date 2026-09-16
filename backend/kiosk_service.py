@@ -7,6 +7,7 @@ from conversation import (
 from intent import extract_intent
 from screen_intent import extract_screen_intent
 from state import conversation_context
+from typing import Optional
 
 from services.menuservice import (
     handle_menu,

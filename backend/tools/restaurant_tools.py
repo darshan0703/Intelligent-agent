@@ -5,6 +5,7 @@ from services.menu_service import (
     get_category,
     get_product,
 )
+from typing import Optional
 
 from services.recommendation import get_agent_recommendations
 
@@ -38,7 +39,7 @@ def get_menu_item_details(item_name: str):
 
 @tool
 def get_recommendations(
-    category: str | None = None,
+    category: Optional[str] = None,
     food_type: str | None = None,
 ):
     """

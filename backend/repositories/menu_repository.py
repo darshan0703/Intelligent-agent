@@ -1,11 +1,7 @@
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from database import engine
 from models import MenuItem, Inventory
-
-engine = create_engine(
-    "postgresql://darshan@localhost/restaurant_ai"
-)
 
 Session = sessionmaker(bind=engine)
 
