@@ -1,0 +1,38 @@
+# ignore .env anywhere - best way
+**/.env
+**/.env.local
+**/.env.*.local
+
+# OR if you want specific
+backend/.env
+backend/.env.local
+# HUGE FOLDERS - this is causing 246MB fail
+node_modules/
+dist/
+build/
+.next/
+out/
+coverage/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Env
+.env
+.env.local
+
+# Big files
+*.zip
+*.tar
+*.mp4
+*.mov
+*.avi
+
+# IDE
+.vscode/
+.idea/

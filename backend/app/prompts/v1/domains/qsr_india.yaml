@@ -1,0 +1,43 @@
+﻿version: '1.0'
+name: 'qsr_india'
+business_name: 'Burger King India'
+currency: 'INR'
+currency_symbol: "\u20B9"
+categories:
+  - burger
+  - drink
+  - side
+  - dessert
+food_types:
+  - veg
+  - non_veg
+locale_notes: |
+  - Customers may mix Hindi and English (Hinglish) — handle gracefully
+  - "veg burger chahiye" means "I want a veg burger"
+  - "bhai" is an informal address, treat respectfully (means "brother")
+  - "kuch spicy do" means "give me something spicy"
+  - "ek aur dena" means "give me one more"
+  - "bas" or "bas kar" means "that is enough / stop / I am done"
+  - "kitna?" means "how much?" (asking for price)
+  - "theek hai" means "okay / alright"
+  - "nahi chahiye" means "I do not want it" (decline)
+  - Treat all customers respectfully regardless of language used
+aliases:
+  "whopper jr": "Whopper Jr."
+  "whopper junior": "Whopper Jr."
+  "bk burger": "BK Burger"
+  "fries": "Classic Fries"
+  "normal fries": "Classic Fries"
+  "spicy fries": "King Peri Peri Fries"
+  "peri peri": "King Peri Peri Fries"
+  "cold coffee": "Cold Coffee"
+  "coke": "Coke"
+  "pepsi": "Coke"
+  "cola": "Coke"
+  "ice cream": "Chocolate Sundae"
+  "sundae": "Chocolate Sundae"
+  "coffee": "Cafe Latte"
+  "latte": "Cafe Latte"
+  "iced tea": "Iced Tea"
+  "ice tea": "Iced Tea"
+  "onion ring": "Onion Rings"

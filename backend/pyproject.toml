@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "theatom-backend"
+version = "1.0.0"
+description = "TheAtom — Universal Commercial Intelligence Engine"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi==0.115.6",
+    "uvicorn[standard]==0.32.1",
+    "python-multipart==0.0.12",
+    "pydantic==2.10.4",
+    "pydantic-settings==2.7.0",
+    "python-dotenv==1.0.1",
+    "sqlalchemy[asyncio]==2.0.36",
+    "asyncpg==0.30.0",
+    "psycopg2-binary==2.9.10",
+    "alembic==1.14.0",
+    "redis[hiredis]==5.2.1",
+    "langchain==0.3.13",
+    "langchain-core==0.3.29",
+    "langchain-groq==0.2.3",
+    "groq==0.13.1",
+    "structlog==24.4.0",
+    "rapidfuzz==3.11.0",
+    "soundfile==0.12.1",
+    "numpy==2.2.1",
+    "httpx==0.28.1",
+    "orjson==3.10.13",
+    "tenacity==9.0.0",
+    "pyyaml==6.0.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.3.4",
+    "pytest-asyncio==0.24.0",
+    "pytest-cov==6.0.0",
+    "httpx==0.28.1",
+    "ruff==0.9.1",
+    "mypy==1.14.1",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "N", "UP", "B"]
+ignore = ["E501"]
