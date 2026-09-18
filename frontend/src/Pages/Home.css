@@ -1,115 +1,156 @@
 .home {
   position: relative;
-
   width: 1080px;
   height: 1920px;
-
   background-color: #E7E1D0;
-
   overflow: hidden;
 }
 
 .home-title {
   position: absolute;
-
   color: #5B2B11;
   font-family: 'Flame';
-
   left: 210px;
   top: 567px;
-
   font-size: 128px;
   font-weight: 700;
-
   line-height: 100%;
-
   letter-spacing: 0px;
-
   margin-bottom: 20px;
 }
 
 .burger-image {
   position: absolute;
-
   left: 368px;
   top: 826px;
-
   width: 275px;
   height: 267px;
 }
 
 .rc {
   position: absolute;
-
   left: 439px;
   top: 156px;
-
   width: 702.93px;
   height: 156px;
 }
 
 .oc {
   position: absolute;
-
   left: -93.64px;
   top: -2px;
-
   width: 1197.84px;
   height: 426.84px;
 }
 
+
+/* ============================= */
+/* PREMIUM 3D TOUCH TO START     */
+/* ============================= */
+
 .touch-bar {
   position: absolute;
 
-  bottom: 0;
+  /* Centered horizontally */
+  left: 240px;
 
-  width: 100%;
-  height: 140px;
+  /* Directly below Burger King logo */
+  top: 1250px;
 
-  background-color: #FF7A00;
+  width: 600px;
+  height: 150px;
 
   display: flex;
   justify-content: center;
   align-items: center;
 
+  background: linear-gradient(
+    to bottom,
+    #FF963D 0%,
+    #FF7A00 55%,
+    #E96800 100%
+  );
+
   color: #E7E1D0;
 
   font-family: 'Flame';
-
-  font-size: 100px;
+  font-size: 57px;
   font-weight: 700;
+  letter-spacing: 2px;
 
-  letter-spacing: 0px;
+  border-radius: 75px;
+
+  /* 3D depth */
+  border: 3px solid rgba(255, 255, 255, 0.35);
+
+  box-shadow:
+    0 12px 0 #C95500,
+    0 20px 28px rgba(91, 43, 17, 0.28),
+    inset 0 5px 8px rgba(255, 255, 255, 0.3),
+    inset 0 -6px 10px rgba(180, 70, 0, 0.25);
+
+  cursor: pointer;
+
+  /* Smooth physical interaction */
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    filter 0.12s ease;
+
+  user-select: none;
+
+  /* Subtle attention animation */
+  animation: buttonGlow 2.5s ease-in-out infinite;
 }
 
-.touch-bar {
-  animation: pulse 2s infinite;
+
+/* Hover = button slightly rises */
+
+.touch-bar:hover {
+  transform: translateY(-3px);
+
+  filter: brightness(1.04);
+
+  box-shadow:
+    0 15px 0 #C95500,
+    0 24px 32px rgba(91, 43, 17, 0.30),
+    inset 0 5px 8px rgba(255, 255, 255, 0.35),
+    inset 0 -6px 10px rgba(180, 70, 0, 0.25);
 }
 
-@keyframes pulse {
-  0% {
-    opacity: 1;
+
+/* Touch / click = physical button gets pressed */
+
+.touch-bar:active {
+  transform: translateY(9px);
+
+  box-shadow:
+    0 3px 0 #C95500,
+    0 8px 14px rgba(91, 43, 17, 0.20),
+    inset 0 6px 10px rgba(180, 70, 0, 0.28),
+    inset 0 -3px 6px rgba(255, 255, 255, 0.18);
+
+  filter: brightness(0.97);
+}
+
+
+/* Subtle premium breathing effect */
+
+@keyframes buttonGlow {
+  0%,
+  100% {
+    box-shadow:
+      0 12px 0 #C95500,
+      0 20px 28px rgba(91, 43, 17, 0.28),
+      inset 0 5px 8px rgba(255, 255, 255, 0.3),
+      inset 0 -6px 10px rgba(180, 70, 0, 0.25);
   }
 
   50% {
-    opacity: 0.75;
+    box-shadow:
+      0 12px 0 #C95500,
+      0 24px 34px rgba(91, 43, 17, 0.34),
+      inset 0 5px 10px rgba(255, 255, 255, 0.36),
+      inset 0 -6px 10px rgba(180, 70, 0, 0.25);
   }
-
-  100% {
-    opacity: 1;
-  }
-}
-
-.touch-bar p {
-  color: white;
-  font-family: 'Flame';
-
-  font-size: 48px;
-
-  left: 103px;
-  top: 1739px;
-
-  font-weight: 700;
-
-  letter-spacing: 4px;
 }

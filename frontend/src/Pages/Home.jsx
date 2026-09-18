@@ -1,8 +1,6 @@
 import "./Home.css";
 import { useNavigate } from "react-router-dom";
-
 import { useVoiceConversation } from "../context/VoiceConversationProvider";
-
 import { startSession } from "../services/api";
 
 import burger from "../assets/images/burgerking.png";
@@ -11,7 +9,6 @@ import oc from "../assets/images/orange curve.png";
 
 function Home() {
   const navigate = useNavigate();
-
   const { startVoiceConversation } = useVoiceConversation();
 
   const handleStart = async () => {
@@ -26,14 +23,10 @@ function Home() {
       );
 
       startVoiceConversation();
-
       navigate("/Categories");
 
     } catch (err) {
-      console.error(
-        "START SESSION ERROR:",
-        err
-      );
+      console.error("START SESSION ERROR:", err);
 
       alert(
         `Could not start session: ${err.message}`
@@ -43,6 +36,7 @@ function Home() {
 
   return (
     <div className="home">
+
       <h1 className="home-title">
         Welcome to
       </h1>
@@ -68,9 +62,12 @@ function Home() {
       <div
         className="touch-bar"
         onClick={handleStart}
+        role="button"
+        tabIndex={0}
       >
         TOUCH TO START
       </div>
+
     </div>
   );
 }
