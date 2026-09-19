@@ -1,8 +1,8 @@
 import "./Home.css";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useVoiceConversation } from "../context/VoiceConversationProvider";
-
 import { startSession } from "../services/api";
 
 import burger from "../assets/images/burgerking.png";
@@ -11,33 +11,29 @@ import oc from "../assets/images/orange curve.png";
 
 function Home() {
   const navigate = useNavigate();
-
   const { startVoiceConversation } = useVoiceConversation();
 
+  const [starting, setStarting] = useState(false);
+
   const handleStart = async () => {
+    if (starting) return;
+
+    setStarting(true);
+
     try {
       const session = await startSession();
 
-      console.log("Session Started:", session);
-
-      localStorage.setItem(
-        "session_id",
-        session.session_id
-      );
+      localStorage.setItem("session_id", session.session_id);
 
       startVoiceConversation();
 
       navigate("/Categories");
-
     } catch (err) {
-      console.error(
-        "START SESSION ERROR:",
-        err
-      );
+      console.error("START SESSION ERROR:", err);
 
-      alert(
-        `Could not start session: ${err.message}`
-      );
+      alert(`Could not start session: ${err.message}`);
+
+      setStarting(false);
     }
   };
 
@@ -69,7 +65,7 @@ function Home() {
         className="touch-bar"
         onClick={handleStart}
       >
-        TOUCH TO START
+        {starting ? "STARTING..." : "TOUCH TO START"}
       </div>
     </div>
   );
