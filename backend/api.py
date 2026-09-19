@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
-from kokoro import KPipeline
+#from kokoro import KPipeline
 from langchain_groq import ChatGroq
 from pydantic import BaseModel
 
@@ -41,13 +41,13 @@ from state import conversation_context, reset_conversation
 load_dotenv()
 
 
-print("INITIALIZING KOKORO TTS...")
+'''print("INITIALIZING KOKORO TTS...")
 
 tts_pipeline = KPipeline(
     lang_code="a"
 )
-
-print("KOKORO TTS READY")
+ 
+print("KOKORO TTS READY")'''
 
 
 app = FastAPI()
@@ -56,7 +56,7 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5174"
+        "http://localhost:5173"
     ],
     allow_credentials=True,
     allow_methods=["*"],
