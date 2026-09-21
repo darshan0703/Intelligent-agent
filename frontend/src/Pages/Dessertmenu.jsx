@@ -5,6 +5,7 @@ import BackButton from "../components/BackButton";
 import Menusidebar from "../components/Menusidebar";
 import CartContainer from "../components/CartContainer";
 import MenuSection from "../components/MenuSection";
+import FooterDecoration from "../components/FooterDecoration";
 
 import {
   useRef,
@@ -183,6 +184,8 @@ function Dessertmenu() {
       </div>
 
       <CartContainer />
+
+      <FooterDecoration />
 
     </div>
 

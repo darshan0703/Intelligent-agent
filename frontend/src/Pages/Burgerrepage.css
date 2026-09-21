@@ -1,33 +1,37 @@
-/* PAGE */
+/* =========================================
+   PAGE
+   ========================================= */
+
 .burger-page {
   position: relative;
-
   width: 1080px;
   height: 1920px;
-
   overflow: hidden;
-
   background-color: var(--bg);
 }
 
-/* GRID */
+
+/* =========================================
+   GRID
+   ========================================= */
+
 .burger-grid {
   position: absolute;
-
   top: 380px;
   left: 40px;
 
   display: grid;
-
   grid-template-columns: repeat(2, 1fr);
-
   gap: 30px;
 }
 
-/* SECTION ICONS */
+
+/* =========================================
+   SECTION ICONS
+   ========================================= */
+
 .fire-image {
   position: absolute;
-
   top: 320px;
   left: 22px;
 
@@ -37,7 +41,6 @@
 
 .crown-image {
   position: absolute;
-
   top: 733px;
   left: 22px;
 
@@ -45,7 +48,25 @@
   height: 70px;
 }
 
-/* RECOMMENDED SECTION */
+
+/* =========================================
+   BURGER FILTER POSITION
+   ========================================= */
+
+.burger-filter-position {
+  position: absolute;
+
+  left: 230px;
+  top: -6px;
+
+  z-index: 20;
+}
+
+
+/* =========================================
+   RECOMMENDED SECTION
+   ========================================= */
+
 .Recommendation-text {
   position: absolute;
 
@@ -53,7 +74,6 @@
   top: 322px;
 
   font-family: "Flame";
-
   color: var(--bk-brown);
 
   font-size: 30px;
@@ -69,7 +89,6 @@
   top: 353px;
 
   font-family: "Flame";
-
   color: var(--text-secondary);
 
   font-size: 20px;
@@ -78,25 +97,11 @@
   margin: 0;
 }
 
-/* DIVIDER 1 */
-.thin-line-2 {
-  position: absolute;
 
-  left: 0px;
-  top: 734px;
+/* =========================================
+   PREMIUM SECTION
+   ========================================= */
 
-  width: 1080px;
-  height: 3px;
-
-  background: linear-gradient(
-    to right,
-    transparent,
-    rgba(91,43,17,0.25),
-    transparent
-  );
-}
-
-/* PREMIUM SECTION */
 .Premium-text {
   position: absolute;
 
@@ -104,7 +109,6 @@
   top: 734px;
 
   font-family: "Flame";
-
   color: var(--bk-brown);
 
   font-size: 30px;
@@ -120,7 +124,6 @@
   top: 765px;
 
   font-family: "Flame";
-
   color: var(--text-secondary);
 
   font-size: 20px;
@@ -129,63 +132,59 @@
   margin: 0;
 }
 
-/* DIVIDER 2 */
-.thin-line-3 {
-  position: absolute;
 
-  left: 0px;
-  top: 1155px;
+/* =========================================
+   MORE OPTIONS
+   ========================================= */
 
-  width: 1080px;
-  height: 3px;
-
-  background: linear-gradient(
-    to right,
-    transparent,
-    rgba(91,43,17,0.25),
-    transparent
-  );
-}
-
-/* MORE HEADER */
 .more-header {
   position: absolute;
 
   top: 1165px;
-  left: 900px;
-
-  width: 1014px;
+  left: 40px;
+  right: 40px;
 
   display: flex;
-
   justify-content: space-between;
   align-items: center;
 }
 
-/* MORE HEADER TITLE */
-.more-header-text {
+
+/* =========================================
+   MORE BURGER TITLE
+   ========================================= */
+
+.more-text {
   font-family: "Flame";
 
   color: var(--bk-brown);
 
-  font-size: 100px;
+  font-size: 30px;
   font-weight: 700;
 
   margin: 0;
 }
 
-/* VIEW ALL */
-.view-all-btn {
-  border: none;
 
+/* =========================================
+   VIEW ALL BURGERS
+   ========================================= */
+
+.view-all-btn {
+  position: absolute;
+
+  left: -100px;
+  top: 0px;
+  
+
+  border: none;
   background: transparent;
 
   color: var(--bk-red);
 
   font-family: "Flame";
-
-  font-size: 24px;
-  font-weight: 700;
+  font-size: 22px;
+  font-weight: 600;
 
   margin: 0;
   padding: 0;

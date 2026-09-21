@@ -1,6 +1,11 @@
 import "./ProductCard.css";
 
-import { useLocation, useNavigate } from "react-router-dom";import { useKiosk } from "../context/KioskContext";
+import {
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
+
+import { useKiosk } from "../context/KioskContext";
 import { getRoute } from "../utils/navigation";
 
 function ProductCard({
@@ -9,11 +14,10 @@ function ProductCard({
   className,
   returnTo,
 }) {
+  const navigate = useNavigate();
+  const location = useLocation();
 
-const navigate = useNavigate();
-const location = useLocation();
-const { setProductData } = useKiosk();
-const origin = location.state?.origin || "/";
+  const { setProductData } = useKiosk();
 
   const handleProductClick = () => {
     console.log("CLICKED");
@@ -25,71 +29,66 @@ const origin = location.state?.origin || "/";
         recommendations: [],
       },
     });
+
     console.log(getRoute("product"));
 
     navigate(getRoute("product"), {
-  state: {
-    origin: location.pathname,
-  },
-  });
-
+      state: {
+        origin: location.pathname,
+      },
+    });
   };
 
   return (
-
     <div
-      className={`burger-card ${variant} ${className}`}
+      className={`burger-card ${variant} ${className || ""}`}
       onClick={handleProductClick}
     >
 
-      {/* IMAGE */}
-
+      {/* PRODUCT IMAGE */}
       <img
         src={product.image}
         alt={product.name}
         className={`burger-card-image ${variant}-image`}
       />
 
-      {/* NAME */}
-
+      {/* PRODUCT NAME */}
       <h2
         className={`burger-card-name ${variant}-name`}
+        title={product.name}
       >
         {product.name}
       </h2>
 
-      {/* DESCRIPTION */}
-
+      {/* PRODUCT DESCRIPTION */}
       <p
         className={`burger-card-description ${variant}-description`}
+        title={product.shortDescription}
       >
         {product.shortDescription}
       </p>
 
-      {/* PRICE */}
-
+      {/* PRODUCT PRICE */}
       <p
         className={`burger-card-price ${variant}-price`}
       >
         ₹ {product.price}
       </p>
 
-      {/* ADD BUTTON */}
-
+      {/* CUSTOMIZE / CONTINUE BUTTON */}
       <button
         className={`burger-add-btn ${variant}-button`}
         onClick={(e) => {
           e.stopPropagation();
           handleProductClick();
         }}
+        aria-label={`Customize ${product.name}`}
       >
-        +
+        →
       </button>
 
     </div>
-
   );
-
 }
 
 export default ProductCard;

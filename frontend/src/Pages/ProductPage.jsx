@@ -8,6 +8,7 @@ import Header from "../components/Header";
 import PreviousButton from "../components/PreviousButton";
 import CartContainer from "../components/CartContainer";
 import MealPopup from "../components/MealPopup";
+import FooterDecoration from "../components/FooterDecoration";
 
 import vegIcon from "../assets/images/veg.png";
 import nonVegIcon from "../assets/images/nonveg.png";
@@ -341,6 +342,8 @@ function ProductPage() {
         }}
         onContinue={handleContinue}
       />
+
+      <FooterDecoration />
 
     </div>
 

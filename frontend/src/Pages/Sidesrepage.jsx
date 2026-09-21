@@ -4,6 +4,7 @@ import Header from "../components/Header";
 import ProductCard from "../components/ProductCard";
 import CartContainer from "../components/CartContainer";
 import BackButton from "../components/BackButton";
+import FooterDecoration from "../components/FooterDecoration";
 
 import fire from "../assets/images/fire.png";
 import crown from "../assets/images/crown.png";
@@ -12,20 +13,24 @@ import { useNavigate } from "react-router-dom";
 import { useKiosk } from "../context/KioskContext";
 
 function Sides() {
-
   const navigate = useNavigate();
 
   const { recommendationData } = useKiosk();
 
-  const hotSides = recommendationData?.data?.priority || [];
-  const premiumSides = recommendationData?.data?.premium || [];
-  const moreSides = recommendationData?.data?.additional || [];
+  const hotSides =
+    recommendationData?.data?.priority || [];
+
+  const premiumSides =
+    recommendationData?.data?.premium || [];
+
+  const moreSides =
+    recommendationData?.data?.additional || [];
 
   return (
-
     <div className="sides-page">
 
       {/* SECTION ICONS */}
+
       <img
         src={fire}
         alt="fire"
@@ -38,10 +43,13 @@ function Sides() {
         className="crown-image"
       />
 
+
       {/* HEADER */}
+
       <Header title="Choose Your Sides" />
 
       <BackButton />
+
 
       {/* PRIORITY */}
 
@@ -61,6 +69,7 @@ function Sides() {
         />
       )}
 
+
       {/* PREMIUM */}
 
       {premiumSides[0] && (
@@ -78,6 +87,7 @@ function Sides() {
           className="card-4"
         />
       )}
+
 
       {/* ADDITIONAL */}
 
@@ -113,6 +123,7 @@ function Sides() {
         />
       )}
 
+
       {/* TITLES */}
 
       <p className="fresh-text">
@@ -123,7 +134,6 @@ function Sides() {
         Freshly prepared favorites
       </p>
 
-      <div className="thin-line-2"></div>
 
       <p className="premium-text">
         Premium Sides
@@ -133,24 +143,29 @@ function Sides() {
         Perfect add-ons for every meal
       </p>
 
-      <div className="thin-line-3"></div>
 
       <p className="more-text">
         More Side Options
       </p>
 
-      <div className="more-header">
 
+      <div className="more-header">
         <button
           className="view-all-btn"
           onClick={() => navigate("/sidesmenu")}
         >
           View All →
         </button>
-
       </div>
 
+
+      {/* CART */}
+
       <CartContainer />
+
+      {/* FOOTER */}
+
+      <FooterDecoration />
 
     </div>
   );

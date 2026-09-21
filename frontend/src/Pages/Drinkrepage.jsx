@@ -4,6 +4,7 @@ import Header from "../components/Header";
 import ProductCard from "../components/ProductCard";
 import CartContainer from "../components/CartContainer";
 import BackButton from "../components/BackButton";
+import FooterDecoration from "../components/FooterDecoration";
 
 import fire from "../assets/images/fire.png";
 import crown from "../assets/images/crown.png";
@@ -16,14 +17,20 @@ function Drink() {
 
   const { recommendationData } = useKiosk();
 
-  const freshDrinks = recommendationData?.data?.priority || [];
-  const premiumDrinks = recommendationData?.data?.premium || [];
-  const moreDrinks = recommendationData?.data?.additional || [];
+  const freshDrinks =
+    recommendationData?.data?.priority || [];
+
+  const premiumDrinks =
+    recommendationData?.data?.premium || [];
+
+  const moreDrinks =
+    recommendationData?.data?.additional || [];
 
   return (
     <div className="drink-page">
 
       {/* SECTION ICONS */}
+
       <img
         src={fire}
         alt="fire"
@@ -36,10 +43,13 @@ function Drink() {
         className="crown-image"
       />
 
+
       {/* HEADER */}
+
       <Header title="Choose Your Drink" />
 
       <BackButton />
+
 
       {/* PRIORITY */}
 
@@ -59,6 +69,7 @@ function Drink() {
         />
       )}
 
+
       {/* PREMIUM */}
 
       {premiumDrinks[0] && (
@@ -76,6 +87,7 @@ function Drink() {
           className="card-4"
         />
       )}
+
 
       {/* ADDITIONAL */}
 
@@ -111,6 +123,7 @@ function Drink() {
         />
       )}
 
+
       {/* TITLES */}
 
       <p className="fresh-text">
@@ -121,7 +134,6 @@ function Drink() {
         Popular & perfect right now
       </p>
 
-      <div className="thin-line-2"></div>
 
       <p className="premium-text">
         Premium Beverages
@@ -131,11 +143,11 @@ function Drink() {
         Indulge in our most loved shakes & drinks
       </p>
 
-      <div className="thin-line-3"></div>
 
       <p className="more-text">
         More Drink Options
       </p>
+
 
       <div className="more-header">
         <button
@@ -146,7 +158,12 @@ function Drink() {
         </button>
       </div>
 
+
+      {/* CART */}
+
       <CartContainer />
+
+      <FooterDecoration />
 
     </div>
   );

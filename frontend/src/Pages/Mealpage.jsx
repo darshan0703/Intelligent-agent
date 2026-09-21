@@ -1,27 +1,28 @@
-import "./MealPage.css";
+import "./Mealpage.css";
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import Header from "../components/Header";
 import PreviousButton from "../components/PreviousButton";
 import CartContainer from "../components/CartContainer";
+import FooterDecoration from "../components/FooterDecoration";
 
 import vegIcon from "../assets/images/veg.png";
 import nonVegIcon from "../assets/images/nonveg.png";
 
 function MealPage() {
-  const { state } = useLocation();
-  const navigate = useNavigate();
-  const origin = state?.origin || "/";
-  const meal = state?.meal;
+    const { state } = useLocation();
+    const navigate = useNavigate();
+    const origin = state?.origin || "/";
+    const meal = state?.meal;
 
-  const burger = meal?.burger;
-  const side = meal?.side;
-  const drink = meal?.drink;
+    const burger = meal?.burger;
+    const side = meal?.side;
+    const drink = meal?.drink;
 
-  const mealSize = meal?.size || "Medium";
-  const { syncCart } = useCart();
-  const [quantity, setQuantity] = useState(1);
+    const mealSize = meal?.size || "Medium";
+    const { syncCart } = useCart();
+    const [quantity, setQuantity] = useState(1);
 
     const [selectedSide, setSelectedSide] = useState(side);
 
@@ -68,67 +69,67 @@ function MealPage() {
         sideExtra +
         drinkExtra;
 
-        console.log("Burger:", burger);
-const handleAddMeal = async () => {
+    console.log("Burger:", burger);
+    const handleAddMeal = async () => {
 
-    try {
+        try {
 
-        const response = await fetch(
-            "http://localhost:8000/cart/add-meal",
-            {
-                method: "POST",
+            const response = await fetch(
+                "http://localhost:8000/cart/add-meal",
+                {
+                    method: "POST",
 
-                headers: {
-                    "Content-Type": "application/json",
-                },
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
 
-                body: JSON.stringify({
-                  meal: {
-                    ...meal,
-                    side: selectedSide,
-                    drink: selectedDrink
-             },
-                quantity
-        })
+                    body: JSON.stringify({
+                        meal: {
+                            ...meal,
+                            side: selectedSide,
+                            drink: selectedDrink
+                        },
+                        quantity
+                    })
 
+                }
+            );
+
+            const data = await response.json();
+
+            console.log("ADD MEAL:", data);
+
+            if (data.success) {
+                syncCart(data);
+                navigate(origin);
             }
-        );
 
-        const data = await response.json();
+        } catch (error) {
 
-        console.log("ADD MEAL:", data);
+            console.error(error);
 
-        if (data.success) {
-            syncCart(data);
-            navigate(origin);
         }
 
-    } catch (error) {
+    };
+    const handleDeclineMeal = async () => {
+        try {
+            const response = await fetch(
+                "http://127.0.0.1:8000/meal/decline",
+                {
+                    method: "POST",
+                }
+            );
 
-        console.error(error);
+            const data = await response.json();
 
-    }
+            console.log("MEAL DECLINED:", data);
 
-};
-const handleDeclineMeal = async () => {
-  try {
-    const response = await fetch(
-      "http://127.0.0.1:8000/meal/decline",
-      {
-        method: "POST",
-      }
-    );
-
-    const data = await response.json();
-
-    console.log("MEAL DECLINED:", data);
-
-  } catch (error) {
-    console.error("Failed to decline meal:", error);
-  } finally {
-    navigate(origin);
-  }
-};
+        } catch (error) {
+            console.error("Failed to decline meal:", error);
+        } finally {
+            navigate(origin);
+        }
+    };
     return (
 
         <div className="meal-page">
@@ -153,47 +154,47 @@ const handleDeclineMeal = async () => {
 
                                 <h1 className="meal-name">
 
-    {(() => {
+                                    {(() => {
 
-        const words = burger.name.split(" ");
+                                        const words = burger.name.split(" ");
 
-        const midpoint = Math.ceil(
-            words.length / 2
-        );
+                                        const midpoint = Math.ceil(
+                                            words.length / 2
+                                        );
 
-        return (
-            <>
+                                        return (
+                                            <>
 
-                {words
-                    .slice(0, midpoint)
-                    .join(" ")}
+                                                {words
+                                                    .slice(0, midpoint)
+                                                    .join(" ")}
 
-                <br />
+                                                <br />
 
-                {words
-                    .slice(midpoint)
-                    .join(" ")}
+                                                {words
+                                                    .slice(midpoint)
+                                                    .join(" ")}
 
-            </>
-        );
+                                            </>
+                                        );
 
-    })()}
+                                    })()}
 
-    {burger.foodType && (
+                                    {burger.foodType && (
 
-        <img
-            src={
-                burger.foodType === "veg"
-                    ? vegIcon
-                    : nonVegIcon
-            }
-            alt=""
-            className="meal-type-icon"
-        />
+                                        <img
+                                            src={
+                                                burger.foodType === "veg"
+                                                    ? vegIcon
+                                                    : nonVegIcon
+                                            }
+                                            alt=""
+                                            className="meal-type-icon"
+                                        />
 
-    )}
+                                    )}
 
-</h1>
+                                </h1>
                             </div>
 
                             <div className="meal-description-area">
@@ -312,216 +313,216 @@ const handleDeclineMeal = async () => {
 
                     <div className="meal-content">
 
-                      {/* ================= SIDE SELECTION ================= */}
+                        {/* ================= SIDE SELECTION ================= */}
 
-<h2 className="meal-section">
-    1. Choose Your Side
-</h2>
+                        <h2 className="meal-section">
+                            1. Choose Your Side
+                        </h2>
 
-<div className="meal-grid">
+                        <div className="meal-grid">
 
-    {meal.side_options?.map((item) => (
+                            {meal.side_options?.map((item) => (
 
-        <div
+                                <div
 
-            key={item.id}
+                                    key={item.id}
 
-            className={`meal-card ${
-                selectedSide?.id === item.id
-                    ? "active"
-                    : ""
-            }`}
+                                    className={`meal-card ${selectedSide?.id === item.id
+                                            ? "active"
+                                            : ""
+                                        }`}
 
-            onClick={() =>
-                setSelectedSide(item)
-            }
+                                    onClick={() =>
+                                        setSelectedSide(item)
+                                    }
 
-        >
+                                >
 
-            <div className="meal-card-image">
+                                    <div className="meal-card-image">
 
-                <img
-                    src={item.image}
-                    alt={item.name}
-                    className="meal-item-image"
-                />
+                                        <img
+                                            src={item.image}
+                                            alt={item.name}
+                                            className="meal-item-image"
+                                        />
 
-            </div>
+                                    </div>
 
-            <div className="meal-card-name">
+                                    <div className="meal-card-name">
 
-                <p>
+                                        <p>
 
-                    {item.name}
+                                            {item.name}
 
-                </p>
+                                        </p>
 
-            </div>
+                                    </div>
 
-            <div className="meal-card-price">
+                                    <div className="meal-card-price">
 
-                {item.extra_price > 0 && (
+                                        {item.extra_price > 0 && (
 
-                    <span className="upgrade-price">
+                                            <span className="upgrade-price">
 
-                        +₹{item.extra_price}
+                                                +₹{item.extra_price}
 
-                    </span>
+                                            </span>
 
-                )}
+                                        )}
 
-            </div>
+                                    </div>
+
+                                </div>
+
+                            ))}
+
+                        </div>
+
+                        {/* ================= DRINKS ================= */}
+
+                        <h2 className="meal-section">
+                            2. Choose Your Drink
+                        </h2>
+
+                        <div className="drink-filters">
+
+                            {drinkSections.map((section) => (
+
+                                <button
+
+                                    key={section}
+
+                                    className={
+                                        selectedDrinkSection === section
+                                            ? "active"
+                                            : ""
+                                    }
+
+                                    onClick={() =>
+                                        setSelectedDrinkSection(section)
+                                    }
+
+                                >
+
+                                    {section}
+
+                                </button>
+
+                            ))}
+
+                        </div>
+
+                        <div className="drink-grid">
+
+                            {visibleDrinks.map((item) => (
+
+                                <div
+
+                                    key={item.id}
+
+                                    className={`drink-card ${selectedDrink?.id === item.id
+                                            ? "active"
+                                            : ""
+                                        }`}
+
+                                    onClick={() =>
+                                        setSelectedDrink(item)
+                                    }
+
+                                >
+
+                                    <div className="drink-card-image">
+
+                                        <img
+
+                                            src={item.image}
+
+                                            alt={item.name}
+
+                                            className="drink-item-image"
+
+                                        />
+
+                                    </div>
+
+                                    <div className="drink-card-name">
+
+                                        <p>
+
+                                            {item.name}
+
+                                        </p>
+
+                                    </div>
+
+                                    <div className="drink-card-price">
+
+                                        {item.extra_price > 0 && (
+
+                                            <span className="upgrade-price">
+
+                                                +₹{item.extra_price}
+
+                                            </span>
+
+                                        )}
+
+                                    </div>
+
+                                </div>
+
+                            ))}
+
+                        </div>
+
+                    </div>
+
+                    <div className="meal-quantity-selector">
+
+                        <button
+                            className="qty-btn"
+                            onClick={() =>
+                                setQuantity(prev =>
+                                    prev > 1 ? prev - 1 : 1
+                                )
+                            }
+                        >
+                            −
+                        </button>
+
+                        <span className="meal-qty-value">
+                            {quantity}
+                        </span>
+
+                        <button
+                            className="qty-btn"
+                            onClick={() =>
+                                setQuantity(prev => prev + 1)
+                            }
+                        >
+                            +
+                        </button>
+
+                    </div>
+
+                    <button
+                        className="meal-add-cart-btn"
+                        onClick={handleAddMeal}
+                    >
+                        {`Add Meal To Cart • ₹${totalPrice * quantity}`}
+                    </button>
+
+                </>
+
+            )}
+
+            <CartContainer />
+
+            <FooterDecoration />
 
         </div>
 
-    ))}
-
-</div>
-
-{/* ================= DRINKS ================= */}
-
-<h2 className="meal-section">
-    2. Choose Your Drink
-</h2>
-
-<div className="drink-filters">
-
-    {drinkSections.map((section) => (
-
-        <button
-
-            key={section}
-
-            className={
-                selectedDrinkSection === section
-                    ? "active"
-                    : ""
-            }
-
-            onClick={() =>
-                setSelectedDrinkSection(section)
-            }
-
-        >
-
-            {section}
-
-        </button>
-
-    ))}
-
-</div>
-
-<div className="drink-grid">
-
-    {visibleDrinks.map((item) => (
-
-        <div
-
-            key={item.id}
-
-            className={`drink-card ${
-                selectedDrink?.id === item.id
-                    ? "active"
-                    : ""
-            }`}
-
-            onClick={() =>
-                setSelectedDrink(item)
-            }
-
-        >
-
-            <div className="drink-card-image">
-
-                <img
-
-                    src={item.image}
-
-                    alt={item.name}
-
-                    className="drink-item-image"
-
-                />
-
-            </div>
-
-            <div className="drink-card-name">
-
-                <p>
-
-                    {item.name}
-
-                </p>
-
-            </div>
-
-            <div className="drink-card-price">
-
-                {item.extra_price > 0 && (
-
-                    <span className="upgrade-price">
-
-                        +₹{item.extra_price}
-
-                    </span>
-
-                )}
-
-            </div>
-
-        </div>
-
-    ))}
-
-</div>
-
-</div>
-
-<div className="meal-quantity-selector">
-
-    <button
-        className="qty-btn"
-        onClick={() =>
-            setQuantity(prev =>
-                prev > 1 ? prev - 1 : 1
-            )
-        }
-    >
-        −
-    </button>
-
-    <span className="meal-qty-value">
-        {quantity}
-    </span>
-
-    <button
-        className="qty-btn"
-        onClick={() =>
-            setQuantity(prev => prev + 1)
-        }
-    >
-        +
-    </button>
-
-</div>
-
-<button
-    className="meal-add-cart-btn"
-    onClick={handleAddMeal}
->
-    {`Add Meal To Cart • ₹${totalPrice * quantity}`}
-</button>
-
-</>
-
-)}
-
-<CartContainer />
-
-</div>
-
-);
+    );
 
 }
 

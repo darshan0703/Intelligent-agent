@@ -7,6 +7,7 @@ import Menusidebar from "../components/Menusidebar";
 import Menufilters from "../components/Menufilters";
 import CartContainer from "../components/CartContainer";
 import MenuSection from "../components/MenuSection";
+import FooterDecoration from "../components/FooterDecoration";
 
 import {
   useRef,
@@ -231,6 +232,8 @@ function Burgermenu() {
       </div>
 
       <CartContainer />
+
+      <FooterDecoration />
 
     </div>
 
