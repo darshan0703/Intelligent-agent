@@ -16,7 +16,6 @@ function ProductCard({
 }) {
   const navigate = useNavigate();
   const location = useLocation();
-
   const { setProductData } = useKiosk();
 
   const handleProductClick = () => {
@@ -44,7 +43,6 @@ function ProductCard({
       className={`burger-card ${variant} ${className || ""}`}
       onClick={handleProductClick}
     >
-
       {/* PRODUCT IMAGE */}
       <img
         src={product.image}
@@ -60,18 +58,8 @@ function ProductCard({
         {product.name}
       </h2>
 
-      {/* PRODUCT DESCRIPTION */}
-      <p
-        className={`burger-card-description ${variant}-description`}
-        title={product.shortDescription}
-      >
-        {product.shortDescription}
-      </p>
-
       {/* PRODUCT PRICE */}
-      <p
-        className={`burger-card-price ${variant}-price`}
-      >
+      <p className={`burger-card-price ${variant}-price`}>
         ₹ {product.price}
       </p>
 
@@ -86,7 +74,6 @@ function ProductCard({
       >
         →
       </button>
-
     </div>
   );
 }

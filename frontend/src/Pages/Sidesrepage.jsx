@@ -30,7 +30,6 @@ function Sides() {
     <div className="sides-page">
 
       {/* SECTION ICONS */}
-
       <img
         src={fire}
         alt="fire"
@@ -43,16 +42,12 @@ function Sides() {
         className="crown-image"
       />
 
-
       {/* HEADER */}
-
       <Header title="Choose Your Sides" />
 
       <BackButton />
 
-
       {/* PRIORITY */}
-
       {hotSides[0] && (
         <ProductCard
           product={hotSides[0]}
@@ -69,9 +64,7 @@ function Sides() {
         />
       )}
 
-
       {/* PREMIUM */}
-
       {premiumSides[0] && (
         <ProductCard
           product={premiumSides[0]}
@@ -88,9 +81,7 @@ function Sides() {
         />
       )}
 
-
       {/* ADDITIONAL */}
-
       {moreSides[0] && (
         <ProductCard
           product={moreSides[0]}
@@ -123,9 +114,7 @@ function Sides() {
         />
       )}
 
-
       {/* TITLES */}
-
       <p className="fresh-text">
         Hot & Crispy Picks
       </p>
@@ -133,7 +122,6 @@ function Sides() {
       <p className="fresh-text2">
         Freshly prepared favorites
       </p>
-
 
       <p className="premium-text">
         Premium Sides
@@ -143,28 +131,26 @@ function Sides() {
         Perfect add-ons for every meal
       </p>
 
-
-      <p className="more-text">
-        More Side Options
-      </p>
-
-
+      {/* MORE OPTIONS */}
       <div className="more-header">
+
+        <p className="more-text">
+          More Side Options
+        </p>
+
         <button
           className="view-all-btn"
           onClick={() => navigate("/sidesmenu")}
         >
-          View All →
+          View All Sides →
         </button>
+
       </div>
 
-
       {/* CART */}
-
       <CartContainer />
 
       {/* FOOTER */}
-
       <FooterDecoration />
 
     </div>
