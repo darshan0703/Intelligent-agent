@@ -15,7 +15,8 @@ import { useKiosk } from "../context/KioskContext";
 function Dessert() {
   const navigate = useNavigate();
 
-  const { recommendationData } = useKiosk();
+  const { recommendationData } =
+    useKiosk();
 
   const freshDesserts =
     recommendationData?.data?.priority || [];
@@ -43,13 +44,11 @@ function Dessert() {
         className="crown-image"
       />
 
-
       {/* HEADER */}
 
       <Header title="Choose Your Dessert" />
 
       <BackButton />
-
 
       {/* PRIORITY */}
 
@@ -58,6 +57,7 @@ function Dessert() {
           product={freshDesserts[0]}
           variant="large"
           className="card-1"
+          badge="popular"
         />
       )}
 
@@ -66,9 +66,9 @@ function Dessert() {
           product={freshDesserts[1]}
           variant="large"
           className="card-2"
+          badge="popular"
         />
       )}
-
 
       {/* PREMIUM */}
 
@@ -77,6 +77,7 @@ function Dessert() {
           product={premiumDesserts[0]}
           variant="large"
           className="card-3"
+          badge="premium"
         />
       )}
 
@@ -85,9 +86,9 @@ function Dessert() {
           product={premiumDesserts[1]}
           variant="large"
           className="card-4"
+          badge="premium"
         />
       )}
-
 
       {/* ADDITIONAL */}
 
@@ -123,7 +124,6 @@ function Dessert() {
         />
       )}
 
-
       {/* TITLES */}
 
       <p className="fresh-text">
@@ -134,7 +134,6 @@ function Dessert() {
         Popular & perfect for you
       </p>
 
-
       <p className="premium-text">
         Premium Desserts
       </p>
@@ -143,21 +142,22 @@ function Dessert() {
         Rich, indulgent & made to delight
       </p>
 
-
       <p className="more-text">
         More Dessert Options
       </p>
 
+      {/* MORE OPTIONS */}
 
       <div className="more-header">
         <button
           className="view-all-btn"
-          onClick={() => navigate("/dessertmenu")}
+          onClick={() =>
+            navigate("/dessertmenu")
+          }
         >
-          View All →
+          View All Desserts →
         </button>
       </div>
-
 
       {/* CART */}
 

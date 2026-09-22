@@ -6,6 +6,7 @@ import {
 } from "react-router-dom";
 
 import { useKiosk } from "../context/KioskContext";
+
 import { getRoute } from "../utils/navigation";
 
 function ProductCard({
@@ -13,9 +14,11 @@ function ProductCard({
   variant,
   className,
   returnTo,
+  badge,
 }) {
   const navigate = useNavigate();
   const location = useLocation();
+
   const { setProductData } = useKiosk();
 
   const handleProductClick = () => {
@@ -43,6 +46,14 @@ function ProductCard({
       className={`burger-card ${variant} ${className || ""}`}
       onClick={handleProductClick}
     >
+      {/* PRODUCT BADGE */}
+      {badge && (
+        <div className={`product-card-badge ${badge}`}>
+          {badge === "popular" && "🔥 POPULAR CHOICE"}
+          {badge === "premium" && "👑 PREMIUM"}
+        </div>
+      )}
+
       {/* PRODUCT IMAGE */}
       <img
         src={product.image}
@@ -65,7 +76,9 @@ function ProductCard({
 
       {/* CUSTOMIZE / CONTINUE BUTTON */}
       <button
-        className={`burger-add-btn ${variant}-button`}
+        className={`burger-add-btn ${variant}-button ${
+          badge === "premium" ? "premium-arrow-btn" : ""
+        }`}
         onClick={(e) => {
           e.stopPropagation();
           handleProductClick();

@@ -1,7 +1,6 @@
 import "./ProductPage.css";
 
 import { useState, useEffect } from "react";
-
 import { useKiosk } from "../context/KioskContext";
 import { useCart } from "../context/CartContext";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -29,8 +28,7 @@ function ProductPage() {
     setMealPopupOpen,
   } = useKiosk();
 
-  const { syncCart } = useCart();
-  const { itemCount, total } = useCart();
+  const { syncCart, itemCount, total } = useCart();
 
   const product = productData?.data?.product;
 
@@ -41,7 +39,7 @@ function ProductPage() {
 
   /* =========================================
      CHECK MEAL OFFER
-     ========================================= */
+  ========================================= */
 
   const checkMealOffer = async () => {
     if (!product) return;
@@ -69,7 +67,10 @@ function ProductPage() {
 
       console.log("MEAL OFFER:", data);
 
-      if (data.success && data.is_meal_available) {
+      if (
+        data.success &&
+        data.is_meal_available
+      ) {
         console.log("OPENING MEAL POPUP");
 
         setMealData(data);
@@ -91,7 +92,7 @@ function ProductPage() {
 
   /* =========================================
      AUTOMATIC MEAL POPUP
-     ========================================= */
+  ========================================= */
 
   useEffect(() => {
     if (!product) return;
@@ -100,17 +101,10 @@ function ProductPage() {
   }, [product]);
 
   /* =========================================
-     OPEN MEAL POPUP FROM MEAL BUTTON
-     ========================================= */
+     MANUAL MEAL BUTTON
+  ========================================= */
 
   const handleMealButtonClick = () => {
-    /*
-      If meal data already exists, simply reopen
-      the existing popup.
-
-      This is useful when the customer previously
-      clicked "No Thanks" and later changes their mind.
-    */
     if (
       mealData?.success &&
       mealData?.is_meal_available
@@ -119,17 +113,12 @@ function ProductPage() {
       return;
     }
 
-    /*
-      If meal data is not available yet,
-      check the meal offer using the same
-      existing logic.
-    */
     checkMealOffer();
   };
 
   /* =========================================
-     CONTINUE TO MEAL PAGE
-     ========================================= */
+     CONTINUE WITH MEAL
+  ========================================= */
 
   const handleContinue = (mealSize) => {
     navigate("/mealpage", {
@@ -142,7 +131,7 @@ function ProductPage() {
 
   /* =========================================
      NO PRODUCT
-     ========================================= */
+  ========================================= */
 
   if (!product) {
     return (
@@ -165,7 +154,7 @@ function ProductPage() {
 
   /* =========================================
      ADD TO CART
-     ========================================= */
+  ========================================= */
 
   const handleAddToCart = async () => {
     try {
@@ -189,6 +178,7 @@ function ProductPage() {
 
       if (data.success) {
         syncCart(data);
+
         navigate(origin);
       }
     } catch (error) {
@@ -196,42 +186,31 @@ function ProductPage() {
     }
   };
 
+  /* =========================================
+     UI
+  ========================================= */
+
   return (
     <div className="product-page">
 
       {/* HEADER */}
       <Header title="Product Details" />
 
+      {/* BACK */}
       <PreviousButton />
 
-      {/* =========================================
-          PRODUCT IMAGE
-          ========================================= */}
-
+      {/* PRODUCT IMAGE */}
       <img
         src={product.image}
         alt={product.name}
         className="product-image"
       />
 
-      {/* =========================================
-          MEAL BUTTON
-          ========================================= */}
-
-      <button
-        className="meal-trigger-btn"
-        onClick={handleMealButtonClick}
-      >
-        MEAL
-      </button>
-
-      {/* =========================================
-          PRODUCT TITLE
-          ========================================= */}
-
+      {/* PRODUCT TITLE */}
       <div className="product-title-container">
 
         <h1 className="product-name">
+
           {(() => {
             const words =
               product.name.split(" ");
@@ -265,47 +244,52 @@ function ProductPage() {
               className="product-type-icon"
             />
           )}
+
         </h1>
 
       </div>
 
-      {/* =========================================
-          SHORT DESCRIPTION
-          ========================================= */}
-
+      {/* SHORT DESCRIPTION */}
       <p className="product-short-description">
         {product.shortDescription}
       </p>
 
-      {/* =========================================
-          PRICE
-          ========================================= */}
+      {/* =====================================
+          PRICE + UPGRADE TO MEAL
+      ===================================== */}
 
-      <p className="product-price">
-        ₹ {product.price}
-      </p>
+      <div className="product-price-row">
 
-      {/* =========================================
-          ABOUT
-          ========================================= */}
+        <p className="product-price">
+          ₹ {product.price}
+        </p>
 
+        <button
+          className="meal-upgrade-btn"
+          onClick={handleMealButtonClick}
+        >
+          Upgrade to a Meal
+        </button>
+
+      </div>
+
+      {/* ABOUT */}
       <h2 className="section-title about-title">
         About This Item
       </h2>
 
+      {/* DESCRIPTION */}
       <p className="product-description">
         {product.longDescription}
       </p>
 
-      {/* =========================================
-          RECOMMENDED
-          ========================================= */}
-
+      {/* RECOMMENDED */}
       <h2 className="section-title recommended-title">
         Recommended With
       </h2>
 
       <div className="recommendations">
+
         {recommendations.map((item) => (
           <div
             key={item.id}
@@ -314,11 +298,12 @@ function ProductPage() {
             {item.name}
           </div>
         ))}
+
       </div>
 
-      {/* =========================================
+      {/* =====================================
           QUANTITY
-          ========================================= */}
+      ===================================== */}
 
       <div className="quantity-selector">
 
@@ -326,7 +311,9 @@ function ProductPage() {
           className="qty-btn"
           onClick={() =>
             setQuantity((prev) =>
-              prev > 1 ? prev - 1 : 1
+              prev > 1
+                ? prev - 1
+                : 1
             )
           }
         >
@@ -340,7 +327,9 @@ function ProductPage() {
         <button
           className="qty-btn"
           onClick={() =>
-            setQuantity((prev) => prev + 1)
+            setQuantity(
+              (prev) => prev + 1
+            )
           }
         >
           +
@@ -348,27 +337,23 @@ function ProductPage() {
 
       </div>
 
-      {/* =========================================
+      {/* =====================================
           ADD TO CART
-          ========================================= */}
+      ===================================== */}
 
       <button
         className="add-cart-btn"
         onClick={handleAddToCart}
       >
-        {`Add To Cart • ₹ ${product.price * quantity}`}
+        {`Add To Cart • ₹ ${
+          product.price * quantity
+        }`}
       </button>
 
-      {/* =========================================
-          CART
-          ========================================= */}
-
+      {/* CART */}
       <CartContainer />
 
-      {/* =========================================
-          MEAL POPUP
-          ========================================= */}
-
+      {/* MEAL POPUP */}
       <MealPopup
         open={mealPopupOpen}
         meals={mealData}

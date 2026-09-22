@@ -1,11 +1,7 @@
 import "./Drinkrepage.css";
 
 import { useNavigate } from "react-router-dom";
-import {
-  useState,
-  useEffect,
-  useCallback,
-} from "react";
+import { useState, useEffect, useCallback } from "react";
 
 import Header from "../components/Header";
 import ProductCard from "../components/ProductCard";
@@ -24,16 +20,8 @@ function Drink() {
 
   const { recommendationData } = useKiosk();
 
-  /* =========================================
-     FILTER STATE
-     ========================================= */
-
   const [selectedType, setSelectedType] =
     useState("both");
-
-  /* =========================================
-     RECOMMENDATION DATA
-     ========================================= */
 
   const data =
     recommendationData?.data || {};
@@ -43,15 +31,6 @@ function Drink() {
     premium: data.premium || [],
     additional: data.additional || [],
   };
-
-  /* =========================================
-     FILTER DRINKS
-     
-     Same logic as Drinkmenu:
-     both  -> show everything
-     cold  -> product.type === "cold"
-     hot   -> product.type === "hot"
-     ========================================= */
 
   const filterProducts = useCallback(
     (products) => {
@@ -68,28 +47,17 @@ function Drink() {
     [selectedType]
   );
 
-  /* =========================================
-     FILTERED SECTIONS
-     ========================================= */
+  const freshDrinks =
+    filterProducts(allDrinks.priority);
 
-  const freshDrinks = filterProducts(
-    allDrinks.priority
-  );
+  const premiumDrinks =
+    filterProducts(allDrinks.premium);
 
-  const premiumDrinks = filterProducts(
-    allDrinks.premium
-  );
+  const moreDrinks =
+    filterProducts(allDrinks.additional);
 
-  const moreDrinks = filterProducts(
-    allDrinks.additional
-  );
-
-  /* =========================================
-     FILTER CHANGE
-     ========================================= */
-
-  const handleFilterChange = useCallback(
-    (filter) => {
+  const handleFilterChange =
+    useCallback((filter) => {
       const normalizedFilter =
         filter.trim().toLowerCase();
 
@@ -98,14 +66,10 @@ function Drink() {
         normalizedFilter
       );
 
-      setSelectedType(normalizedFilter);
-    },
-    []
-  );
-
-  /* =========================================
-     VOICE UI ACTIONS
-     ========================================= */
+      setSelectedType(
+        normalizedFilter
+      );
+    }, []);
 
   useEffect(() => {
     const handleVoiceUIAction = (event) => {
@@ -117,27 +81,22 @@ function Drink() {
         action
       );
 
-      /* COLD */
       if (action === "filter_cold") {
         handleFilterChange("cold");
       }
 
-      /* HOT */
       else if (action === "filter_hot") {
         handleFilterChange("hot");
       }
 
-      /* BOTH */
       else if (action === "filter_both") {
         handleFilterChange("both");
       }
 
-      /* VIEW MORE */
       else if (action === "view_more") {
         navigate("/drinkmenu");
       }
 
-      /* GO BACK */
       else if (action === "go_back") {
         navigate(-1);
       }
@@ -156,15 +115,13 @@ function Drink() {
     };
   }, [
     handleFilterChange,
-    navigate,
+    navigate
   ]);
 
   return (
     <div className="drink-page">
 
-      {/* =========================================
-          SECTION ICONS
-          ========================================= */}
+      {/* SECTION ICONS */}
 
       <img
         src={fire}
@@ -178,28 +135,20 @@ function Drink() {
         className="crown-image"
       />
 
-      {/* =========================================
-          HEADER
-          ========================================= */}
+      {/* HEADER */}
 
       <Header title="Choose Your Drink" />
 
       <BackButton />
 
-      {/* =========================================
-          DRINK FILTERS
-
-          Same position as Burger page.
-          Options come from Drink Menu:
-          Both / Cold / Hot
-          ========================================= */}
+      {/* FILTERS */}
 
       <div className="drink-filter-position">
         <Menufilters
           filters={[
             "both",
             "cold",
-            "hot",
+            "hot"
           ]}
           activeFilter={selectedType}
           onFilterChange={
@@ -208,15 +157,14 @@ function Drink() {
         />
       </div>
 
-      {/* =========================================
-          PRIORITY DRINKS
-          ========================================= */}
+      {/* PRIORITY */}
 
       {freshDrinks[0] && (
         <ProductCard
           product={freshDrinks[0]}
           variant="large"
           className="card-1"
+          badge="popular"
         />
       )}
 
@@ -225,18 +173,18 @@ function Drink() {
           product={freshDrinks[1]}
           variant="large"
           className="card-2"
+          badge="popular"
         />
       )}
 
-      {/* =========================================
-          PREMIUM DRINKS
-          ========================================= */}
+      {/* PREMIUM */}
 
       {premiumDrinks[0] && (
         <ProductCard
           product={premiumDrinks[0]}
           variant="large"
           className="card-3"
+          badge="premium"
         />
       )}
 
@@ -245,12 +193,11 @@ function Drink() {
           product={premiumDrinks[1]}
           variant="large"
           className="card-4"
+          badge="premium"
         />
       )}
 
-      {/* =========================================
-          ADDITIONAL DRINKS
-          ========================================= */}
+      {/* ADDITIONAL */}
 
       {moreDrinks[0] && (
         <ProductCard
@@ -284,9 +231,7 @@ function Drink() {
         />
       )}
 
-      {/* =========================================
-          TITLES
-          ========================================= */}
+      {/* TITLES */}
 
       <p className="fresh-text">
         Freshly Made Drinks
@@ -304,12 +249,9 @@ function Drink() {
         Indulge in our most loved shakes & drinks
       </p>
 
-      {/* =========================================
-          MORE OPTIONS
-          ========================================= */}
+      {/* MORE OPTIONS */}
 
       <div className="more-header">
-
         <p className="more-text">
           More Drink Options
         </p>
@@ -322,18 +264,13 @@ function Drink() {
         >
           View All Drinks →
         </button>
-
       </div>
 
-      {/* =========================================
-          CART
-          ========================================= */}
+      {/* CART */}
 
       <CartContainer />
 
-      {/* =========================================
-          FOOTER
-          ========================================= */}
+      {/* FOOTER */}
 
       <FooterDecoration />
 
