@@ -24,6 +24,70 @@
 
 
 /* =========================================
+   PRODUCT BADGE
+   ========================================= */
+
+.product-card-badge {
+  position: absolute;
+  top: 14px;
+  left: 18px;
+  z-index: 10;
+
+  height: 36px;
+  padding: 0 16px;
+
+  border-radius: 999px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-family: "Flame";
+  font-size: 15px;
+  font-weight: 700;
+
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+
+/* =========================================
+   POPULAR CHOICE BADGE
+   ========================================= */
+
+.product-card-badge.popular {
+  background: linear-gradient(
+    90deg,
+    #ff3b1f,
+    #ff7a00
+  );
+
+  color: #ffffff;
+
+  box-shadow:
+    0 5px 12px rgba(255, 75, 20, 0.25);
+}
+
+
+/* =========================================
+   PREMIUM BADGE
+   ========================================= */
+
+.product-card-badge.premium {
+  background: linear-gradient(
+    90deg,
+    #e2a500,
+    #ffc928
+  );
+
+  color: #ffffff;
+
+  box-shadow:
+    0 5px 12px rgba(226, 165, 0, 0.25);
+}
+
+
+/* =========================================
    IMAGE
    ========================================= */
 
@@ -43,7 +107,9 @@
 .burger-card-name {
   position: absolute;
   margin: 0;
+
   color: var(--bk-black);
+
   font-family: "Flame";
   font-weight: 700;
 
@@ -60,7 +126,9 @@
 .burger-card-price {
   position: absolute;
   margin: 0;
+
   color: var(--bk-black);
+
   font-family: "Flame";
   font-weight: 700;
 }
@@ -72,17 +140,23 @@
 
 .burger-add-btn {
   position: absolute;
+
   border: none;
   border-radius: 50%;
+
   background: var(--bk-orange);
   color: white;
+
   font-family: Arial, sans-serif;
   font-weight: 800;
   line-height: 1;
+
   display: flex;
   align-items: center;
   justify-content: center;
+
   cursor: pointer;
+
   transition: 0.2s ease;
 }
 
@@ -93,6 +167,27 @@
 
 .burger-add-btn:active {
   transform: scale(0.92);
+}
+
+
+/* =========================================
+   PREMIUM ARROW BUTTON
+   ========================================= */
+
+.premium-arrow-btn {
+  background: linear-gradient(
+    135deg,
+    #e2a500,
+    #ffc928
+  );
+}
+
+.premium-arrow-btn:hover {
+  background: linear-gradient(
+    135deg,
+    #e2a500,
+    #ffc928
+  );
 }
 
 
@@ -119,6 +214,7 @@
 .large .burger-card-name {
   left: 20px;
   top: 215px;
+
   width: 440px;
   height: 30px;
 
@@ -136,6 +232,7 @@
 .large .burger-card-price {
   left: 20px;
   bottom: 18px;
+
   font-size: 34px;
 }
 
@@ -145,8 +242,10 @@
 .large .burger-add-btn {
   right: 18px;
   bottom: 18px;
+
   width: 60px;
   height: 60px;
+
   font-size: 32px;
 }
 
@@ -158,6 +257,7 @@
 .small {
   width: 220px;
   height: 190px;
+
   background: transparent;
 }
 
@@ -175,11 +275,13 @@
 .small .burger-card-name {
   left: 12px;
   top: 112px;
+
   width: 195px;
   height: 18px;
 
   font-size: 14px;
   line-height: 18px;
+
   color: var(--bk-black);
 
   white-space: nowrap;
@@ -193,7 +295,9 @@
 .small .burger-card-price {
   left: 12px;
   bottom: 15px;
+
   font-size: 20px;
+
   color: var(--bk-black);
 }
 
@@ -203,8 +307,10 @@
 .small .burger-add-btn {
   right: 10px;
   bottom: 10px;
+
   width: 34px;
   height: 34px;
+
   font-size: 18px;
 }
 
@@ -216,6 +322,7 @@
 .menu {
   width: 240px;
   height: 220px;
+
   background: transparent;
 }
 
@@ -245,9 +352,9 @@
   line-height: 18px;
 
   color: var(--bk-black);
+
   font-weight: 700;
 
-  /* Allow 1–2 lines */
   white-space: normal;
   overflow: hidden;
   text-overflow: clip;
@@ -268,6 +375,7 @@
   bottom: 10px;
 
   font-size: 24px;
+
   color: var(--bk-black);
   font-weight: 700;
 }

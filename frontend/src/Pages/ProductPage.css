@@ -1,6 +1,6 @@
 /* =========================================
-   PAGE
-   ========================================= */
+   PRODUCT PAGE
+========================================= */
 
 .product-page {
   position: relative;
@@ -13,7 +13,7 @@
 
 /* =========================================
    PRODUCT IMAGE
-   ========================================= */
+========================================= */
 
 .product-image {
   position: absolute;
@@ -25,65 +25,17 @@
 
 
 /* =========================================
-   MEAL BUTTON
-   ========================================= */
-
-.meal-trigger-btn {
-  position: absolute;
-
-  /*
-    Slightly below the product image.
-    This keeps the button on the right side
-    without disturbing the product information.
-  */
-  top: 610px;
-  right: 230px;
-
-  min-width: 150px;
-  height: 58px;
-
-  padding: 0 32px;
-
-  border: none;
-  border-radius: 999px;
-
-  background: var(--bk-red);
-  color: white;
-
-  font-family: "Flame";
-  font-size: 28px;
-  font-weight: 700;
-
-  cursor: pointer;
-
-  z-index: 50;
-
-  transition: all 0.2s ease;
-}
-
-.meal-trigger-btn:hover {
-  transform: scale(1.04);
-}
-
-.meal-trigger-btn:active {
-  transform: scale(0.97);
-}
-
-
-/* =========================================
    PRODUCT TITLE
-   ========================================= */
+========================================= */
 
 .product-title-container {
   position: absolute;
   left: 40px;
   top: 310px;
-
   width: 500px;
 
   display: inline-flex;
   align-items: flex-end;
-
   gap: 12px;
 
   z-index: 100;
@@ -116,7 +68,7 @@
 
 /* =========================================
    SHORT DESCRIPTION
-   ========================================= */
+========================================= */
 
 .product-short-description {
   position: absolute;
@@ -124,10 +76,6 @@
   top: 470px;
   left: 40px;
 
-  /*
-    Increased width so the description
-    can use more available horizontal space.
-  */
   width: 500px;
 
   color: #666;
@@ -142,14 +90,41 @@
 
 
 /* =========================================
-   PRICE
-   ========================================= */
+   PRICE + MEAL BUTTON
+========================================= */
 
-.product-price {
+.product-price-row {
   position: absolute;
 
-  top: 560px;
+  /*
+     MANUALLY MOVE WHOLE ROW
+     LEFT / RIGHT
+  */
   left: 40px;
+
+  top: 550px;
+
+  width: 650px;
+  height: 75px;
+
+  display: flex;
+
+  align-items: center;
+
+  /*
+     SPACE BETWEEN PRICE
+     AND MEAL BUTTON
+  */
+  gap: 45px;
+}
+
+
+/* =========================================
+   PRICE
+========================================= */
+
+.product-price {
+  position: static;
 
   margin: 0;
 
@@ -158,13 +133,217 @@
   font-family: "Flame";
 
   font-size: 64px;
+
   font-weight: 700;
+
+  white-space: nowrap;
+}
+
+
+/* =========================================
+   UPGRADE TO A MEAL BUTTON
+========================================= */
+
+.meal-upgrade-btn {
+  height: 52px;
+
+  /*
+     MANUALLY CONTROL BUTTON WIDTH
+  */
+  min-width: 170px;
+
+  /*
+     MANUALLY MOVE BUTTON
+     LEFT / RIGHT
+  */
+  position: absolute;
+
+  top: 10px;
+  left: 300px;
+
+  padding: 0 22px;
+
+  border: none;
+
+  border-radius: 999px;
+
+  /*
+     KEEP CAPSULE RED
+  */
+  background: var(--bk-red);
+
+  /*
+     BASE TEXT
+     The ::after animation
+     appears over this text.
+  */
+  color: white;
+
+  font-family: "Flame";
+
+  font-size: 20px;
+
+  font-weight: 700;
+
+  white-space: nowrap;
+
+  cursor: pointer;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  transition: transform 0.2s ease;
+
+  /*
+     Keep animation inside
+     the capsule.
+  */
+  overflow: hidden;
+}
+
+
+/* =========================================
+   ANIMATED TEXT
+========================================= */
+
+.meal-upgrade-btn::after {
+  content: "Upgrade to a Meal";
+
+  position: absolute;
+
+  left: 0;
+  top: 0;
+
+  width: 100%;
+  height: 100%;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  font-family: "Flame";
+
+  font-size: 20px;
+
+  font-weight: 700;
+
+  white-space: nowrap;
+
+  pointer-events: none;
+
+  /*
+     Make the overlay text transparent
+     so the gradient can appear
+     inside the letters.
+  */
+  color: transparent;
+
+  /*
+     WHITE + LIGHT ORANGE
+     The light orange travels
+     from bottom to top.
+  */
+  background-image: linear-gradient(
+    to top,
+    #f79114 0%,
+    #dfa828 50%,
+    #ffffff 50%,
+    #ffffff 100%
+  );
+
+  background-size: 100% 200%;
+
+  background-position: 0% 0%;
+
+  background-repeat: no-repeat;
+
+  /*
+     SHOW GRADIENT ONLY
+     INSIDE THE TEXT.
+  */
+  -webkit-background-clip: text;
+  background-clip: text;
+
+  -webkit-text-fill-color: transparent;
+
+  /*
+     CONTINUOUS TEXT FILL
+  */
+  animation: mealTextFill 2.5s ease-in-out infinite;
+}
+
+
+/* =========================================
+   MEAL BUTTON HOVER
+========================================= */
+
+.meal-upgrade-btn:hover {
+  transform: scale(1.05);
+}
+
+
+/* =========================================
+   MEAL BUTTON CLICK
+========================================= */
+
+.meal-upgrade-btn:active {
+  transform: scale(0.97);
+}
+
+
+/* =========================================
+   TEXT FILL ANIMATION
+   LIGHT ORANGE
+   BOTTOM → TOP
+========================================= */
+
+@keyframes mealTextFill {
+
+  /*
+     START
+     TEXT IS WHITE
+  */
+  0% {
+    background-position: 0% 0%;
+  }
+
+  /*
+     ORANGE STARTS MOVING UP
+  */
+  25% {
+    background-position: 0% 25%;
+  }
+
+  /*
+     HALF WAY
+  */
+  50% {
+    background-position: 0% 50%;
+  }
+
+  /*
+     MOSTLY FILLED
+  */
+  75% {
+    background-position: 0% 75%;
+  }
+
+  /*
+     FULL LIGHT ORANGE
+  */
+  100% {
+    background-position: 0% 100%;
+  }
 }
 
 
 /* =========================================
    SECTION TITLES
-   ========================================= */
+========================================= */
 
 .section-title {
   color: var(--bk-orange);
@@ -172,6 +351,7 @@
   font-family: "Flame";
 
   font-size: 34px;
+
   font-weight: 700;
 
   text-transform: uppercase;
@@ -195,8 +375,8 @@
 
 
 /* =========================================
-   DESCRIPTION
-   ========================================= */
+   PRODUCT DESCRIPTION
+========================================= */
 
 .product-description {
   position: absolute;
@@ -204,12 +384,6 @@
   top: 740px;
   left: 40px;
 
-  /*
-    Use the empty right-side space.
-    This allows the description to take
-    fewer lines and prevents unnecessary
-    vertical overlap.
-  */
   width: 900px;
 
   color: var(--bk-black);
@@ -217,6 +391,7 @@
   font-family: "Flame";
 
   font-size: 24px;
+
   line-height: 1.6;
 
   margin: 0;
@@ -225,7 +400,7 @@
 
 /* =========================================
    RECOMMENDATIONS
-   ========================================= */
+========================================= */
 
 .recommendations {
   position: absolute;
@@ -250,17 +425,29 @@
 
 .recommend-card {
   min-width: 180px;
+
   height: 100px;
 
   border-radius: 20px;
 
-  background: rgba(255, 122, 0, 0.08);
+  background: rgba(
+    255,
+    122,
+    0,
+    0.08
+  );
 
-  border: 2px solid rgba(255, 122, 0, 0.15);
+  border: 2px solid rgba(
+    255,
+    122,
+    0,
+    0.15
+  );
 
   display: flex;
 
   justify-content: center;
+
   align-items: center;
 
   font-family: "Flame";
@@ -274,13 +461,14 @@
 
 
 /* =========================================
-   QUANTITY
-   ========================================= */
+   QUANTITY SELECTOR
+========================================= */
 
 .quantity-selector {
   position: absolute;
 
   left: 340px;
+
   bottom: 500px;
 
   display: flex;
@@ -292,15 +480,22 @@
 
 .qty-btn {
   width: 70px;
+
   height: 70px;
 
   border-radius: 20px;
 
-  border: 2px solid rgba(91, 43, 17, 0.15);
+  border: 2px solid rgba(
+    91,
+    43,
+    17,
+    0.15
+  );
 
   background: white;
 
   font-size: 36px;
+
   font-weight: 700;
 
   cursor: pointer;
@@ -317,15 +512,17 @@
 
 /* =========================================
    ADD TO CART
-   ========================================= */
+========================================= */
 
 .add-cart-btn {
   position: absolute;
 
   left: 570px;
+
   bottom: 500px;
 
   width: 500px;
+
   height: 95px;
 
   border: none;
@@ -339,6 +536,7 @@
   font-family: "Flame";
 
   font-size: 34px;
+
   font-weight: 700;
 
   cursor: pointer;
@@ -357,12 +555,13 @@
 
 /* =========================================
    NUTRITION PANEL
-   ========================================= */
+========================================= */
 
 .nutrition-panel {
   position: absolute;
 
   top: 700px;
+
   right: 40px;
 
   width: 220px;

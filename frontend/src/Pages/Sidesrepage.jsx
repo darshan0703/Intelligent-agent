@@ -15,7 +15,8 @@ import { useKiosk } from "../context/KioskContext";
 function Sides() {
   const navigate = useNavigate();
 
-  const { recommendationData } = useKiosk();
+  const { recommendationData } =
+    useKiosk();
 
   const hotSides =
     recommendationData?.data?.priority || [];
@@ -30,6 +31,7 @@ function Sides() {
     <div className="sides-page">
 
       {/* SECTION ICONS */}
+
       <img
         src={fire}
         alt="fire"
@@ -43,16 +45,19 @@ function Sides() {
       />
 
       {/* HEADER */}
+
       <Header title="Choose Your Sides" />
 
       <BackButton />
 
       {/* PRIORITY */}
+
       {hotSides[0] && (
         <ProductCard
           product={hotSides[0]}
           variant="large"
           className="card-1"
+          badge="popular"
         />
       )}
 
@@ -61,15 +66,18 @@ function Sides() {
           product={hotSides[1]}
           variant="large"
           className="card-2"
+          badge="popular"
         />
       )}
 
       {/* PREMIUM */}
+
       {premiumSides[0] && (
         <ProductCard
           product={premiumSides[0]}
           variant="large"
           className="card-3"
+          badge="premium"
         />
       )}
 
@@ -78,10 +86,12 @@ function Sides() {
           product={premiumSides[1]}
           variant="large"
           className="card-4"
+          badge="premium"
         />
       )}
 
       {/* ADDITIONAL */}
+
       {moreSides[0] && (
         <ProductCard
           product={moreSides[0]}
@@ -115,6 +125,7 @@ function Sides() {
       )}
 
       {/* TITLES */}
+
       <p className="fresh-text">
         Hot & Crispy Picks
       </p>
@@ -132,25 +143,28 @@ function Sides() {
       </p>
 
       {/* MORE OPTIONS */}
-      <div className="more-header">
 
+      <div className="more-header">
         <p className="more-text">
           More Side Options
         </p>
 
         <button
           className="view-all-btn"
-          onClick={() => navigate("/sidesmenu")}
+          onClick={() =>
+            navigate("/sidesmenu")
+          }
         >
           View All Sides →
         </button>
-
       </div>
 
       {/* CART */}
+
       <CartContainer />
 
       {/* FOOTER */}
+
       <FooterDecoration />
 
     </div>

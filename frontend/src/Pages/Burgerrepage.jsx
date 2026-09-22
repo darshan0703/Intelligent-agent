@@ -19,7 +19,6 @@ import BackButton from "../components/BackButton";
 import FooterDecoration from "../components/FooterDecoration";
 import { useKiosk } from "../context/KioskContext";
 
-
 function Burger() {
   const navigate = useNavigate();
 
@@ -27,16 +26,13 @@ function Burger() {
     recommendationData,
   } = useKiosk();
 
-
   const [
     selectedType,
     setSelectedType
   ] = useState("both");
 
-
   const data =
     recommendationData?.data || {};
-
 
   // ==========================================
   // ALL BACKEND RECOMMENDATION DATA
@@ -63,7 +59,6 @@ function Burger() {
       additional: []
     };
 
-
   // ==========================================
   // SELECT DATASET FOR CURRENT FILTER
   // ==========================================
@@ -75,7 +70,6 @@ function Burger() {
         ? nonVegRecommendations
         : bothRecommendations;
 
-
   const priorityItems =
     selectedRecommendations.priority || [];
 
@@ -85,7 +79,6 @@ function Burger() {
   const additionalItems =
     selectedRecommendations.additional || [];
 
-
   // ==========================================
   // SCREEN SYNC
   // ==========================================
@@ -94,14 +87,12 @@ function Burger() {
     syncScreen("recommended_burgers");
   }, []);
 
-
   // ==========================================
   // FILTER CHANGES
   // ==========================================
 
   const handleFilterChange =
     useCallback((filter) => {
-
       const normalizedFilter =
         filter
           .trim()
@@ -115,18 +106,14 @@ function Burger() {
       setSelectedType(
         normalizedFilter
       );
-
     }, []);
-
 
   // ==========================================
   // VOICE UI ACTION LISTENER
   // ==========================================
 
   useEffect(() => {
-
     const handleVoiceUIAction = (event) => {
-
       const action =
         event.detail?.action;
 
@@ -135,15 +122,9 @@ function Burger() {
         action
       );
 
-
-      // VEG
-
       if (action === "filter_veg") {
         handleFilterChange("veg");
       }
-
-
-      // NON VEG
 
       else if (
         action === "filter_non_veg"
@@ -151,17 +132,11 @@ function Burger() {
         handleFilterChange("non veg");
       }
 
-
-      // BOTH
-
       else if (
         action === "filter_both"
       ) {
         handleFilterChange("both");
       }
-
-
-      // VIEW MORE
 
       else if (
         action === "view_more"
@@ -169,43 +144,31 @@ function Burger() {
         navigate("/burgermenu");
       }
 
-
-      // GO BACK
-
       else if (
         action === "go_back"
       ) {
         navigate(-1);
       }
-
     };
-
 
     window.addEventListener(
       "kiosk-ui-action",
       handleVoiceUIAction
     );
 
-
     return () => {
-
       window.removeEventListener(
         "kiosk-ui-action",
         handleVoiceUIAction
       );
-
     };
-
   }, [
     handleFilterChange,
     navigate
   ]);
 
-
   return (
-
     <div className="burger-page">
-
 
       {/* SECTION ICONS */}
 
@@ -221,18 +184,15 @@ function Burger() {
         className="crown-image"
       />
 
-
       {/* HEADER */}
 
       <Header title="Choose Your Burger" />
 
       <BackButton />
 
-
       {/* FILTERS */}
 
       <div className="burger-filter-position">
-
         <Menufilters
           filters={[
             "both",
@@ -244,9 +204,7 @@ function Burger() {
             handleFilterChange
           }
         />
-
       </div>
-
 
       {/* PRIORITY */}
 
@@ -255,6 +213,7 @@ function Burger() {
           product={priorityItems[0]}
           variant="large"
           className="card-1"
+          badge="popular"
         />
       )}
 
@@ -263,9 +222,9 @@ function Burger() {
           product={priorityItems[1]}
           variant="large"
           className="card-2"
+          badge="popular"
         />
       )}
-
 
       {/* PREMIUM */}
 
@@ -274,6 +233,7 @@ function Burger() {
           product={premiumItems[0]}
           variant="large"
           className="card-3"
+          badge="premium"
         />
       )}
 
@@ -282,9 +242,9 @@ function Burger() {
           product={premiumItems[1]}
           variant="large"
           className="card-4"
+          badge="premium"
         />
       )}
-
 
       {/* ADDITIONAL */}
 
@@ -320,7 +280,6 @@ function Burger() {
         />
       )}
 
-
       {/* RECOMMENDED SECTION */}
 
       <p className="Recommendation-text">
@@ -330,7 +289,6 @@ function Burger() {
       <p className="Recommendation-text2">
         Recommended based on availability
       </p>
-
 
       {/* PREMIUM SECTION */}
 
@@ -342,11 +300,9 @@ function Burger() {
         Handpicked just for you
       </p>
 
-
       {/* MORE OPTIONS */}
 
       <div className="more-header">
-
         <p className="more-text">
           More Burger Options
         </p>
@@ -359,9 +315,7 @@ function Burger() {
         >
           View All Burgers →
         </button>
-
       </div>
-
 
       {/* CART */}
 
@@ -374,6 +328,5 @@ function Burger() {
     </div>
   );
 }
-
 
 export default Burger;
