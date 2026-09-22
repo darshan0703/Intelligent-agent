@@ -9,7 +9,6 @@ import {
 } from "react";
 
 import { syncScreen } from "../services/screenService";
-
 import Menufilters from "../components/Menufilters";
 import Header from "../components/Header";
 import ProductCard from "../components/ProductCard";
@@ -17,12 +16,11 @@ import fire from "../assets/images/fire.png";
 import crown from "../assets/images/crown.png";
 import CartContainer from "../components/CartContainer";
 import BackButton from "../components/BackButton";
-
+import FooterDecoration from "../components/FooterDecoration";
 import { useKiosk } from "../context/KioskContext";
 
 
 function Burger() {
-
   const navigate = useNavigate();
 
   const {
@@ -51,14 +49,12 @@ function Burger() {
       additional: []
     };
 
-
   const vegRecommendations =
     data.veg || {
       priority: [],
       premium: [],
       additional: []
     };
-
 
   const nonVegRecommendations =
     data.non_veg || {
@@ -69,7 +65,7 @@ function Burger() {
 
 
   // ==========================================
-  // SELECT THE DATASET FOR CURRENT FILTER
+  // SELECT DATASET FOR CURRENT FILTER
   // ==========================================
 
   const selectedRecommendations =
@@ -83,10 +79,8 @@ function Burger() {
   const priorityItems =
     selectedRecommendations.priority || [];
 
-
   const premiumItems =
     selectedRecommendations.premium || [];
-
 
   const additionalItems =
     selectedRecommendations.additional || [];
@@ -97,9 +91,7 @@ function Burger() {
   // ==========================================
 
   useEffect(() => {
-
     syncScreen("recommended_burgers");
-
   }, []);
 
 
@@ -138,73 +130,52 @@ function Burger() {
       const action =
         event.detail?.action;
 
-
       console.log(
         "BURGER PAGE RECEIVED UI ACTION:",
         action
       );
 
 
-      // ======================================
       // VEG
-      // ======================================
 
       if (action === "filter_veg") {
-
         handleFilterChange("veg");
-
       }
 
 
-      // ======================================
       // NON VEG
-      // ======================================
 
       else if (
         action === "filter_non_veg"
       ) {
-
         handleFilterChange("non veg");
-
       }
 
 
-      // ======================================
       // BOTH
-      // ======================================
 
       else if (
         action === "filter_both"
       ) {
-
         handleFilterChange("both");
-
       }
 
 
-      // ======================================
       // VIEW MORE
-      // ======================================
 
       else if (
         action === "view_more"
       ) {
-
         navigate("/burgermenu");
-
       }
 
 
-      // ======================================
       // GO BACK
-      // ======================================
 
       else if (
         action === "go_back"
       ) {
-
         navigate(-1);
-
       }
 
     };
@@ -236,12 +207,13 @@ function Burger() {
     <div className="burger-page">
 
 
+      {/* SECTION ICONS */}
+
       <img
         src={fire}
         alt="fire"
         className="fire-image"
       />
-
 
       <img
         src={crown}
@@ -250,161 +222,128 @@ function Burger() {
       />
 
 
+      {/* HEADER */}
+
       <Header title="Choose Your Burger" />
 
       <BackButton />
 
 
-      {/* ======================================
-          FILTERS
-          ====================================== */}
+      {/* FILTERS */}
 
-      <Menufilters
-        filters={[
-          "both",
-          "veg",
-          "non veg",
-        ]}
-        activeFilter={selectedType}
-        onFilterChange={
-          handleFilterChange
-        }
-      />
+      <div className="burger-filter-position">
+
+        <Menufilters
+          filters={[
+            "both",
+            "veg",
+            "non veg",
+          ]}
+          activeFilter={selectedType}
+          onFilterChange={
+            handleFilterChange
+          }
+        />
+
+      </div>
 
 
-      {/* ======================================
-          PRIORITY
-          ====================================== */}
+      {/* PRIORITY */}
 
       {priorityItems[0] && (
-
         <ProductCard
           product={priorityItems[0]}
           variant="large"
           className="card-1"
         />
-
       )}
 
-
       {priorityItems[1] && (
-
         <ProductCard
           product={priorityItems[1]}
           variant="large"
           className="card-2"
         />
-
       )}
 
 
-      {/* ======================================
-          PREMIUM
-          ====================================== */}
+      {/* PREMIUM */}
 
       {premiumItems[0] && (
-
         <ProductCard
           product={premiumItems[0]}
           variant="large"
           className="card-3"
         />
-
       )}
 
-
       {premiumItems[1] && (
-
         <ProductCard
           product={premiumItems[1]}
           variant="large"
           className="card-4"
         />
-
       )}
 
 
-      {/* ======================================
-          ADDITIONAL
-          ====================================== */}
+      {/* ADDITIONAL */}
 
       {additionalItems[0] && (
-
         <ProductCard
           product={additionalItems[0]}
           variant="small"
           className="card-5"
         />
-
       )}
 
-
       {additionalItems[1] && (
-
         <ProductCard
           product={additionalItems[1]}
           variant="small"
           className="card-6"
         />
-
       )}
 
-
       {additionalItems[2] && (
-
         <ProductCard
           product={additionalItems[2]}
           variant="small"
           className="card-7"
         />
-
       )}
 
-
       {additionalItems[3] && (
-
         <ProductCard
           product={additionalItems[3]}
           variant="small"
           className="card-8"
         />
-
       )}
 
 
-      {/* ======================================
-          TITLES
-          ====================================== */}
+      {/* RECOMMENDED SECTION */}
 
       <p className="Recommendation-text">
         Fresh Picks For You
       </p>
-
 
       <p className="Recommendation-text2">
         Recommended based on availability
       </p>
 
 
-      <div className="thin-line-2"></div>
-
+      {/* PREMIUM SECTION */}
 
       <p className="Premium-text">
         Premium Collection
       </p>
-
 
       <p className="Premium-text2">
         Handpicked just for you
       </p>
 
 
-      <div className="thin-line-3"></div>
-
-
-      {/* ======================================
-          MORE OPTIONS
-          ====================================== */}
+      {/* MORE OPTIONS */}
 
       <div className="more-header">
 
@@ -412,25 +351,28 @@ function Burger() {
           More Burger Options
         </p>
 
-
         <button
           className="view-all-btn"
           onClick={() =>
             navigate("/burgermenu")
           }
         >
-          View All →
+          View All Burgers →
         </button>
 
       </div>
 
 
+      {/* CART */}
+
       <CartContainer />
 
+      {/* FOOTER */}
+
+      <FooterDecoration />
+
     </div>
-
   );
-
 }
 
 

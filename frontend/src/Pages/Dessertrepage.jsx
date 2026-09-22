@@ -4,6 +4,7 @@ import Header from "../components/Header";
 import ProductCard from "../components/ProductCard";
 import CartContainer from "../components/CartContainer";
 import BackButton from "../components/BackButton";
+import FooterDecoration from "../components/FooterDecoration";
 
 import fire from "../assets/images/fire.png";
 import crown from "../assets/images/crown.png";
@@ -12,20 +13,24 @@ import { useNavigate } from "react-router-dom";
 import { useKiosk } from "../context/KioskContext";
 
 function Dessert() {
-
   const navigate = useNavigate();
 
   const { recommendationData } = useKiosk();
 
-  const freshDesserts = recommendationData?.data?.priority || [];
-  const premiumDesserts = recommendationData?.data?.premium || [];
-  const moreDesserts = recommendationData?.data?.additional || [];
+  const freshDesserts =
+    recommendationData?.data?.priority || [];
+
+  const premiumDesserts =
+    recommendationData?.data?.premium || [];
+
+  const moreDesserts =
+    recommendationData?.data?.additional || [];
 
   return (
-
     <div className="dessert-page">
 
       {/* SECTION ICONS */}
+
       <img
         src={fire}
         alt="fire"
@@ -38,10 +43,13 @@ function Dessert() {
         className="crown-image"
       />
 
+
       {/* HEADER */}
+
       <Header title="Choose Your Dessert" />
 
       <BackButton />
+
 
       {/* PRIORITY */}
 
@@ -61,6 +69,7 @@ function Dessert() {
         />
       )}
 
+
       {/* PREMIUM */}
 
       {premiumDesserts[0] && (
@@ -78,6 +87,7 @@ function Dessert() {
           className="card-4"
         />
       )}
+
 
       {/* ADDITIONAL */}
 
@@ -113,6 +123,7 @@ function Dessert() {
         />
       )}
 
+
       {/* TITLES */}
 
       <p className="fresh-text">
@@ -123,7 +134,6 @@ function Dessert() {
         Popular & perfect for you
       </p>
 
-      <div className="thin-line-2"></div>
 
       <p className="premium-text">
         Premium Desserts
@@ -133,24 +143,29 @@ function Dessert() {
         Rich, indulgent & made to delight
       </p>
 
-      <div className="thin-line-3"></div>
 
       <p className="more-text">
         More Dessert Options
       </p>
 
-      <div className="more-header">
 
+      <div className="more-header">
         <button
           className="view-all-btn"
           onClick={() => navigate("/dessertmenu")}
         >
           View All →
         </button>
-
       </div>
 
+
+      {/* CART */}
+
       <CartContainer />
+
+      {/* FOOTER */}
+
+      <FooterDecoration />
 
     </div>
   );

@@ -1,81 +1,122 @@
-/* ========================================= */
-/* PAGE */
-/* ========================================= */
+/* =========================================
+   PAGE
+   ========================================= */
 
 .product-page {
   position: relative;
-
   width: 1080px;
   height: 1920px;
-
   overflow: hidden;
-
   background: var(--bg);
 }
 
-/* ========================================= */
-/* PRODUCT IMAGE */
-/* ========================================= */
+
+/* =========================================
+   PRODUCT IMAGE
+   ========================================= */
 
 .product-image {
   position: absolute;
-
   top: 300px;
   right: 40px;
-
   width: 500px;
-
   object-fit: contain;
 }
 
-/* ========================================= */
-/* PRODUCT TITLE */
-/* ========================================= */
+
+/* =========================================
+   MEAL BUTTON
+   ========================================= */
+
+.meal-trigger-btn {
+  position: absolute;
+
+  /*
+    Slightly below the product image.
+    This keeps the button on the right side
+    without disturbing the product information.
+  */
+  top: 610px;
+  right: 230px;
+
+  min-width: 150px;
+  height: 58px;
+
+  padding: 0 32px;
+
+  border: none;
+  border-radius: 999px;
+
+  background: var(--bk-red);
+  color: white;
+
+  font-family: "Flame";
+  font-size: 28px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  z-index: 50;
+
+  transition: all 0.2s ease;
+}
+
+.meal-trigger-btn:hover {
+  transform: scale(1.04);
+}
+
+.meal-trigger-btn:active {
+  transform: scale(0.97);
+}
+
+
+/* =========================================
+   PRODUCT TITLE
+   ========================================= */
 
 .product-title-container {
+  position: absolute;
+  left: 40px;
+  top: 310px;
 
-    position: absolute;
+  width: 500px;
 
-    left: 40px;
-    top: 310px;
+  display: inline-flex;
+  align-items: flex-end;
 
-    width: 500px;
+  gap: 12px;
 
-    display: inline-flex;
-    align-items: flex-end;
-    gap: 12px;
-
-    z-index: 100;
+  z-index: 100;
 }
 
 .product-name {
+  margin: 0;
 
-    margin: 0;
+  color: var(--bk-brown);
 
-    color: var(--bk-brown);
+  font-family: "Flame";
 
-    font-family: "Flame";
+  font-size: 56px;
+  line-height: 1.1;
 
-    font-size: 56px;
-    line-height: 1.1;
-
-    width: 500px;
+  width: 500px;
 }
 
 .product-type-icon {
+  display: inline-block;
 
-    display: inline-block;
+  width: 70px;
+  height: 50px;
 
-    width: 70px;
-    height: 50px;
+  margin-left: 10px;
 
-    margin-left: 10px;
-
-    vertical-align: middle;
+  vertical-align: middle;
 }
-/* ========================================= */
-/* SHORT DESCRIPTION */
-/* ========================================= */
+
+
+/* =========================================
+   SHORT DESCRIPTION
+   ========================================= */
 
 .product-short-description {
   position: absolute;
@@ -83,20 +124,26 @@
   top: 470px;
   left: 40px;
 
-  width: 380px;
+  /*
+    Increased width so the description
+    can use more available horizontal space.
+  */
+  width: 500px;
 
   color: #666;
 
   font-family: "Flame";
 
   font-size: 24px;
-
   line-height: 1.4;
+
+  margin: 0;
 }
 
-/* ========================================= */
-/* PRICE */
-/* ========================================= */
+
+/* =========================================
+   PRICE
+   ========================================= */
 
 .product-price {
   position: absolute;
@@ -111,13 +158,13 @@
   font-family: "Flame";
 
   font-size: 64px;
-
   font-weight: 700;
 }
 
-/* ========================================= */
-/* SECTION TITLES */
-/* ========================================= */
+
+/* =========================================
+   SECTION TITLES
+   ========================================= */
 
 .section-title {
   color: var(--bk-orange);
@@ -125,7 +172,6 @@
   font-family: "Flame";
 
   font-size: 34px;
-
   font-weight: 700;
 
   text-transform: uppercase;
@@ -147,9 +193,10 @@
   left: 40px;
 }
 
-/* ========================================= */
-/* DESCRIPTION */
-/* ========================================= */
+
+/* =========================================
+   DESCRIPTION
+   ========================================= */
 
 .product-description {
   position: absolute;
@@ -157,20 +204,28 @@
   top: 740px;
   left: 40px;
 
-  width: 500px;
+  /*
+    Use the empty right-side space.
+    This allows the description to take
+    fewer lines and prevents unnecessary
+    vertical overlap.
+  */
+  width: 900px;
 
   color: var(--bk-black);
 
   font-family: "Flame";
 
   font-size: 24px;
-
   line-height: 1.6;
+
+  margin: 0;
 }
 
-/* ========================================= */
-/* RECOMMENDATIONS */
-/* ========================================= */
+
+/* =========================================
+   RECOMMENDATIONS
+   ========================================= */
 
 .recommendations {
   position: absolute;
@@ -217,9 +272,10 @@
   flex-shrink: 0;
 }
 
-/* ========================================= */
-/* QUANTITY */
-/* ========================================= */
+
+/* =========================================
+   QUANTITY
+   ========================================= */
 
 .quantity-selector {
   position: absolute;
@@ -245,7 +301,6 @@
   background: white;
 
   font-size: 36px;
-
   font-weight: 700;
 
   cursor: pointer;
@@ -259,9 +314,10 @@
   color: var(--bk-brown);
 }
 
-/* ========================================= */
-/* ADD TO CART */
-/* ========================================= */
+
+/* =========================================
+   ADD TO CART
+   ========================================= */
 
 .add-cart-btn {
   position: absolute;
@@ -283,9 +339,8 @@
   font-family: "Flame";
 
   font-size: 34px;
-
   font-weight: 700;
- 
+
   cursor: pointer;
 
   transition: all 0.2s ease;
@@ -299,9 +354,10 @@
   transform: scale(0.98);
 }
 
-/* ========================================= */
-/* NUTRITION PANEL */
-/* ========================================= */
+
+/* =========================================
+   NUTRITION PANEL
+   ========================================= */
 
 .nutrition-panel {
   position: absolute;

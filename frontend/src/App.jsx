@@ -17,7 +17,7 @@ import Dessertmenu from "./Pages/Dessertmenu";
 import Sidesmenu from "./Pages/Sidesmenu";
 
 import ProductPage from "./Pages/ProductPage";
-import MealPage from "./Pages/MealPage";
+import MealPage from "./Pages/Mealpage";
 
 import CartPage from "./Pages/CartPage";
 import OrderCompletePage from "./Pages/OrderCompletePage";

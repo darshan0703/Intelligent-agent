@@ -1,33 +1,25 @@
 import "./ProductPage.css";
 
 import { useState, useEffect } from "react";
+
 import { useKiosk } from "../context/KioskContext";
 import { useCart } from "../context/CartContext";
 import { useLocation, useNavigate } from "react-router-dom";
+
 import Header from "../components/Header";
 import PreviousButton from "../components/PreviousButton";
 import CartContainer from "../components/CartContainer";
 import MealPopup from "../components/MealPopup";
+import FooterDecoration from "../components/FooterDecoration";
 
 import vegIcon from "../assets/images/veg.png";
 import nonVegIcon from "../assets/images/nonveg.png";
 
 function ProductPage() {
-
   const navigate = useNavigate();
   const location = useLocation();
 
-  const origin = location.state?.origin || "/";        
-  const handleContinue = (mealSize) => {
-
-  navigate("/mealpage", {
-    state: {
-      meal: mealData.meals[mealSize],
-      origin: origin,
-    },
-  });
-
-};
+  const origin = location.state?.origin || "/";
 
   const {
     productData,
@@ -41,79 +33,120 @@ function ProductPage() {
   const { itemCount, total } = useCart();
 
   const product = productData?.data?.product;
+
   const recommendations =
     productData?.data?.recommendations || [];
 
   const [quantity, setQuantity] = useState(1);
 
-  useEffect(() => {
+  /* =========================================
+     CHECK MEAL OFFER
+     ========================================= */
 
+  const checkMealOffer = async () => {
     if (!product) return;
 
-    const checkMealOffer = async () => {
+    console.log("REQUEST:", {
+      id: product.id,
+      name: product.name,
+    });
 
-  console.log("REQUEST:", {
-    id: product.id,
-    name: product.name,
-  });
+    try {
+      const response = await fetch(
+        "http://localhost:8000/meal/options",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            item_id: product.id,
+          }),
+        }
+      );
 
-  try {
+      const data = await response.json();
 
-    const response = await fetch(
-      "http://localhost:8000/meal/options",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          item_id: product.id,
-        }),
+      console.log("MEAL OFFER:", data);
+
+      if (data.success && data.is_meal_available) {
+        console.log("OPENING MEAL POPUP");
+
+        setMealData(data);
+        setMealPopupOpen(true);
+      } else {
+        console.log("NO MEAL POPUP");
+
+        setMealPopupOpen(false);
       }
-    );
-
-    const data = await response.json();
-
-    console.log("MEAL OFFER:", data);
-
-    if (data.success && data.is_meal_available) {
-
-      console.log("OPENING MEAL POPUP");
-
-      setMealData(data);
-      setMealPopupOpen(true);
-
-    } else {
-
-      console.log("NO MEAL POPUP");
+    } catch (error) {
+      console.error(
+        "Failed to load meal offer:",
+        error
+      );
 
       setMealPopupOpen(false);
-
     }
+  };
 
-  } catch (error) {
+  /* =========================================
+     AUTOMATIC MEAL POPUP
+     ========================================= */
 
-    console.error(
-      "Failed to load meal offer:",
-      error
-    );
-
-    setMealPopupOpen(false);
-
-  }
-
-};
+  useEffect(() => {
+    if (!product) return;
 
     checkMealOffer();
-
   }, [product]);
 
+  /* =========================================
+     OPEN MEAL POPUP FROM MEAL BUTTON
+     ========================================= */
+
+  const handleMealButtonClick = () => {
+    /*
+      If meal data already exists, simply reopen
+      the existing popup.
+
+      This is useful when the customer previously
+      clicked "No Thanks" and later changes their mind.
+    */
+    if (
+      mealData?.success &&
+      mealData?.is_meal_available
+    ) {
+      setMealPopupOpen(true);
+      return;
+    }
+
+    /*
+      If meal data is not available yet,
+      check the meal offer using the same
+      existing logic.
+    */
+    checkMealOffer();
+  };
+
+  /* =========================================
+     CONTINUE TO MEAL PAGE
+     ========================================= */
+
+  const handleContinue = (mealSize) => {
+    navigate("/mealpage", {
+      state: {
+        meal: mealData.meals[mealSize],
+        origin: origin,
+      },
+    });
+  };
+
+  /* =========================================
+     NO PRODUCT
+     ========================================= */
+
   if (!product) {
-
     return (
-
       <div className="product-page">
-
         <Header title="Product Details" />
 
         <PreviousButton />
@@ -126,58 +159,54 @@ function ProductPage() {
         >
           No product selected.
         </h2>
-
       </div>
-
     );
-
   }
+
+  /* =========================================
+     ADD TO CART
+     ========================================= */
+
   const handleAddToCart = async () => {
-
     try {
-
-        const response = await fetch(
-            "http://127.0.0.1:8000/cart/add",
-            {
-                method: "POST",
-
-                headers: {
-                    "Content-Type": "application/json",
-                },
-
-                body: JSON.stringify({
-                    item_name: product.name,
-                    quantity: quantity,
-                }),
-            }
-        );
-
-        const data = await response.json();
-
-        console.log("ADD TO CART:", data);
-
-        if (data.success) {
-          syncCart(data);
-          navigate(origin);
+      const response = await fetch(
+        "http://127.0.0.1:8000/cart/add",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            item_name: product.name,
+            quantity: quantity,
+          }),
         }
+      );
 
+      const data = await response.json();
+
+      console.log("ADD TO CART:", data);
+
+      if (data.success) {
+        syncCart(data);
+        navigate(origin);
+      }
     } catch (error) {
-
-        console.error(error);
-
+      console.error(error);
     }
-
-};
+  };
 
   return (
-
     <div className="product-page">
 
+      {/* HEADER */}
       <Header title="Product Details" />
 
       <PreviousButton />
 
-      {/* PRODUCT IMAGE */}
+      {/* =========================================
+          PRODUCT IMAGE
+          ========================================= */}
 
       <img
         src={product.image}
@@ -185,26 +214,33 @@ function ProductPage() {
         className="product-image"
       />
 
-      {/* PRODUCT TITLE */}
+      {/* =========================================
+          MEAL BUTTON
+          ========================================= */}
+
+      <button
+        className="meal-trigger-btn"
+        onClick={handleMealButtonClick}
+      >
+        MEAL
+      </button>
+
+      {/* =========================================
+          PRODUCT TITLE
+          ========================================= */}
 
       <div className="product-title-container">
 
         <h1 className="product-name">
-
           {(() => {
-
             const words =
               product.name.split(" ");
 
             const midpoint =
-              Math.ceil(
-                words.length / 2
-              );
+              Math.ceil(words.length / 2);
 
             return (
-
               <>
-
                 {words
                   .slice(0, midpoint)
                   .join(" ")}
@@ -214,44 +250,44 @@ function ProductPage() {
                 {words
                   .slice(midpoint)
                   .join(" ")}
-
               </>
-
             );
-
           })()}
+
           {product.foodType && (
-
-          <img
-            src={
-              product.foodType === "veg"
-                ? vegIcon
-                : nonVegIcon
-            }
-            alt={product.foodType}
-            className="product-type-icon"
-          />
-
-        )}
-
+            <img
+              src={
+                product.foodType === "veg"
+                  ? vegIcon
+                  : nonVegIcon
+              }
+              alt={product.foodType}
+              className="product-type-icon"
+            />
+          )}
         </h1>
-
 
       </div>
 
-      {/* SHORT DESCRIPTION */}
+      {/* =========================================
+          SHORT DESCRIPTION
+          ========================================= */}
 
       <p className="product-short-description">
         {product.shortDescription}
       </p>
 
-      {/* PRICE */}
+      {/* =========================================
+          PRICE
+          ========================================= */}
 
       <p className="product-price">
         ₹ {product.price}
       </p>
 
-      {/* ABOUT */}
+      {/* =========================================
+          ABOUT
+          ========================================= */}
 
       <h2 className="section-title about-title">
         About This Item
@@ -261,38 +297,36 @@ function ProductPage() {
         {product.longDescription}
       </p>
 
-      {/* RECOMMENDED */}
+      {/* =========================================
+          RECOMMENDED
+          ========================================= */}
 
       <h2 className="section-title recommended-title">
         Recommended With
       </h2>
 
       <div className="recommendations">
-
         {recommendations.map((item) => (
-
           <div
             key={item.id}
             className="recommend-card"
           >
             {item.name}
           </div>
-
         ))}
-
       </div>
 
-      {/* QUANTITY */}
+      {/* =========================================
+          QUANTITY
+          ========================================= */}
 
       <div className="quantity-selector">
 
         <button
           className="qty-btn"
           onClick={() =>
-            setQuantity(prev =>
-              prev > 1
-                ? prev - 1
-                : 1
+            setQuantity((prev) =>
+              prev > 1 ? prev - 1 : 1
             )
           }
         >
@@ -306,9 +340,7 @@ function ProductPage() {
         <button
           className="qty-btn"
           onClick={() =>
-            setQuantity(prev =>
-              prev + 1
-            )
+            setQuantity((prev) => prev + 1)
           }
         >
           +
@@ -316,7 +348,9 @@ function ProductPage() {
 
       </div>
 
-      {/* ADD TO CART */}
+      {/* =========================================
+          ADD TO CART
+          ========================================= */}
 
       <button
         className="add-cart-btn"
@@ -325,27 +359,30 @@ function ProductPage() {
         {`Add To Cart • ₹ ${product.price * quantity}`}
       </button>
 
-      {/* CART */}
+      {/* =========================================
+          CART
+          ========================================= */}
 
       <CartContainer />
 
-      {/* MEAL POPUP */}
+      {/* =========================================
+          MEAL POPUP
+          ========================================= */}
 
       <MealPopup
         open={mealPopupOpen}
         meals={mealData}
         onClose={() => {
-
           setMealPopupOpen(false);
-
         }}
         onContinue={handleContinue}
       />
 
+      {/* FOOTER */}
+      <FooterDecoration />
+
     </div>
-
   );
-
 }
 
 export default ProductPage;

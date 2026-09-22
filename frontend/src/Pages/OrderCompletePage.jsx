@@ -2,6 +2,7 @@ import "./OrderCompletePage.css";
 
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import FooterDecoration from "../components/FooterDecoration";
 
 function OrderCompletePage() {
   const navigate = useNavigate();
@@ -53,6 +54,8 @@ function OrderCompletePage() {
             Enjoy your meal!        </p>
 
       </div>
+
+      <FooterDecoration />
     </div>
   );
 }

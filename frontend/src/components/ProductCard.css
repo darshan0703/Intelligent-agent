@@ -1,23 +1,16 @@
-/* ========================================= */
-/* CARD */
-/* ========================================= */
+/* =========================================
+   CARD
+   ========================================= */
 
 .burger-card {
   position: relative;
-
   width: 460px;
   height: 420px;
-
   border-radius: 40px;
-
   background: transparent;
-
   border: 2px solid rgba(91, 43, 17, 0.15);
-
   overflow: hidden;
-
   box-sizing: border-box;
-
   transition: all 0.2s ease;
 }
 
@@ -29,248 +22,260 @@
   transform: scale(0.97);
 }
 
-/* ========================================= */
-/* IMAGE */
-/* ========================================= */
+
+/* =========================================
+   IMAGE
+   ========================================= */
 
 .burger-card-image {
   position: absolute;
-
   left: 0;
   top: 0;
-
   width: 100%;
-
   object-fit: contain;
 }
 
-/* ========================================= */
-/* NAME */
-/* ========================================= */
+
+/* =========================================
+   NAME
+   ========================================= */
 
 .burger-card-name {
   position: absolute;
-
+  margin: 0;
   color: var(--bk-black);
-
   font-family: "Flame";
-
   font-weight: 700;
+
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
 }
 
-/* ========================================= */
-/* DESCRIPTION */
-/* ========================================= */
 
-.burger-card-description {
-  position: absolute;
-
-  color: var(--text-secondary);
-
-  font-family: "Flame";
-
-  opacity: 1;
-}
-
-/* ========================================= */
-/* PRICE */
-/* ========================================= */
+/* =========================================
+   PRICE
+   ========================================= */
 
 .burger-card-price {
   position: absolute;
-
+  margin: 0;
   color: var(--bk-black);
-
   font-family: "Flame";
-
   font-weight: 700;
 }
 
-/* ========================================= */
-/* BUTTON */
-/* ========================================= */
+
+/* =========================================
+   CUSTOMIZE / CONTINUE BUTTON
+   ========================================= */
 
 .burger-add-btn {
   position: absolute;
-
   border: none;
-
   border-radius: 50%;
-
   background: var(--bk-orange);
-
   color: white;
-
-  font-weight: bold;
-
+  font-family: Arial, sans-serif;
+  font-weight: 800;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-
   transition: 0.2s ease;
 }
 
 .burger-add-btn:hover {
   background: var(--bk-orange);
+  transform: scale(1.05);
 }
 
 .burger-add-btn:active {
-  transform: scale(0.9);
+  transform: scale(0.92);
 }
 
-/* ========================================= */
-/* LARGE CARD */
-/* ========================================= */
+
+/* =========================================
+   LARGE CARD
+   ========================================= */
 
 .large {
   width: 479px;
   height: 340px;
 }
 
+
+/* IMAGE */
+
 .large .burger-card-image {
   top: 0;
   height: 180px;
 }
 
+
+/* NAME */
+
 .large .burger-card-name {
   left: 20px;
-  top: 220px;
+  top: 215px;
+  width: 440px;
+  height: 30px;
 
-  font-size: 28px;
+  font-size: 22px;
+  line-height: 25px;
+
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
 }
 
-.large .burger-card-description {
-  left: 20px;
-  top: 260px;
 
-  font-size: 18px;
-}
+/* PRICE */
 
 .large .burger-card-price {
   left: 20px;
   bottom: 18px;
-
   font-size: 34px;
 }
+
+
+/* ARROW */
 
 .large .burger-add-btn {
   right: 18px;
   bottom: 18px;
-
   width: 60px;
   height: 60px;
-
-  font-size: 28px;
+  font-size: 32px;
 }
 
-/* ========================================= */
-/* SMALL CARD */
-/* ========================================= */
+
+/* =========================================
+   SMALL CARD
+   ========================================= */
 
 .small {
   width: 220px;
   height: 190px;
-
   background: transparent;
 }
+
+
+/* IMAGE */
 
 .small .burger-card-image {
   top: 0;
   height: 90px;
 }
 
+
+/* NAME */
+
 .small .burger-card-name {
   left: 12px;
-  top: 115px;
+  top: 112px;
+  width: 195px;
+  height: 18px;
 
-  font-size: 16px;
-
+  font-size: 14px;
+  line-height: 18px;
   color: var(--bk-black);
 
-  line-height: 18px;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
 }
+
+
+/* PRICE */
 
 .small .burger-card-price {
   left: 12px;
   bottom: 15px;
-
   font-size: 20px;
-
   color: var(--bk-black);
 }
+
+
+/* ARROW */
 
 .small .burger-add-btn {
   right: 10px;
   bottom: 10px;
-
   width: 34px;
   height: 34px;
-
   font-size: 18px;
 }
 
-.small .burger-card-description {
-  display: none;
-}
 
-/* ========================================= */
-/* MENU CARD */
-/* ========================================= */
+/* =========================================
+   MENU CARD
+   ========================================= */
 
 .menu {
   width: 240px;
   height: 220px;
-
   background: transparent;
 }
 
+
+/* IMAGE */
+
 .menu .burger-card-image {
+  top: 0;
   height: 120px;
 }
 
+
+/* =========================================
+   MENU CARD NAME
+   ========================================= */
+
 .menu .burger-card-name {
   left: 12px;
-  top: 130px;
+  top: 136px;
 
-  width: 160px;
+  width: 205px;
+  height: 36px;
 
-  font-size: 18px;
+  margin: 0;
+
+  font-size: 17px;
+  line-height: 18px;
 
   color: var(--bk-black);
-
-  line-height: 20px;
-
   font-weight: 700;
-}
 
-.menu .burger-card-description {
-  left: 12px;
-  top: 150px;
-
-  width: 170px;
-
-  font-size: 11px;
-  line-height: 15px;
-
-  color: var(--text-secondary);
-
+  /* Allow 1–2 lines */
+  white-space: normal;
   overflow: hidden;
+  text-overflow: clip;
 
   display: -webkit-box;
   -webkit-box-orient: vertical;
-
-  line-clamp: 2;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
+
+
+/* =========================================
+   MENU CARD PRICE
+   ========================================= */
 
 .menu .burger-card-price {
   left: 12px;
-  bottom: 12px;
+  bottom: 10px;
 
   font-size: 24px;
-
   color: var(--bk-black);
-
   font-weight: 700;
 }
+
+
+/* =========================================
+   MENU CARD ARROW
+   ========================================= */
 
 .menu .burger-add-btn {
   right: 10px;
@@ -279,8 +284,22 @@
   width: 38px;
   height: 38px;
 
-  font-size: 20px;
+  font-size: 25px;
+  font-weight: 700;
+
+  text-shadow:
+    0.6px 0 currentColor,
+    -0.6px 0 currentColor;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
+
+
+/* =========================================
+   CARD POSITIONS
+   ========================================= */
 
 .card-1 {
   position: absolute;

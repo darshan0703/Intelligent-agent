@@ -1,14 +1,22 @@
 import "./Drinkrepage.css";
 
+import { useNavigate } from "react-router-dom";
+import {
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
+
 import Header from "../components/Header";
 import ProductCard from "../components/ProductCard";
 import CartContainer from "../components/CartContainer";
 import BackButton from "../components/BackButton";
+import FooterDecoration from "../components/FooterDecoration";
+import Menufilters from "../components/Menufilters";
 
 import fire from "../assets/images/fire.png";
 import crown from "../assets/images/crown.png";
 
-import { useNavigate } from "react-router-dom";
 import { useKiosk } from "../context/KioskContext";
 
 function Drink() {
@@ -16,14 +24,148 @@ function Drink() {
 
   const { recommendationData } = useKiosk();
 
-  const freshDrinks = recommendationData?.data?.priority || [];
-  const premiumDrinks = recommendationData?.data?.premium || [];
-  const moreDrinks = recommendationData?.data?.additional || [];
+  /* =========================================
+     FILTER STATE
+     ========================================= */
+
+  const [selectedType, setSelectedType] =
+    useState("both");
+
+  /* =========================================
+     RECOMMENDATION DATA
+     ========================================= */
+
+  const data =
+    recommendationData?.data || {};
+
+  const allDrinks = {
+    priority: data.priority || [],
+    premium: data.premium || [],
+    additional: data.additional || [],
+  };
+
+  /* =========================================
+     FILTER DRINKS
+     
+     Same logic as Drinkmenu:
+     both  -> show everything
+     cold  -> product.type === "cold"
+     hot   -> product.type === "hot"
+     ========================================= */
+
+  const filterProducts = useCallback(
+    (products) => {
+      if (selectedType === "both") {
+        return products;
+      }
+
+      return products.filter(
+        (product) =>
+          product.type?.toLowerCase() ===
+          selectedType
+      );
+    },
+    [selectedType]
+  );
+
+  /* =========================================
+     FILTERED SECTIONS
+     ========================================= */
+
+  const freshDrinks = filterProducts(
+    allDrinks.priority
+  );
+
+  const premiumDrinks = filterProducts(
+    allDrinks.premium
+  );
+
+  const moreDrinks = filterProducts(
+    allDrinks.additional
+  );
+
+  /* =========================================
+     FILTER CHANGE
+     ========================================= */
+
+  const handleFilterChange = useCallback(
+    (filter) => {
+      const normalizedFilter =
+        filter.trim().toLowerCase();
+
+      console.log(
+        "CHANGING DRINK FILTER:",
+        normalizedFilter
+      );
+
+      setSelectedType(normalizedFilter);
+    },
+    []
+  );
+
+  /* =========================================
+     VOICE UI ACTIONS
+     ========================================= */
+
+  useEffect(() => {
+    const handleVoiceUIAction = (event) => {
+      const action =
+        event.detail?.action;
+
+      console.log(
+        "DRINK PAGE RECEIVED UI ACTION:",
+        action
+      );
+
+      /* COLD */
+      if (action === "filter_cold") {
+        handleFilterChange("cold");
+      }
+
+      /* HOT */
+      else if (action === "filter_hot") {
+        handleFilterChange("hot");
+      }
+
+      /* BOTH */
+      else if (action === "filter_both") {
+        handleFilterChange("both");
+      }
+
+      /* VIEW MORE */
+      else if (action === "view_more") {
+        navigate("/drinkmenu");
+      }
+
+      /* GO BACK */
+      else if (action === "go_back") {
+        navigate(-1);
+      }
+    };
+
+    window.addEventListener(
+      "kiosk-ui-action",
+      handleVoiceUIAction
+    );
+
+    return () => {
+      window.removeEventListener(
+        "kiosk-ui-action",
+        handleVoiceUIAction
+      );
+    };
+  }, [
+    handleFilterChange,
+    navigate,
+  ]);
 
   return (
     <div className="drink-page">
 
-      {/* SECTION ICONS */}
+      {/* =========================================
+          SECTION ICONS
+          ========================================= */}
+
       <img
         src={fire}
         alt="fire"
@@ -36,12 +178,39 @@ function Drink() {
         className="crown-image"
       />
 
-      {/* HEADER */}
+      {/* =========================================
+          HEADER
+          ========================================= */}
+
       <Header title="Choose Your Drink" />
 
       <BackButton />
 
-      {/* PRIORITY */}
+      {/* =========================================
+          DRINK FILTERS
+
+          Same position as Burger page.
+          Options come from Drink Menu:
+          Both / Cold / Hot
+          ========================================= */}
+
+      <div className="drink-filter-position">
+        <Menufilters
+          filters={[
+            "both",
+            "cold",
+            "hot",
+          ]}
+          activeFilter={selectedType}
+          onFilterChange={
+            handleFilterChange
+          }
+        />
+      </div>
+
+      {/* =========================================
+          PRIORITY DRINKS
+          ========================================= */}
 
       {freshDrinks[0] && (
         <ProductCard
@@ -59,7 +228,9 @@ function Drink() {
         />
       )}
 
-      {/* PREMIUM */}
+      {/* =========================================
+          PREMIUM DRINKS
+          ========================================= */}
 
       {premiumDrinks[0] && (
         <ProductCard
@@ -77,7 +248,9 @@ function Drink() {
         />
       )}
 
-      {/* ADDITIONAL */}
+      {/* =========================================
+          ADDITIONAL DRINKS
+          ========================================= */}
 
       {moreDrinks[0] && (
         <ProductCard
@@ -111,7 +284,9 @@ function Drink() {
         />
       )}
 
-      {/* TITLES */}
+      {/* =========================================
+          TITLES
+          ========================================= */}
 
       <p className="fresh-text">
         Freshly Made Drinks
@@ -121,8 +296,6 @@ function Drink() {
         Popular & perfect right now
       </p>
 
-      <div className="thin-line-2"></div>
-
       <p className="premium-text">
         Premium Beverages
       </p>
@@ -131,22 +304,38 @@ function Drink() {
         Indulge in our most loved shakes & drinks
       </p>
 
-      <div className="thin-line-3"></div>
-
-      <p className="more-text">
-        More Drink Options
-      </p>
+      {/* =========================================
+          MORE OPTIONS
+          ========================================= */}
 
       <div className="more-header">
+
+        <p className="more-text">
+          More Drink Options
+        </p>
+
         <button
           className="view-all-btn"
-          onClick={() => navigate("/drinkmenu")}
+          onClick={() =>
+            navigate("/drinkmenu")
+          }
         >
-          View All →
+          View All Drinks →
         </button>
+
       </div>
 
+      {/* =========================================
+          CART
+          ========================================= */}
+
       <CartContainer />
+
+      {/* =========================================
+          FOOTER
+          ========================================= */}
+
+      <FooterDecoration />
 
     </div>
   );

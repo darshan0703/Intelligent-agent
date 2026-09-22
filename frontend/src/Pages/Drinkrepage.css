@@ -1,7 +1,8 @@
-/* PAGE */
+/* =========================================
+   PAGE
+   ========================================= */
 
 .drink-page {
-
   position: relative;
 
   width: 1080px;
@@ -12,10 +13,12 @@
   background-color: var(--bg);
 }
 
-/* SECTION ICONS */
+
+/* =========================================
+   SECTION ICONS
+   ========================================= */
 
 .fire-image {
-
   position: absolute;
 
   top: 320px;
@@ -26,7 +29,6 @@
 }
 
 .crown-image {
-
   position: absolute;
 
   top: 733px;
@@ -36,15 +38,31 @@
   height: 70px;
 }
 
-/* ========================================= */
-/* TITLES */
-/* ========================================= */
 
-.fresh-text {
+/* =========================================
+   DRINK FILTER POSITION
 
+   Same position as Burger page.
+   ========================================= */
+
+.drink-filter-position {
   position: absolute;
 
-  font-family: 'Flame';
+  left: 230px;
+  top: -6px;
+
+  z-index: 20;
+}
+
+
+/* =========================================
+   TITLES
+   ========================================= */
+
+.fresh-text {
+  position: absolute;
+
+  font-family: "Flame";
 
   color: var(--bk-brown);
 
@@ -53,13 +71,14 @@
 
   font-size: 30px;
   font-weight: 700;
+
+  margin: 0;
 }
 
 .fresh-text2 {
-
   position: absolute;
 
-  font-family: 'Flame';
+  font-family: "Flame";
 
   color: var(--text-secondary);
 
@@ -68,13 +87,14 @@
 
   font-size: 20px;
   font-weight: 400;
+
+  margin: 0;
 }
 
 .premium-text {
-
   position: absolute;
 
-  font-family: 'Flame';
+  font-family: "Flame";
 
   color: var(--bk-brown);
 
@@ -83,13 +103,14 @@
 
   font-size: 30px;
   font-weight: 700;
+
+  margin: 0;
 }
 
 .premium-text2 {
-
   position: absolute;
 
-  font-family: 'Flame';
+  font-family: "Flame";
 
   color: var(--text-secondary);
 
@@ -98,91 +119,57 @@
 
   font-size: 20px;
   font-weight: 400;
+
+  margin: 0;
 }
 
-.more-text {
 
-  position: absolute;
-
-  font-family: 'Flame';
-
-  color: var(--bk-brown);
-
-  left: 33px;
-  top: 1165px;
-
-  font-size: 24px;
-  font-weight: 700;
-}
-
-/* ========================================= */
-/* DIVIDERS */
-/* ========================================= */
-
-.thin-line-2 {
-
-  position: absolute;
-
-  left: 0px;
-  top: 734px;
-
-  width: 1080px;
-  height: 3px;
-
-  background: linear-gradient(
-    to right,
-    transparent,
-    rgba(91,43,17,0.25),
-    transparent
-  );
-}
-
-.thin-line-3 {
-
-  position: absolute;
-
-  left: 0px;
-  top: 1155px;
-
-  width: 1080px;
-  height: 3px;
-
-  background: linear-gradient(
-    to right,
-    transparent,
-    rgba(91,43,17,0.25),
-    transparent
-  );
-}
+/* =========================================
+   MORE OPTIONS
+   ========================================= */
 
 .more-header {
-
   position: absolute;
 
   top: 1165px;
-  left: 900px;
 
-  width: 1014px;
+  left: 40px;
+  right: 40px;
 
   display: flex;
 
   justify-content: space-between;
+
   align-items: center;
 }
 
-p.more-header-text {
 
-  font-family: 'Flame';
+/* =========================================
+   MORE DRINK TITLE
+   ========================================= */
+
+.more-text {
+  font-family: "Flame";
 
   color: var(--bk-brown);
 
-  font-size: 100px;
+  font-size: 30px;
+
   font-weight: 700;
 
   margin: 0;
 }
 
+
+/* =========================================
+   VIEW ALL DRINKS
+   ========================================= */
+
 .view-all-btn {
+  position: absolute;
+
+  left: -100px;
+  top: 0px;
 
   border: none;
 
@@ -190,10 +177,11 @@ p.more-header-text {
 
   color: var(--bk-red);
 
-  font-family: 'Flame';
+  font-family: "Flame";
 
-  font-size: 24px;
-  font-weight: 700;
+  font-size: 22px;
+
+  font-weight: 600;
 
   margin: 0;
   padding: 0;
@@ -204,11 +192,9 @@ p.more-header-text {
 }
 
 .view-all-btn:hover {
-
   opacity: 0.8;
 }
 
 .view-all-btn:active {
-
   transform: scale(0.95);
 }

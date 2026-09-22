@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import PreviousButton from "../components/PreviousButton";
 import DeleteIcon from "../assets/images/Delete.png";
+import FooterDecoration from "../components/FooterDecoration";
 
 function CartPage() {
   const { cart, total, syncCart } = useCart();
@@ -192,6 +193,8 @@ if (data.success) {
           Continue
         </button>
       </div>
+
+      <FooterDecoration />
     </div>
   );
 }
