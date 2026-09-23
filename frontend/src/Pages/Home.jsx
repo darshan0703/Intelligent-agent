@@ -2,6 +2,7 @@ import "./Home.css";
 import { useNavigate } from "react-router-dom";
 
 import { useVoiceConversation } from "../context/VoiceConversationProvider";
+import { useKiosk } from "../context/KioskContext";
 
 import { startSession } from "../services/api";
 
@@ -13,6 +14,7 @@ function Home() {
   const navigate = useNavigate();
 
   const { startVoiceConversation } = useVoiceConversation();
+  const { resetMealOfferState } = useKiosk();
 
   const handleStart = async () => {
     try {
@@ -24,6 +26,8 @@ function Home() {
         "session_id",
         session.session_id
       );
+
+      resetMealOfferState();
 
       startVoiceConversation();
 

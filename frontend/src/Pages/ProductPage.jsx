@@ -26,6 +26,8 @@ function ProductPage() {
     setMealData,
     mealPopupOpen,
     setMealPopupOpen,
+    dismissedMealProducts,
+    dismissMealOffer,
   } = useKiosk();
 
   const { syncCart, itemCount, total } = useCart();
@@ -41,12 +43,13 @@ function ProductPage() {
      CHECK MEAL OFFER
   ========================================= */
 
-  const checkMealOffer = async () => {
-    if (!product) return;
+  const checkMealOffer = async (targetProductId, isManual = false, signal = null) => {
+    if (!targetProductId) return;
 
     console.log("REQUEST:", {
-      id: product.id,
-      name: product.name,
+      id: targetProductId,
+      name: product?.name,
+      isManual,
     });
 
     try {
@@ -58,14 +61,20 @@ function ProductPage() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            item_id: product.id,
+            item_id: Number(targetProductId) || targetProductId,
+            manual: Boolean(isManual),
           }),
+          signal,
         }
       );
 
       const data = await response.json();
 
       console.log("MEAL OFFER:", data);
+
+      if (String(product?.id) !== String(targetProductId)) {
+        return;
+      }
 
       if (
         data.success &&
@@ -81,12 +90,18 @@ function ProductPage() {
         setMealPopupOpen(false);
       }
     } catch (error) {
+      if (error.name === "AbortError") {
+        return;
+      }
+
       console.error(
         "Failed to load meal offer:",
         error
       );
 
-      setMealPopupOpen(false);
+      if (String(product?.id) === String(targetProductId)) {
+        setMealPopupOpen(false);
+      }
     }
   };
 
@@ -95,25 +110,74 @@ function ProductPage() {
   ========================================= */
 
   useEffect(() => {
-    if (!product) return;
+    if (!product?.id) {
+      setMealPopupOpen(false);
+      setMealData(null);
+      return;
+    }
 
-    checkMealOffer();
-  }, [product]);
+    setMealPopupOpen(false);
+    setMealData(null);
+
+    const isDismissed =
+      dismissedMealProducts?.has(product.id) ||
+      dismissedMealProducts?.has(Number(product.id)) ||
+      dismissedMealProducts?.has(String(product.id));
+
+    if (isDismissed) {
+      return;
+    }
+
+    const controller = new AbortController();
+
+    checkMealOffer(product.id, false, controller.signal);
+
+    return () => {
+      controller.abort();
+    };
+  }, [product?.id, dismissedMealProducts]);
 
   /* =========================================
      MANUAL MEAL BUTTON
   ========================================= */
 
   const handleMealButtonClick = () => {
+    if (!product) return;
+
     if (
       mealData?.success &&
-      mealData?.is_meal_available
+      mealData?.is_meal_available &&
+      String(mealData?.product_id) === String(product.id)
     ) {
       setMealPopupOpen(true);
       return;
     }
 
-    checkMealOffer();
+    checkMealOffer(product.id, true);
+  };
+
+  /* =========================================
+     NO THANKS / POPUP CLOSE
+  ========================================= */
+
+  const handlePopupClose = () => {
+    setMealPopupOpen(false);
+
+    if (product?.id) {
+      dismissMealOffer(product.id);
+
+      fetch("http://127.0.0.1:8000/meal/decline", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          item_id: product.id,
+        }),
+      }).catch((err) => {
+        console.error("Failed to record meal decline:", err);
+      });
+    }
   };
 
   /* =========================================
@@ -357,9 +421,7 @@ function ProductPage() {
       <MealPopup
         open={mealPopupOpen}
         meals={mealData}
-        onClose={() => {
-          setMealPopupOpen(false);
-        }}
+        onClose={handlePopupClose}
         onContinue={handleContinue}
       />
 

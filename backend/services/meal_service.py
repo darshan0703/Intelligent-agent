@@ -51,14 +51,14 @@ def serialize_meal_option(menu_item, extra_price, is_default=False):
 
 def get_side_options(
     db: Session,
-    meal_size: str
+    meal_size: str,
+    default_side=None,
 ):
+    if default_side is None:
+        default_data = get_default_meal(db, meal_size)
+        default_side = default_data["side"] if default_data else None
 
-    default = get_default_meal(
-        db,
-        meal_size
-    )["side"]
-
+    default_side_id = default_side.id if default_side else None
     options = []
 
     upgrades = (
@@ -77,29 +77,26 @@ def get_side_options(
     )
 
     for rule, item in upgrades:
-
         options.append(
-
             serialize_meal_option(
                 item,
                 rule.extra_price,
-                item.id == default.id
+                item.id == default_side_id
             )
-
         )
 
     return options
 
 def get_drink_options(
     db: Session,
-    meal_size: str
+    meal_size: str,
+    default_drink=None,
 ):
+    if default_drink is None:
+        default_data = get_default_meal(db, meal_size)
+        default_drink = default_data["drink"] if default_data else None
 
-    default = get_default_meal(
-        db,
-        meal_size
-    )["drink"]
-
+    default_drink_id = default_drink.id if default_drink else None
     options = []
 
     upgrades = (
@@ -116,54 +113,35 @@ def get_drink_options(
         )
         .all()
     )
-    print("\n========== QUERY RESULT ==========")
-    print(f"Meal Size: {meal_size}")
-    print(f"Rows: {len(upgrades)}")
 
     for rule, item in upgrades:
-        print(
-            item.id,
-            item.name,
-            item.meal_role,
-            rule.extra_price
-        )
-
-    for rule, item in upgrades:
-
         options.append(
-
             serialize_meal_option(
                 item,
                 rule.extra_price,
-                item.id == default.id
+                item.id == default_drink_id
             )
-
         )
-
-        print("\n========== OPTIONS ==========")
-    print(f"Options: {len(options)}")
-
-    for option in options:
-        print(option)
 
     return options
 
 def build_meal(
     db: Session,
     item_id: int,
-    meal_size: str
+    meal_size: str,
+    burger=None,
 ):
-
-    burger = (
-        db.query(MenuItem)
-        .filter(
-            MenuItem.id == item_id,
-            MenuItem.meal_role == "main"
+    if burger is None:
+        burger = (
+            db.query(MenuItem)
+            .filter(
+                MenuItem.id == item_id,
+                MenuItem.meal_role == "main"
+            )
+            .first()
         )
-        .first()
-    )
 
-    if not burger:
+    if not burger or burger.meal_role != "main":
         return None
 
     defaults = get_default_meal(
@@ -171,7 +149,7 @@ def build_meal(
         meal_size
     )
 
-    if not defaults:
+    if not defaults or not defaults.get("side") or not defaults.get("drink"):
         return None
 
     upgrade_price = MEAL_UPGRADE_PRICES.get(meal_size)
@@ -181,60 +159,49 @@ def build_meal(
 
     side_options = get_side_options(
         db,
-        meal_size
+        meal_size,
+        default_side=defaults["side"]
     )
 
     drink_options = get_drink_options(
         db,
-        meal_size
+        meal_size,
+        default_drink=defaults["drink"]
     )
 
-
     return {
-
         "size": meal_size,
-
         "burger": {
             "id": burger.id,
             "name": burger.name,
             "price": float(burger.price),
             "image": burger.meal_image,
             "foodType": burger.food_type
-
         },
-
         "side": {
             "id": defaults["side"].id,
             "name": defaults["side"].name,
             "price": float(defaults["side"].price),
             "image": defaults["side"].image
         },
-
         "drink": {
             "id": defaults["drink"].id,
             "name": defaults["drink"].name,
             "price": float(defaults["drink"].price),
             "image": defaults["drink"].image
         },
-
         "burger_price": float(burger.price),
-
         "upgrade_price": float(upgrade_price),
-
         "meal_price": float(burger.price) + float(upgrade_price),
-
         "side_options": side_options,
-
         "drink_options": drink_options
     }
 
 
 def get_meal_options(item_id: int):
-
     db: Session = SessionLocal()
 
     try:
-
         product = (
             db.query(MenuItem)
             .filter(MenuItem.id == item_id)
@@ -255,13 +222,15 @@ def get_meal_options(item_id: int):
         medium = build_meal(
             db,
             item_id,
-            "medium"
+            "medium",
+            burger=product
         )
 
         large = build_meal(
             db,
             item_id,
-            "large"
+            "large",
+            burger=product
         )
 
         return {

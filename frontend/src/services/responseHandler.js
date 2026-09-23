@@ -7,6 +7,8 @@ export function handleKioskResponse(
     setRecommendationData,
     setProductData,
     executeUIAction,
+    setMealPopupOpen,
+    setMealData,
   }
 ) {
   console.log("HANDLING RESPONSE:", data);
@@ -36,6 +38,12 @@ export function handleKioskResponse(
     Object.keys(data.data).length > 0
   ) {
     if (data.screen === "product_details") {
+      if (typeof setMealPopupOpen === "function") {
+        setMealPopupOpen(false);
+      }
+      if (typeof setMealData === "function") {
+        setMealData(null);
+      }
       setProductData(data);
     } else {
       setRecommendationData(data);
