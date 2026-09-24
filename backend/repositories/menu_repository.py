@@ -1,42 +1,83 @@
-from sqlalchemy.orm import sessionmaker
-
-from database import engine
-from models import MenuItem, Inventory
-
-Session = sessionmaker(bind=engine)
+from database import supabase
 
 BRANCH_ID = 1
-
 
 # ==========================================================
 # COMMON SERIALIZER
 # ==========================================================
 
-def serialize_menu_item(menu_item, inventory):
+def serialize_menu_item(row):
     return {
-        "id": menu_item.id,
-        "name": menu_item.name,
-        "shortDescription": menu_item.short_description,
-        "longDescription": menu_item.long_description,
-        "price": float(menu_item.price),
-        "image": menu_item.image,
-        "meal_image": menu_item.meal_image,
-
-        "type": (
-            menu_item.serving_type
-            if menu_item.category == "drink"
-            else menu_item.food_type
-        ),
-
-        "foodType": menu_item.food_type,
-
-        # NEW
-        "is_meal_available": menu_item.is_meal_available,
-
-        "stock": inventory.stock,
-        "expiry": inventory.expiry_date,
-        "category": menu_item.category,
+        "id": row["id"],
+        "name": row["name"],
+        "shortDescription": row["short_description"],
+        "longDescription": row["long_description"],
+        "price": float(row["price"]),
+        "image": row["image"],
+        "meal_image": row["meal_image"],
+        "type": row["serving_type"] if row["category"] == "drink" else row["food_type"],
+        "foodType": row["food_type"],
+        "is_meal_available": row["is_meal_available"],
+        "stock": row["stock"],
+        "expiry": row["expiry_date"],
+        "category": row["category"],
+        "section": row["section"],
+        "section_order": row["section_order"],
+        "display_order": row["display_order"],
     }
+
+
+# ==========================================================
+# BASE QUERY
+# ==========================================================
+
+def fetch_menu_rows():
+    response = (
+        supabase.table("inventory")
+        .select(
+            """
+            stock,
+            expiry_date,
+            menu_items!inner(
+                id,
+                name,
+                short_description,
+                long_description,
+                price,
+                image,
+                meal_image,
+                category,
+                food_type,
+                serving_type,
+                section,
+                section_order,
+                display_order,
+                is_meal_available,
+                is_available
+            )
+            """
+        )
+        .eq("branch_id", BRANCH_ID)
+        .gt("stock", 0)
+        .execute()
+    )
+
+    rows = []
+
+    for item in response.data:
+        menu = item["menu_items"]
+
+        if not menu["is_available"]:
+            continue
+
+        merged = {**menu}
+        merged["stock"] = item["stock"]
+        merged["expiry_date"] = item["expiry_date"]
+
+        rows.append(merged)
+
+    return rows
+
 
 # ==========================================================
 # MENU SECTIONS
@@ -44,38 +85,27 @@ def serialize_menu_item(menu_item, inventory):
 
 def get_menu_sections(category):
 
-    session = Session()
+    rows = [
+        r for r in fetch_menu_rows()
+        if r["category"].lower() == category.lower()
+    ]
 
-    items = (
-        session.query(MenuItem, Inventory)
-        .join(Inventory, MenuItem.id == Inventory.item_id)
-        .filter(Inventory.branch_id == BRANCH_ID)
-        .filter(MenuItem.category == category)
-        .filter(MenuItem.is_available == True)
-        .filter(Inventory.stock > 0)
-        .order_by(
-            MenuItem.section_order,
-            MenuItem.display_order
-        )
-        .all()
-    )
+    rows.sort(key=lambda x: (x["section_order"], x["display_order"]))
 
     sections = {}
 
-    for menu_item, inventory in items:
+    for row in rows:
 
-        if menu_item.section not in sections:
-            sections[menu_item.section] = {
-                "id": menu_item.section.lower().replace(" ", "-"),
-                "title": menu_item.section,
+        if row["section"] not in sections:
+            sections[row["section"]] = {
+                "id": row["section"].lower().replace(" ", "-"),
+                "title": row["section"],
                 "products": []
             }
 
-        sections[menu_item.section]["products"].append(
-            serialize_menu_item(menu_item, inventory)
+        sections[row["section"]]["products"].append(
+            serialize_menu_item(row)
         )
-
-    session.close()
 
     return list(sections.values())
 
@@ -85,26 +115,7 @@ def get_menu_sections(category):
 # ==========================================================
 
 def get_available():
-
-    session = Session()
-
-    items = (
-        session.query(MenuItem, Inventory)
-        .join(Inventory, MenuItem.id == Inventory.item_id)
-        .filter(Inventory.branch_id == BRANCH_ID)
-        .filter(MenuItem.is_available == True)
-        .filter(Inventory.stock > 0)
-        .all()
-    )
-
-    result = [
-        serialize_menu_item(menu_item, inventory)
-        for menu_item, inventory in items
-    ]
-
-    session.close()
-
-    return result
+    return [serialize_menu_item(r) for r in fetch_menu_rows()]
 
 
 # ==========================================================
@@ -113,147 +124,63 @@ def get_available():
 
 def get_category(category):
 
-    session = Session()
-
-    query = (
-        session.query(MenuItem, Inventory)
-        .join(Inventory, MenuItem.id == Inventory.item_id)
-        .filter(Inventory.branch_id == BRANCH_ID)
-        .filter(MenuItem.is_available == True)
-        .filter(Inventory.stock > 0)
-    )
+    rows = fetch_menu_rows()
 
     if category in ["veg", "non_veg"]:
-        query = query.filter(MenuItem.food_type.ilike(category))
+        rows = [r for r in rows if r["food_type"].lower() == category.lower()]
     else:
-        query = query.filter(MenuItem.category.ilike(category))
+        rows = [r for r in rows if r["category"].lower() == category.lower()]
 
-    items = query.all()
-
-    result = [
-        serialize_menu_item(menu_item, inventory)
-        for menu_item, inventory in items
-    ]
-
-    session.close()
-
-    return result
+    return [serialize_menu_item(r) for r in rows]
 
 
 # ==========================================================
-# ADD TO CART
+# PRODUCT LOOKUP
+# ==========================================================
+
+def get_product(item_name):
+
+    rows = fetch_menu_rows()
+
+    for row in rows:
+        if row["name"].lower() == item_name.lower():
+            return serialize_menu_item(row)
+
+    return None
+
+
+# ==========================================================
+# ADD TO CART (READ ONLY)
 # ==========================================================
 
 def add_to_cart(item_name):
 
-    session = Session()
+    product = get_product(item_name)
 
-    item = (
-        session.query(MenuItem, Inventory)
-        .join(Inventory, MenuItem.id == Inventory.item_id)
-        .filter(MenuItem.name.ilike(item_name))
-        .filter(Inventory.branch_id == BRANCH_ID)
-        .first()
-    )
-
-    if not item:
-        session.close()
+    if not product:
         return {
             "success": False,
             "message": "Item not found."
         }
 
-    menu_item, inventory = item
-
-    if inventory.stock <= 0:
-        session.close()
+    if product["stock"] <= 0:
         return {
             "success": False,
             "message": "Item out of stock."
         }
 
-    session.close()
-
     return {
         "success": True,
-        "item": serialize_menu_item(menu_item, inventory)
+        "item": product
     }
+
+
+# ==========================================================
+# INVENTORY (DISABLED - READ ONLY)
+# ==========================================================
 
 def deduct_inventory(item_id, quantity):
-    session = Session()
-
-    inventory = (
-        session.query(Inventory)
-        .filter(Inventory.item_id == item_id)
-        .filter(Inventory.branch_id == BRANCH_ID)
-        .first()
-    )
-
-    if not inventory:
-        session.close()
-        return {
-            "success": False,
-            "message": "Inventory record not found."
-        }
-
-    if inventory.stock < quantity:
-        session.close()
-        return {
-            "success": False,
-            "message": "Not enough stock."
-        }
-
-    inventory.stock -= quantity
-
-    session.commit()
-
-    remaining_stock = inventory.stock
-
-    session.close()
-
     return {
-        "success": True,
-        "remaining_stock": remaining_stock
+        "success": False,
+        "message": "Read-only database connection."
     }
-
-def get_product(item_name):
-
-    session = Session()
-
-    item = (
-        session.query(MenuItem, Inventory)
-        .join(Inventory, MenuItem.id == Inventory.item_id)
-        .filter(Inventory.branch_id == BRANCH_ID)
-        .filter(MenuItem.name.ilike(item_name))
-        .filter(MenuItem.is_available == True)
-        .first()
-    )
-
-    if not item:
-        session.close()
-        return None
-
-    menu_item, inventory = item
-
-    product = {
-        "id": menu_item.id,
-        "name": menu_item.name,
-        "shortDescription": menu_item.short_description,
-        "longDescription": menu_item.long_description,
-        "price": float(menu_item.price),
-        "image": menu_item.image,
-        "type": (
-            menu_item.serving_type
-            if menu_item.category == "drink"
-            else menu_item.food_type
-        ),
-        "foodType": menu_item.food_type,
-        "category": menu_item.category,
-        "is_meal_available": menu_item.is_meal_available,
-        "stock": inventory.stock,
-        "expiry": inventory.expiry_date
-    }
-
-    session.close()
-
-    return product

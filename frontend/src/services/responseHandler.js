@@ -35,7 +35,7 @@ export function handleKioskResponse(
     data.data &&
     Object.keys(data.data).length > 0
   ) {
-    if (data.screen === "product_details") {
+    if (data.screen === "product") {
       setProductData(data);
     } else {
       setRecommendationData(data);
