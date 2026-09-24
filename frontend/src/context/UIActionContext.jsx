@@ -8,7 +8,7 @@ const UIActionContext = createContext(null);
 
 export function UIActionProvider({ children }) {
 
-  const executeUIAction = useCallback((action) => {
+  const executeUIAction = useCallback((action, value) => {
 
     console.log(
       "EXECUTING UI ACTION:",
