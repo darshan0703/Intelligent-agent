@@ -1,40 +1,54 @@
-from httpx import options
-from sqlalchemy.orm import Session
-
-from database import SessionLocal
-from models import MenuItem, MealDefault, MealUpgradeRule
+from database import supabase
 
 MEAL_UPGRADE_PRICES = {
     "medium": 140,
     "large": 145
 }
 
-def get_default_meal(db: Session, meal_size: str):
 
+def serialize_meal_option(item, extra_price, is_default=False):
+    return {
+        "id": item["id"],
+        "name": item["name"],
+        "image": item["image"],
+        "price": float(item["price"]),
+        "extra_price": float(extra_price),
+        "is_default": is_default,
+        "section": item["section"]
+    }
+
+
+def get_default_meal(meal_size):
     default = (
-        db.query(MealDefault)
-        .filter(MealDefault.meal_size == meal_size)
-        .first()
+        supabase.table("meal_defaults")
+        .select("default_side_id, default_drink_id")
+        .eq("meal_size", meal_size)
+        .single()
+        .execute()
     )
 
-    if not default:
+    if not default.data:
         return None
 
     side = (
-        db.query(MenuItem)
-        .filter(MenuItem.id == default.default_side_id)
-        .first()
+        supabase.table("menu_items")
+        .select("*")
+        .eq("id", default.data["default_side_id"])
+        .single()
+        .execute()
     )
 
     drink = (
-        db.query(MenuItem)
-        .filter(MenuItem.id == default.default_drink_id)
-        .first()
+        supabase.table("menu_items")
+        .select("*")
+        .eq("id", default.data["default_drink_id"])
+        .single()
+        .execute()
     )
 
     return {
-        "side": side,
-        "drink": drink
+        "side": side.data,
+        "drink": drink.data
     }
 
 def serialize_meal_option(menu_item, extra_price, is_default=False):
@@ -144,18 +158,13 @@ def build_meal(
     if not burger or burger.meal_role != "main":
         return None
 
-    defaults = get_default_meal(
-        db,
-        meal_size
-    )
+    defaults = get_default_meal(meal_size)
 
     if not defaults or not defaults.get("side") or not defaults.get("drink"):
         return None
 
-    upgrade_price = MEAL_UPGRADE_PRICES.get(meal_size)
-
-    if upgrade_price is None:
-        return None
+    side_default = defaults["side"]
+    drink_default = defaults["drink"]
 
     side_options = get_side_options(
         db,
@@ -179,16 +188,16 @@ def build_meal(
             "foodType": burger.food_type
         },
         "side": {
-            "id": defaults["side"].id,
-            "name": defaults["side"].name,
-            "price": float(defaults["side"].price),
-            "image": defaults["side"].image
+            "id": side_default["id"],
+            "name": side_default["name"],
+            "price": float(side_default["price"]),
+            "image": side_default["image"]
         },
         "drink": {
-            "id": defaults["drink"].id,
-            "name": defaults["drink"].name,
-            "price": float(defaults["drink"].price),
-            "image": defaults["drink"].image
+            "id": drink_default["id"],
+            "name": drink_default["name"],
+            "price": float(drink_default["price"]),
+            "image": drink_default["image"]
         },
         "burger_price": float(burger.price),
         "upgrade_price": float(upgrade_price),
@@ -233,16 +242,21 @@ def get_meal_options(item_id: int):
             burger=product
         )
 
+    if not product.data["is_meal_available"]:
         return {
             "success": True,
-            "product_id": product.id,
-            "product_name": product.name,
-            "is_meal_available": True,
-            "meals": {
-                "medium": medium,
-                "large": large
-            }
+            "product_id": product.data["id"],
+            "product_name": product.data["name"],
+            "is_meal_available": False
         }
 
-    finally:
-        db.close()
+    return {
+        "success": True,
+        "product_id": product.data["id"],
+        "product_name": product.data["name"],
+        "is_meal_available": True,
+        "meals": {
+            "medium": build_meal(item_id, "medium"),
+            "large": build_meal(item_id, "large")
+        }
+    }

@@ -46,7 +46,7 @@ print("INITIALIZING KOKORO TTS...")
 tts_pipeline = KPipeline(
     lang_code="a"
 )
-
+ 
 print("KOKORO TTS READY")
 
 

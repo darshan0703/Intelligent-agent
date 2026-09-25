@@ -98,10 +98,10 @@ SCREEN_CONTROLS = {
 
 
     # ==========================================
-    # PRODUCT DETAILS
+    # PRODUCT PAGE
     # ==========================================
 
-    ScreenTypes.PRODUCT_DETAILS: [
+    ScreenTypes.PRODUCT: [
         "add_to_cart",
         "open_cart",
         "go_back",
@@ -131,9 +131,14 @@ SCREEN_CONTROLS = {
         "go_back",
     ],
 
+
+    # ==========================================
+    # CATEGORY SELECTION
+    # ==========================================
+
     ScreenTypes.CATEGORY_SELECTION: [
-    "open_cart",
-    ]
+        "open_cart",
+    ],
 }
 
 

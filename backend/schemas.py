@@ -1,5 +1,6 @@
 from pydantic import BaseModel
-from typing import Optional, Literal,Dict, Any
+from typing import Optional, Literal, Dict, Any
+
 
 class OrderIntent(BaseModel):
     action: Literal[
@@ -22,10 +23,12 @@ class OrderIntent(BaseModel):
     preference: Optional[str] = None
     quantity: Optional[int] = 1
 
+
 class KioskResponse(BaseModel):
     screen: str
     message: Optional[str] = None
     data: Dict[str, Any] = {}
+
 
 class ClarificationDecision(BaseModel):
     action: str
@@ -40,7 +43,7 @@ class ScreenTypes:
 
     # Startup
     HOME = "home"
- 
+
     # Clarification
     BURGER_TYPE_SELECTION = "burger_type_selection"
     CATEGORY_SELECTION = "category_selection"
@@ -57,9 +60,10 @@ class ScreenTypes:
     FULL_SIDE_MENU = "full_side_menu"
     FULL_DESSERT_MENU = "full_dessert_menu"
 
-    # Product screen
-    PRODUCT_DETAILS = "product_details"
+    # Product page
+    PRODUCT = "product"
 
+    # Meal flow
     MEAL_CONVERSION = "meal_conversion"
 
     # Order flow
@@ -71,24 +75,8 @@ class ScreenTypes:
     # Completion
     ORDER_COMPLETE = "order_complete"
 
-    BURGER_TYPE_SELECTION = "burger_type_selection"
-
+    # Existing menu screen identifiers
     BURGER_MENU = "burger_menu"
-
     DRINK_MENU = "drink_menu"
-
     SIDE_MENU = "side_menu"
-
     DESSERT_MENU = "dessert_menu"
-
-    PRODUCT_DETAILS = "product_details"
-
-    CART = "cart"
-
-    UPSELL = "upsell"
-
-    CHECKOUT = "checkout"
-
-    PAYMENT = "payment"
-
-    ORDER_COMPLETE = "order_complete"
