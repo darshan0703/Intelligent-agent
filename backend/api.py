@@ -260,7 +260,6 @@ def cart_clear():
 @app.post("/meal/options")
 def meal_options(request: dict):
     item_id = request.get("item_id")
-    is_manual = bool(request.get("manual") or request.get("is_manual"))
 
     if item_id is None:
         return {
@@ -268,31 +267,22 @@ def meal_options(request: dict):
             "message": "item_id is required",
         }
 
-    try:
-        norm_item_id = int(item_id)
-    except (TypeError, ValueError):
-        norm_item_id = item_id
-
-    declined_products = conversation_context.setdefault(
-        "declined_meal_products", []
+    meal_flow = conversation_context.get(
+        "meal_flow"
     )
 
-    is_declined = (
-        norm_item_id in declined_products
-        or item_id in declined_products
-        or str(item_id) in [str(x) for x in declined_products]
-    )
-
-    if not is_manual and is_declined:
+    if (
+        meal_flow
+        and meal_flow.get("item_id") == item_id
+        and meal_flow.get("status") == "declined"
+    ):
         return {
             "success": True,
             "is_meal_available": False,
             "message": "Meal offer was declined.",
         }
 
-    offer = get_meal_options(
-        norm_item_id if isinstance(norm_item_id, int) else item_id
-    )
+    offer = get_meal_options(item_id)
 
     if not offer:
         return {
@@ -301,7 +291,7 @@ def meal_options(request: dict):
         }
 
     conversation_context["meal_flow"] = {
-        "item_id": norm_item_id,
+        "item_id": item_id,
         "status": "pending",
     }
 
@@ -309,34 +299,22 @@ def meal_options(request: dict):
 
 
 @app.post("/meal/decline")
-def decline_meal(request: dict = None):
-    declined_products = conversation_context.setdefault(
-        "declined_meal_products", []
-    )
-
-    item_id = request.get("item_id") if isinstance(request, dict) else None
-    if item_id is not None:
-        try:
-            item_id = int(item_id)
-        except (TypeError, ValueError):
-            pass
-
+def decline_meal():
     meal_flow = conversation_context.get(
         "meal_flow"
     )
 
-    if meal_flow:
-        meal_flow["status"] = "declined"
-        if item_id is None:
-            item_id = meal_flow.get("item_id")
+    if not meal_flow:
+        return {
+            "success": False,
+            "message": "No active meal flow.",
+        }
 
-    if item_id is not None and item_id not in declined_products:
-        declined_products.append(item_id)
+    meal_flow["status"] = "declined"
 
     return {
         "success": True,
         "meal_flow": meal_flow,
-        "declined_meal_products": declined_products,
     }
 
 
