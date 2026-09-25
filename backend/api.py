@@ -4,6 +4,7 @@ import os
 import subprocess
 import tempfile
 import uuid
+import time 
 from pathlib import Path
 from services.cashier_agent import run_cashier_agent
 
@@ -349,9 +350,9 @@ def complete_order_endpoint():
 
 @app.post("/tts")
 def text_to_speech(request: dict):
-    text = request.get("text")
+    start_time = time.perf_counter()
 
-    print("TTS REQUEST:", text)
+    text = request.get("text", "").strip()
 
     if not text:
         return Response(
@@ -430,14 +431,14 @@ async def speech_to_text(
     file: UploadFile = File(...)
 ):
     whisper_cli = os.path.expanduser(
-        "~/whisper.cpp/build/bin/whisper-cli"
+        "~/whisper.cpp/build/bin/Release/whisper-cli.exe"
     )
 
     whisper_model = os.path.expanduser(
         "~/whisper.cpp/models/ggml-small.en.bin"
     )
 
-    ffmpeg = "/opt/homebrew/bin/ffmpeg"
+    ffmpeg  = r"C:\Users\DELL\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg.Shared_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-9.0.2-full_build-shared\bin\ffmpeg.exe""
 
     print("\n" + "=" * 80)
     print("STT REQUEST")
@@ -578,6 +579,8 @@ async def speech_to_text(
                     str(wav_file),
                     "-l",
                     "en",
+                    "-t",
+                    "8",
                     "-nt",
                     "-np",
                 ],
