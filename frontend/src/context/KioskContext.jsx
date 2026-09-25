@@ -14,6 +14,25 @@ export function KioskProvider({ children }) {
   const [mealData, setMealData] = useState(null);
   const [mealPopupOpen, setMealPopupOpen] = useState(false);
   const [selectedMeal, setSelectedMeal] = useState(null);
+  const [dismissedMealProducts, setDismissedMealProducts] = useState(new Set());
+
+  const dismissMealOffer = (productId) => {
+    if (productId != null) {
+      setDismissedMealProducts((prev) => {
+        const next = new Set(prev);
+        next.add(Number(productId) || productId);
+        next.add(String(productId));
+        return next;
+      });
+    }
+  };
+
+  const resetMealOfferState = () => {
+    setDismissedMealProducts(new Set());
+    setMealData(null);
+    setMealPopupOpen(false);
+    setSelectedMeal(null);
+  };
 
   return (
     <KioskContext.Provider
@@ -32,6 +51,11 @@ export function KioskProvider({ children }) {
 
         selectedMeal,
         setSelectedMeal,
+
+        dismissedMealProducts,
+        setDismissedMealProducts,
+        dismissMealOffer,
+        resetMealOfferState,
       }}
     >
       {children}

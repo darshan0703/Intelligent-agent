@@ -3,6 +3,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useVoiceConversation } from "../context/VoiceConversationProvider";
+import { useKiosk } from "../context/KioskContext";
+
 import { startSession } from "../services/api";
 
 import burger from "../assets/images/burgerking.png";
@@ -12,6 +14,7 @@ import oc from "../assets/images/orange curve.png";
 function Home() {
   const navigate = useNavigate();
   const { startVoiceConversation } = useVoiceConversation();
+  const { resetMealOfferState } = useKiosk();
 
   const [starting, setStarting] = useState(false);
 
@@ -24,6 +27,8 @@ function Home() {
       const session = await startSession();
 
       localStorage.setItem("session_id", session.session_id);
+
+      resetMealOfferState();
 
       startVoiceConversation();
 

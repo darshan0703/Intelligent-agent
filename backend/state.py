@@ -23,6 +23,7 @@ def create_conversation_state(session_id=None):
         # Checkout
         "checkout_pending": False,
         "meal_flow": None,
+        "declined_meal_products": [],
 
         # Agent conversation
         "conversation_history": [],

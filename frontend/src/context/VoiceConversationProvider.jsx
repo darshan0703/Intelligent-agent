@@ -30,6 +30,8 @@ export function VoiceConversationProvider({ children }) {
   const {
     setRecommendationData,
     setProductData,
+    setMealPopupOpen,
+    setMealData,
   } = useKiosk();
 
   const {
@@ -97,6 +99,8 @@ export function VoiceConversationProvider({ children }) {
             setRecommendationData,
             setProductData,
             executeUIAction,
+            setMealPopupOpen,
+            setMealData,
           }
         );
 
