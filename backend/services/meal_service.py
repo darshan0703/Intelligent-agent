@@ -138,8 +138,12 @@ def build_meal(item_id, meal_size):
             "id": burger.data["id"],
             "name": burger.data["name"],
             "price": float(burger.data["price"]),
-            "image": burger.data["meal_image"],
-            "foodType": burger.data["food_type"]
+            "image": burger.data["meal_image"] or burger.data.get("image"),
+            "foodType": burger.data["food_type"],
+            "shortDescription": burger.data.get("short_description") or burger.data.get("long_description") or "",
+            "short_description": burger.data.get("short_description") or burger.data.get("long_description") or "",
+            "longDescription": burger.data.get("long_description") or "",
+            "long_description": burger.data.get("long_description") or "",
         },
         "side": {
             "id": side_default["id"],

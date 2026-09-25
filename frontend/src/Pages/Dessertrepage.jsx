@@ -10,22 +10,67 @@ import fire from "../assets/images/fire.png";
 import crown from "../assets/images/crown.png";
 
 import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { useKiosk } from "../context/KioskContext";
+import { getSessionId } from "../utils/session";
+
+const API_BASE_URL =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) ||
+  (typeof process !== "undefined" && process.env?.REACT_APP_API_BASE_URL) ||
+  "http://127.0.0.1:8000";
 
 function Dessert() {
   const navigate = useNavigate();
 
-  const { recommendationData } =
-    useKiosk();
+  const { recommendationData } = useKiosk();
+  const [fallbackData, setFallbackData] = useState(null);
 
-  const freshDesserts =
-    recommendationData?.data?.priority || [];
+  useEffect(() => {
+    const sid = getSessionId();
+    fetch(`${API_BASE_URL}/recommendations/category/dessert?session_id=${sid}`)
+      .then((res) => res.json())
+      .then((resData) => {
+        if (resData && resData.success) {
+          setFallbackData({
+            priority: resData.priority,
+            premium: resData.premium,
+            additional: resData.additional,
+          });
+        }
+      })
+      .catch((err) => console.error("Dessert fetch error:", err));
+  }, []);
 
-  const premiumDesserts =
-    recommendationData?.data?.premium || [];
+  const isDessertRec =
+    recommendationData?.category === "dessert" ||
+    recommendationData?.screen === "recommended_desserts" ||
+    Boolean(recommendationData?.data?.priority);
 
-  const moreDesserts =
-    recommendationData?.data?.additional || [];
+  const validRecData = isDessertRec ? recommendationData?.data : null;
+  const data = validRecData || fallbackData || {};
+
+  let freshDesserts = data.priority || [];
+  let premiumDesserts = data.premium || [];
+  let moreDesserts = data.additional || [];
+
+  const allPool = [
+    ...(data.priority || []),
+    ...(data.premium || []),
+    ...(data.additional || []),
+  ];
+  const dedupedPool = Array.from(new Map(allPool.map(i => [i.id || i.name, i])).values());
+
+  const usedIds = new Set(freshDesserts.map(i => i.id || i.name));
+  if (premiumDesserts.length < 2) {
+    const cands = dedupedPool.filter(i => !usedIds.has(i.id || i.name));
+    premiumDesserts = [...premiumDesserts, ...cands].slice(0, 2);
+  }
+  premiumDesserts.forEach(i => usedIds.add(i.id || i.name));
+
+  if (moreDesserts.length < 4) {
+    const cands = dedupedPool.filter(i => !usedIds.has(i.id || i.name));
+    moreDesserts = [...moreDesserts, ...cands].slice(0, 4);
+  }
 
   return (
     <div className="dessert-page">

@@ -1,359 +1,250 @@
 .categories-page {
-
   position: relative;
 
   width: 1080px;
-
   height: 1920px;
 
   overflow: hidden;
 
   background: var(--bg);
-
 }
 
-
-/* ==========================================
-   HEADER GLOW
-========================================== */
-
 .header-glow {
-
   position: absolute;
 
   top: -250px;
-
   left: -150px;
 
   width: 1400px;
-
   height: 500px;
 
   background: radial-gradient(
-
     circle,
-
     rgba(255,122,0,0.12) 0%,
-
     rgba(255,122,0,0) 70%
-
   );
 
   pointer-events: none;
-
 }
 
-
-/* ==========================================
-   SECOND LINE
-========================================== */
-
+/* SECOND LINE */
 .thin-line-two {
-
   position: absolute;
-
   left: 0px;
-
-  top: 1250px;
-
+  top: 1080px;
   width: 1080px;
-
   height: 3px;
-
   background: linear-gradient(
-
     to right,
-
     transparent,
-
-    rgba(91,43,17,0.4),
-
+    rgba(91,43,17,0.35),
     transparent
-
   );
-
 }
 
-
-/* ==========================================
-   CATEGORY CONTAINER IMAGES
-========================================== */
-
-/*
-   All category cards share the same
-   touch/button behaviour.
-*/
-
-.cb-image,
-.cd-image,
-.cr-image,
-.cf-image,
-.cl-image,
-.co-image {
-
-  position: absolute;
-
-  width: 497px;
-
-  height: auto;
-
-  transition: transform 0.15s ease;
-
-  cursor: pointer;
-
-  user-select: none;
-
-  -webkit-user-drag: none;
-
-  touch-action: manipulation;
-
-}
-
-
-/* ==========================================
-   CATEGORY POSITIONS
-========================================== */
-
-
-/* BURGERS */
-
+/* CONTAINER IMAGES */
 .cb-image {
-
+  position: absolute;
   left: 36px;
-
-  top: 390px;
-
+  top: 324px;
+  width: 497px;
+  height: auto;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-
-/* DRINKS */
+.cb-image:active {
+  transform: scale(0.97);
+}
 
 .cd-image {
-
-  left: 557px;
-
-  top: 390px;
-
+  position: absolute;
+  left: 547px;
+  top: 324px;
+  width: 497px;
+  height: auto;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-
-/* RECOMMEND / DESSERT */
+.cd-image:active {
+  transform: scale(0.97);
+}
 
 .cr-image {
-
+  position: absolute;
   left: 36px;
-
-  top: 671px;
-
+  top: 574px;
+  width: 497px;
+  height: auto;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-
-/* FRESH / SIDES */
+.cr-image:active {
+  transform: scale(0.97);
+}
 
 .cf-image {
-
-  left: 557px;
-
-  top: 671px;
-
+  position: absolute;
+  left: 547px;
+  top: 574px;
+  width: 497px;
+  height: auto;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-
-/* LIGHT */
+.cf-image:active {
+  transform: scale(0.97);
+}
 
 .cl-image {
-
+  position: absolute;
   left: 36px;
-
-  top: 952px;
-
+  top: 824px;
+  width: 497px;
+  height: auto;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-
-/* OFFERS */
+.cl-image:active {
+  transform: scale(0.97);
+}
 
 .co-image {
-
-  left: 557px;
-
-  top: 952px;
-
-}
-
-
-/* ==========================================
-   TOUCH / PRESS EFFECT
-========================================== */
-
-/*
-   When the customer touches any card,
-   it slightly shrinks just like a
-   physical button being pressed.
-*/
-
-.cb-image:active,
-.cd-image:active,
-.cr-image:active,
-.cf-image:active,
-.cl-image:active,
-.co-image:active {
-
-  transform: scale(0.97);
-
-}
-
-
-/* ==========================================
-   TRY TEXT
-========================================== */
-
-.try-text {
-
   position: absolute;
-
-  left: 21px;
-
-  top: 1280px;
-
-  color: var(--bk-brown);
-
-  font-family: 'Flame';
-
-  font-size: 40px;
-
-  font-weight: 700;
-
-  line-height: 100%;
-
+  left: 547px;
+  top: 824px;
+  width: 497px;
+  height: auto;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
+.co-image:active {
+  transform: scale(0.97);
+}
 
-/* ==========================================
-   ROTATING PHRASE
-========================================== */
+/* TRY PHRASE BOX */
+.try-phrase-box {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 1104px;
+  width: 980px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  background: #ffffff;
+  border: 2px solid rgba(214, 35, 0, 0.16);
+  border-radius: 26px;
+  padding: 16px 28px;
+  box-shadow: 0 6px 24px rgba(91, 43, 17, 0.07);
+}
+
+.try-phrase-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.try-phrase-icon {
+  font-size: 32px;
+}
+
+.try-phrase-label {
+  font-family: 'Flame', sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: #5B2B11;
+  letter-spacing: -0.3px;
+}
+
+.try-phrase-badge {
+  background: rgba(214, 35, 0, 0.06);
+  border: 1.5px dashed rgba(214, 35, 0, 0.35);
+  border-radius: 999px;
+  padding: 12px 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 64px;
+  min-width: 520px;
+}
 
 .rotating-phrase {
-
-  position: absolute;
-
-  left: 260px;
-
-  top: 1360px;
-
-  color: var(--bk-orange);
-
-  font-family: 'Flame';
-
-  font-size: 50px;
-
-  font-weight: 700;
-
+  position: static;
+  color: #D62300;
+  font-family: 'Flame', sans-serif;
+  font-size: 38px;
+  font-weight: 800;
+  margin: 0;
+  letter-spacing: -0.5px;
   animation: smoothFloat 2s ease-in-out infinite;
-
 }
-
 
 @keyframes smoothFloat {
-
   0% {
-
     opacity: 0;
-
-    transform: translateY(20px);
-
-    filter: blur(3px);
-
+    transform: translateY(12px);
+    filter: blur(2px);
   }
-
   15% {
-
     opacity: 1;
-
     transform: translateY(0px);
-
     filter: blur(0px);
-
   }
-
   85% {
-
     opacity: 1;
-
     transform: translateY(0px);
-
     filter: blur(0px);
-
   }
-
   100% {
-
     opacity: 0;
-
-    transform: translateY(-20px);
-
-    filter: blur(3px);
-
+    transform: translateY(-12px);
+    filter: blur(2px);
   }
-
 }
 
-
-/* ==========================================
-   CART IMAGE
-========================================== */
-
-.cc-image {
-
+/* EXIT KIOSK BUTTON */
+.exit-kiosk-btn {
   position: absolute;
-
-  left: 43px;
-
-  top: 1494px;
-
-  width: 1003px;
-
-  height: auto;
-
-}
-
-
-/* ==========================================
-   ITEMS COUNT
-========================================== */
-
-.cart-items {
-
-  position: absolute;
-
-  top: 1528px;
-
-  left: 329px;
-
-  color: var(--bk-orange);
-
-  font-size: 36px;
-
+  top: 242px;
+  left: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 26px;
+  height: 60px;
+  border-radius: 30px;
+  border: 2px solid rgba(214, 35, 0, 0.22);
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  color: var(--bk-red, #d62300);
+  font-family: "Flame", sans-serif;
+  font-size: 22px;
   font-weight: 700;
-
+  cursor: pointer;
+  z-index: 100;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(214, 35, 0, 0.08);
 }
 
+.exit-kiosk-btn:hover {
+  background: #fff0ed;
+  border-color: rgba(214, 35, 0, 0.45);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(214, 35, 0, 0.16);
+}
 
-/* ==========================================
-   TOTAL
-========================================== */
+.exit-kiosk-btn:active {
+  transform: scale(0.96);
+}
 
-.cart-total {
-
-  position: absolute;
-
-  bottom: 36px;
-
-  right: 60px;
-
-  color: #FFFFFF;
-
-  font-size: 40px;
-
-  font-weight: 700;
-
+.exit-kiosk-btn .exit-icon {
+  font-size: 26px;
 }

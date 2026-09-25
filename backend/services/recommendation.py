@@ -19,25 +19,28 @@ def get_priority_items(menu):
     return sorted(menu, key=lambda x: x["priority"], reverse=True)
 
 def build_recommendations(items):
-    priority = get_priority_items(items)
+    sorted_prio = get_priority_items(items)
+    priority = sorted_prio[:2]
 
-    premium = []
+    used_names = {i["name"] for i in priority}
 
-    for item in sorted(items, key=lambda x: x["price"], reverse=True):
-        if item not in priority:
-            premium.append(item)
+    premium_cands = sorted(
+        [i for i in items if i["name"] not in used_names],
+        key=lambda x: x.get("price", 0),
+        reverse=True
+    )
+    premium = premium_cands[:2]
+    used_names.update({i["name"] for i in premium})
 
-        if len(premium) == 2:
-            break
+    additional = [i for i in items if i["name"] not in used_names][:4]
 
-    additional = []
+    if len(premium) < 2 and items:
+        extra_p = [i for i in items if i["name"] not in {p["name"] for p in premium}]
+        premium = (premium + extra_p)[:2]
 
-    for item in items:
-        if item not in priority and item not in premium:
-            additional.append(item)
-
-        if len(additional) == 4:
-            break
+    if len(additional) < 4 and items:
+        extra_a = [i for i in items if i["name"] not in {a["name"] for a in additional}]
+        additional = (additional + extra_a + items)[:4]
 
     return priority, premium, additional
 

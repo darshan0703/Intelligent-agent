@@ -1,6 +1,16 @@
 from database import supabase
+import time
 
 BRANCH_ID = 1
+
+_MENU_ROWS_CACHE = None
+_MENU_ROWS_CACHE_TIME = 0.0
+_MENU_ROWS_CACHE_TTL = 45.0  # 45 seconds low-latency TTL cache
+
+def invalidate_menu_cache():
+    global _MENU_ROWS_CACHE, _MENU_ROWS_CACHE_TIME
+    _MENU_ROWS_CACHE = None
+    _MENU_ROWS_CACHE_TIME = 0.0
 
 # ==========================================================
 # COMMON SERIALIZER
@@ -31,52 +41,64 @@ def serialize_menu_item(row):
 # BASE QUERY
 # ==========================================================
 
-def fetch_menu_rows():
-    response = (
-        supabase.table("inventory")
-        .select(
-            """
-            stock,
-            expiry_date,
-            menu_items!inner(
-                id,
-                name,
-                short_description,
-                long_description,
-                price,
-                image,
-                meal_image,
-                category,
-                food_type,
-                serving_type,
-                section,
-                section_order,
-                display_order,
-                is_meal_available,
-                is_available
+def fetch_menu_rows(bypass_cache: bool = False):
+    global _MENU_ROWS_CACHE, _MENU_ROWS_CACHE_TIME
+    now = time.time()
+    if not bypass_cache and _MENU_ROWS_CACHE is not None and (now - _MENU_ROWS_CACHE_TIME) < _MENU_ROWS_CACHE_TTL:
+        return _MENU_ROWS_CACHE
+
+    try:
+        response = (
+            supabase.table("inventory")
+            .select(
+                """
+                stock,
+                expiry_date,
+                menu_items!inner(
+                    id,
+                    name,
+                    short_description,
+                    long_description,
+                    price,
+                    image,
+                    meal_image,
+                    category,
+                    food_type,
+                    serving_type,
+                    section,
+                    section_order,
+                    display_order,
+                    is_meal_available,
+                    is_available
+                )
+                """
             )
-            """
+            .eq("branch_id", BRANCH_ID)
+            .gt("stock", 0)
+            .execute()
         )
-        .eq("branch_id", BRANCH_ID)
-        .gt("stock", 0)
-        .execute()
-    )
 
-    rows = []
+        rows = []
 
-    for item in response.data:
-        menu = item["menu_items"]
+        for item in response.data:
+            menu = item["menu_items"]
 
-        if not menu["is_available"]:
-            continue
+            if not menu["is_available"]:
+                continue
 
-        merged = {**menu}
-        merged["stock"] = item["stock"]
-        merged["expiry_date"] = item["expiry_date"]
+            merged = {**menu}
+            merged["stock"] = item["stock"]
+            merged["expiry_date"] = item["expiry_date"]
 
-        rows.append(merged)
+            rows.append(merged)
 
-    return rows
+        _MENU_ROWS_CACHE = rows
+        _MENU_ROWS_CACHE_TIME = now
+        return rows
+    except Exception as e:
+        if _MENU_ROWS_CACHE is not None:
+            return _MENU_ROWS_CACHE
+        raise e
 
 
 # ==========================================================

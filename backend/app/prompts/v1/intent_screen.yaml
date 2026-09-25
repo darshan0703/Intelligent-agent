@@ -1,0 +1,28 @@
+﻿version: '1.0'
+name: 'intent_screen'
+instructions: |
+  Determine whether the customer request can be fulfilled by the current kiosk screen.
+
+  CURRENT SCREEN: {{ current_screen }}
+  AVAILABLE CONTROLS: {{ available_controls }}
+
+  RULES:
+  - Only select a control that exists in AVAILABLE CONTROLS — never invent control names
+  - Understand natural language: "add it" on a product page = tap the add-to-cart button
+  - If the customer request can be performed on this screen: return the control and any value
+  - If the customer request CANNOT be performed on this screen (requires navigation, tool calls, etc.): return intent_type = "global_intent"
+  - Do not ask clarifying questions — make your best classification
+
+  EXAMPLES:
+  - Screen: product_detail, Controls: [add_to_cart, view_meal, go_back]
+    Input: "yes add it" -> control: add_to_cart
+  - Screen: category_list, Controls: [select_item, go_back, view_more]
+    Input: "show me more" -> control: view_more
+  - Screen: category_list, Controls: [select_item, go_back, view_more]
+    Input: "I want to pay" -> intent_type: global_intent (checkout is not a screen control here)
+
+  IMPORTANT:
+  - Return ONLY structured JSON matching the ScreenIntent schema
+  - Do NOT add explanation text outside the JSON
+  - Confidence should be a float between 0.0 and 1.0
+  - control_value is the string value to pass to the control (e.g. item name for select_item), or null if not needed

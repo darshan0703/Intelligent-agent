@@ -6,7 +6,7 @@ import Menusidebar from "../components/Menusidebar";
 import Menufilters from "../components/Menufilters";
 import CartContainer from "../components/CartContainer";
 import MenuSection from "../components/MenuSection";
-import FooterDecoration from "../components/FooterDecoration";
+import SpotlightShelf from "../components/SpotlightShelf";
 
 import {
   useRef,
@@ -14,15 +14,20 @@ import {
   useEffect
 } from "react";
 
+const API_BASE_URL =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) ||
+  (typeof process !== "undefined" && process.env?.REACT_APP_API_BASE_URL) ||
+  "http://127.0.0.1:8000";
+
 function Drinkmenu() {
 
   const [drinkSections, setDrinkSections] = useState([]);
 
- useEffect(() => {
-    fetch("http://127.0.0.1:8000/menu/drinks")
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/menu/drinks`)
         .then((res) => res.json())
         .then(setDrinkSections);
-}, []);
+  }, []);
 
   const menuContentRef = useRef(null);
 
@@ -34,19 +39,43 @@ function Drinkmenu() {
   const [activeFilter, setActiveFilter] =
     useState("both");
 
-  const filterProducts = (products) => {
+  const [quickFilter, setQuickFilter] =
+    useState("all");
 
-    if (activeFilter === "both") {
-      return products;
+  const filterProducts = (products) => {
+    if (!products || !Array.isArray(products)) {
+      return [];
     }
 
-    return products.filter(
-      product => product.type === activeFilter
-    );
+    let list = products;
+    if (activeFilter !== "both") {
+      list = list.filter(
+        product => product.type === activeFilter || product.serving_type === activeFilter || product.servingType === activeFilter
+      );
+    }
 
+    if (quickFilter === "bestseller") {
+      list = list.filter(
+        p => (p.badge && p.badge.toLowerCase().includes("bestseller")) || /coffee|coke|shake|frost/i.test(p.name)
+      );
+    } else if (quickFilter === "value") {
+      list = list.filter(
+        p => Number(p.price) <= 99 || (p.badge && p.badge.toLowerCase().includes("value"))
+      );
+    } else if (quickFilter === "spicy") {
+      const spicyList = list.filter(p => /ginger|masala|lemon/i.test(p.name));
+      if (spicyList.length > 0) list = spicyList;
+    } else if (quickFilter === "veg") {
+      list = list.filter(
+        p => p.type !== "non veg" && p.foodType !== "non veg"
+      );
+    }
+
+    return list;
   };
 
-  const visibleSections = drinkSections
+  const safeSections = Array.isArray(drinkSections) ? drinkSections : [];
+  const visibleSections = safeSections
     .map(section => ({
       ...section,
       products: filterProducts(
@@ -78,7 +107,7 @@ function Drinkmenu() {
 
     }
 
-  }, [activeFilter, visibleSections.length]);
+  }, [activeFilter, visibleSections]);
 
   const scrollToCategory = (categoryTitle) => {
 
@@ -115,23 +144,17 @@ function Drinkmenu() {
       let currentCategory =
         visibleSections[0]?.title;
 
-       console.log({
-    scrollTop: menu.scrollTop,
-    currentCategory,});
-
       visibleSections.forEach(section => {
 
         const element =
-          sectionRefs.current[section.id];
-
-           console.log(
-    section.title,
-    element?.offsetTop
-     );
+          sectionRefs.current[
+            section.id
+          ];
 
         if (
           element &&
-          scrollPosition >= element.offsetTop
+          scrollPosition >=
+            element.offsetTop
         ) {
 
           currentCategory =
@@ -210,6 +233,12 @@ function Drinkmenu() {
         ref={menuContentRef}
       >
 
+        <SpotlightShelf
+          category="drink"
+          activeQuickFilter={quickFilter}
+          onQuickFilterSelect={(f) => setQuickFilter(prev => prev === f ? "all" : f)}
+        />
+
         {visibleSections.map(section => (
 
           <div
@@ -233,8 +262,6 @@ function Drinkmenu() {
       </div>
 
       <CartContainer />
-
-      <FooterDecoration />
 
     </div>
 

@@ -1,7 +1,9 @@
 import "./Mealpage.css";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
+import { useKiosk } from "../context/KioskContext";
+import { syncScreen } from "../services/screenService";
 import Header from "../components/Header";
 import PreviousButton from "../components/PreviousButton";
 import CartContainer from "../components/CartContainer";
@@ -10,11 +12,18 @@ import FooterDecoration from "../components/FooterDecoration";
 import vegIcon from "../assets/images/veg.png";
 import nonVegIcon from "../assets/images/nonveg.png";
 
+const API_BASE_URL =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) ||
+  (typeof process !== "undefined" && process.env?.REACT_APP_API_BASE_URL) ||
+  "http://127.0.0.1:8000";
+
 function MealPage() {
     const { state } = useLocation();
     const navigate = useNavigate();
     const origin = state?.origin || "/";
     const meal = state?.meal;
+
+    const { foodPreference } = useKiosk();
 
     const burger = meal?.burger;
     const side = meal?.side;
@@ -24,20 +33,51 @@ function MealPage() {
     const { syncCart } = useCart();
     const [quantity, setQuantity] = useState(1);
 
-    const [selectedSide, setSelectedSide] = useState(side);
+    const isVegIntent = foodPreference === "veg" || burger?.foodType === "veg";
+
+    const filteredSideOptions = (meal?.side_options ?? []).filter((item) => {
+        if (isVegIntent) {
+            const ft = (item.foodType || item.type || item.food_type || "").toLowerCase();
+            return ft === "veg" || (!ft.includes("non") && !/chicken|wings|nugget|bone/i.test(item.name || ""));
+        }
+        if (foodPreference === "non veg" || foodPreference === "non_veg") {
+            const ft = (item.foodType || item.type || item.food_type || "").toLowerCase();
+            return ft.includes("non") || /chicken|wings|nugget|bone/i.test(item.name || "");
+        }
+        return true;
+    });
+
+    const [selectedSide, setSelectedSide] = useState(() => {
+        if (isVegIntent && side) {
+            const ft = (side.foodType || side.type || side.food_type || "").toLowerCase();
+            const isNonVeg = ft.includes("non") || /chicken|wings|nugget|bone/i.test(side.name || "");
+            if (isNonVeg && filteredSideOptions.length > 0) {
+                return filteredSideOptions[0];
+            }
+        }
+        return side;
+    });
+
+    useEffect(() => {
+        syncScreen("meal_builder");
+    }, []);
+
+    useEffect(() => {
+        if (isVegIntent && selectedSide) {
+            const ft = (selectedSide.foodType || selectedSide.type || selectedSide.food_type || "").toLowerCase();
+            const isNonVeg = ft.includes("non") || /chicken|wings|nugget|bone/i.test(selectedSide.name || "");
+            if (isNonVeg && filteredSideOptions.length > 0) {
+                setSelectedSide(filteredSideOptions[0]);
+            }
+        }
+    }, [foodPreference, isVegIntent, filteredSideOptions, selectedSide]);
 
     const drinkSections = [
-
         ...new Set(
-
             (meal?.drink_options ?? []).map(
-
                 item => item.section
-
             )
-
         )
-
     ];
 
     const [selectedDrinkSection, setSelectedDrinkSection] =
@@ -48,11 +88,9 @@ function MealPage() {
 
     const visibleDrinks =
         (meal?.drink_options ?? []).filter(
-
             item =>
                 item.section ===
                 selectedDrinkSection
-
         );
 
     const mealPrice =
@@ -69,20 +107,15 @@ function MealPage() {
         sideExtra +
         drinkExtra;
 
-    console.log("Burger:", burger);
     const handleAddMeal = async () => {
-
         try {
-
             const response = await fetch(
-                "http://localhost:8000/cart/add-meal",
+                `${API_BASE_URL}/cart/add-meal`,
                 {
                     method: "POST",
-
                     headers: {
                         "Content-Type": "application/json",
                     },
-
                     body: JSON.stringify({
                         meal: {
                             ...meal,
@@ -91,39 +124,29 @@ function MealPage() {
                         },
                         quantity
                     })
-
                 }
             );
 
             const data = await response.json();
-
-            console.log("ADD MEAL:", data);
-
             if (data.success) {
                 syncCart(data);
                 navigate(origin);
             }
-
         } catch (error) {
-
-            console.error(error);
-
+            console.error("Add meal error:", error);
         }
-
     };
+
     const handleDeclineMeal = async () => {
         try {
             const response = await fetch(
-                "http://127.0.0.1:8000/meal/decline",
+                `${API_BASE_URL}/meal/decline`,
                 {
                     method: "POST",
                 }
             );
-
             const data = await response.json();
-
             console.log("MEAL DECLINED:", data);
-
         } catch (error) {
             console.error("Failed to decline meal:", error);
         } finally {
@@ -201,7 +224,7 @@ function MealPage() {
 
                                 <p className="meal-short">
 
-                                    {burger.shortDescription}
+                                    {burger.shortDescription || burger.short_description || burger.description || "Flame-grilled meal paired with your choice of sides and drink."}
 
                                 </p>
 
@@ -321,7 +344,7 @@ function MealPage() {
 
                         <div className="meal-grid">
 
-                            {meal.side_options?.map((item) => (
+                            {(filteredSideOptions.length > 0 ? filteredSideOptions : meal?.side_options ?? []).map((item) => (
 
                                 <div
 
@@ -360,11 +383,19 @@ function MealPage() {
 
                                     <div className="meal-card-price">
 
-                                        {item.extra_price > 0 && (
+                                        {item.extra_price > 0 ? (
 
                                             <span className="upgrade-price">
 
                                                 +₹{item.extra_price}
+
+                                            </span>
+
+                                        ) : (
+
+                                            <span className="upgrade-price" style={{ color: "#2e7d32" }}>
+
+                                                Included
 
                                             </span>
 
@@ -457,11 +488,19 @@ function MealPage() {
 
                                     <div className="drink-card-price">
 
-                                        {item.extra_price > 0 && (
+                                        {item.extra_price > 0 ? (
 
                                             <span className="upgrade-price">
 
                                                 +₹{item.extra_price}
+
+                                            </span>
+
+                                        ) : (
+
+                                            <span className="upgrade-price" style={{ color: "#2e7d32" }}>
+
+                                                Included
 
                                             </span>
 
@@ -514,6 +553,20 @@ function MealPage() {
 
                 </>
 
+            )}
+
+            {!burger && (
+              <div style={{ textAlign: "center", marginTop: "140px", color: "#666", padding: "20px" }}>
+                <h2 style={{ fontSize: "28px", color: "#d62300" }}>No Meal Selected</h2>
+                <p style={{ marginTop: "12px", fontSize: "18px" }}>Please select a burger from the menu to build your custom meal.</p>
+                <button
+                  className="meal-add-cart-btn"
+                  style={{ marginTop: "24px", maxWidth: "260px", margin: "24px auto" }}
+                  onClick={() => navigate("/burgermenu")}
+                >
+                  Browse Burgers →
+                </button>
+              </div>
             )}
 
             <CartContainer />

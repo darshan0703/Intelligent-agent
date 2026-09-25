@@ -15,6 +15,13 @@ import crown from "../assets/images/crown.png";
 
 import { useKiosk } from "../context/KioskContext";
 
+import { getSessionId } from "../utils/session";
+
+const API_BASE_URL =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) ||
+  (typeof process !== "undefined" && process.env?.REACT_APP_API_BASE_URL) ||
+  "http://127.0.0.1:8000";
+
 function Drink() {
   const navigate = useNavigate();
 
@@ -23,8 +30,31 @@ function Drink() {
   const [selectedType, setSelectedType] =
     useState("both");
 
-  const data =
-    recommendationData?.data || {};
+  const [fallbackData, setFallbackData] = useState(null);
+
+  useEffect(() => {
+    const sid = getSessionId();
+    fetch(`${API_BASE_URL}/recommendations/category/drink?session_id=${sid}`)
+      .then((res) => res.json())
+      .then((resData) => {
+        if (resData && resData.success) {
+          setFallbackData({
+            priority: resData.priority,
+            premium: resData.premium,
+            additional: resData.additional,
+          });
+        }
+      })
+      .catch((err) => console.error("Drink fetch error:", err));
+  }, []);
+
+  const isDrinkRec =
+    recommendationData?.category === "drink" ||
+    recommendationData?.screen === "recommended_drinks" ||
+    Boolean(recommendationData?.data?.priority);
+
+  const validRecData = isDrinkRec ? recommendationData?.data : null;
+  const data = validRecData || fallbackData || {};
 
   const allDrinks = {
     priority: data.priority || [],
@@ -40,21 +70,42 @@ function Drink() {
 
       return products.filter(
         (product) =>
-          product.type?.toLowerCase() ===
+          (product.type || product.serving_type || "").toLowerCase() ===
           selectedType
       );
     },
     [selectedType]
   );
 
-  const freshDrinks =
+  let freshDrinks =
     filterProducts(allDrinks.priority);
 
-  const premiumDrinks =
+  let premiumDrinks =
     filterProducts(allDrinks.premium);
 
-  const moreDrinks =
+  let moreDrinks =
     filterProducts(allDrinks.additional);
+
+  // Defensive backfill so cards never remain blank
+  const allPool = [
+    ...(allDrinks.priority || []),
+    ...(allDrinks.premium || []),
+    ...(allDrinks.additional || []),
+  ];
+  const filteredPool = filterProducts(allPool);
+  const dedupedPool = Array.from(new Map(filteredPool.map(i => [i.id || i.name, i])).values());
+
+  const usedIds = new Set(freshDrinks.map(i => i.id || i.name));
+  if (premiumDrinks.length < 2) {
+    const cands = dedupedPool.filter(i => !usedIds.has(i.id || i.name));
+    premiumDrinks = [...premiumDrinks, ...cands].slice(0, 2);
+  }
+  premiumDrinks.forEach(i => usedIds.add(i.id || i.name));
+
+  if (moreDrinks.length < 4) {
+    const cands = dedupedPool.filter(i => !usedIds.has(i.id || i.name));
+    moreDrinks = [...moreDrinks, ...cands].slice(0, 4);
+  }
 
   const handleFilterChange =
     useCallback((filter) => {

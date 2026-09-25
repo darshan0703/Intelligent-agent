@@ -35,6 +35,11 @@ function cleanupAudio() {
   speaking = false;
 }
 
+const API_BASE_URL =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) ||
+  (typeof process !== "undefined" && process.env?.REACT_APP_API_BASE_URL) ||
+  "http://127.0.0.1:8000";
+
 export async function speakText(
   text,
   {
@@ -42,7 +47,7 @@ export async function speakText(
     onStart,
   } = {}
 ) {
-  if (!text) {
+  if (!text || localStorage.getItem("kiosk_sound_muted") === "true") {
     onComplete?.();
     return;
   }
@@ -58,8 +63,11 @@ export async function speakText(
       text
     );
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
+
     const response = await fetch(
-      "http://127.0.0.1:8000/tts",
+      `${API_BASE_URL}/tts`,
       {
         method: "POST",
         headers: {
@@ -69,8 +77,11 @@ export async function speakText(
         body: JSON.stringify({
           text,
         }),
+        signal: controller.signal,
       }
     );
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       throw new Error(

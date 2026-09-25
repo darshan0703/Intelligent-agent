@@ -113,34 +113,32 @@ def build_recommendations(
 
     if normalized_type in ("veg", "non veg"):
 
-        priority = get_priority_items(items)
+        sorted_priority = get_priority_items(items)
+        priority = sorted_priority[:2]
 
-        premium = []
+        used_names = {item["name"] for item in priority}
 
-        for item in sorted(
-            items,
-            key=lambda x: x["price"],
+        premium_candidates = sorted(
+            [item for item in items if item["name"] not in used_names],
+            key=lambda x: x.get("price", 0),
             reverse=True
-        ):
+        )
+        premium = premium_candidates[:2]
+        used_names.update(item["name"] for item in premium)
 
-            if item not in priority:
-                premium.append(item)
+        additional = [
+            item for item in items
+            if item["name"] not in used_names
+        ][:4]
 
-            if len(premium) == 2:
-                break
+        # Defensive backfill so UI slots NEVER render blank white space
+        if len(premium) < 2 and items:
+            extra_premium = [i for i in items if i["name"] not in {p["name"] for p in premium}]
+            premium = (premium + extra_premium)[:2]
 
-        additional = []
-
-        for item in items:
-
-            if (
-                item not in priority
-                and item not in premium
-            ):
-                additional.append(item)
-
-            if len(additional) == 4:
-                break
+        if len(additional) < 4 and items:
+            extra_additional = [i for i in items if i["name"] not in {a["name"] for a in additional}]
+            additional = (additional + extra_additional + items)[:4]
 
         return (
             priority[:2],
@@ -200,6 +198,10 @@ def build_recommendations(
             non_veg_priority[0]
         )
 
+    if len(priority) < 2 and items:
+        p_extra = [i for i in items if i["name"] not in {p["name"] for p in priority}]
+        priority = (priority + p_extra)[:2]
+
     # -----------------------------------------------------
     # PREMIUM
     # -----------------------------------------------------
@@ -215,7 +217,7 @@ def build_recommendations(
             for item in veg_items
             if item["name"] not in used_names
         ],
-        key=lambda x: x["price"],
+        key=lambda x: x.get("price", 0),
         reverse=True
     )
 
@@ -225,7 +227,7 @@ def build_recommendations(
             for item in non_veg_items
             if item["name"] not in used_names
         ],
-        key=lambda x: x["price"],
+        key=lambda x: x.get("price", 0),
         reverse=True
     )
 
@@ -240,6 +242,10 @@ def build_recommendations(
         premium.append(
             non_veg_premium_candidates[0]
         )
+
+    if len(premium) < 2 and items:
+        extra_p = [i for i in items if i["name"] not in {p["name"] for p in premium}]
+        premium = (premium + extra_p)[:2]
 
     # -----------------------------------------------------
     # ADDITIONAL
@@ -257,6 +263,9 @@ def build_recommendations(
     ]
 
     additional = remaining[:4]
+    if len(additional) < 4 and items:
+        extra_add = [i for i in items if i["name"] not in {a["name"] for a in additional}]
+        additional = (additional + extra_add + items)[:4]
 
     return (
         priority[:2],
@@ -687,34 +696,46 @@ def build_category_response(
             data={}
         )
 
-    priority, premium, additional = (
-        build_recommendations(items)
-    )
+    both_priority, both_premium, both_additional = build_recommendations(items, "both")
+
+    veg_items = [
+        item for item in items
+        if (item.get("foodType") or item.get("type") or "").lower().strip() == "veg"
+        or (not any(w in (item.get("name") or "").lower() for w in ["chicken", "wings", "nugget", "boneless"]))
+    ]
+    veg_priority, veg_premium, veg_additional = build_recommendations(veg_items if veg_items else items, "veg")
+
+    non_veg_items = [
+        item for item in items
+        if "non" in (item.get("foodType") or item.get("type") or "").lower()
+        or any(w in (item.get("name") or "").lower() for w in ["chicken", "wings", "nugget", "boneless"])
+    ]
+    nv_priority, nv_premium, nv_additional = build_recommendations(non_veg_items if non_veg_items else items, "non veg")
 
     conversation_context["last_offer"] = [
         item["name"]
-        for item in priority
-        + premium
-        + additional
+        for item in both_priority
+        + both_premium
+        + both_additional
     ]
 
     message_parts = []
 
-    if priority:
+    if both_priority:
 
         message_parts.append(
             f"I'd recommend our "
-            f"{priority[0]['name']}."
+            f"{both_priority[0]['name']}."
         )
 
-    if premium:
+    if both_premium:
 
         message_parts.append(
             f"For something premium, we also have "
-            f"{premium[0]['name']}."
+            f"{both_premium[0]['name']}."
         )
 
-    if additional:
+    if both_additional:
 
         message_parts.append(
             f"We also have more {title.lower()} "
@@ -729,9 +750,25 @@ def build_category_response(
         screen=screen,
         message=message,
         data={
-            "priority": priority,
-            "premium": premium,
-            "additional": additional
+            "category": category,
+            "priority": both_priority,
+            "premium": both_premium,
+            "additional": both_additional,
+            "both": {
+                "priority": both_priority,
+                "premium": both_premium,
+                "additional": both_additional,
+            },
+            "veg": {
+                "priority": veg_priority,
+                "premium": veg_premium,
+                "additional": veg_additional,
+            },
+            "non_veg": {
+                "priority": nv_priority,
+                "premium": nv_premium,
+                "additional": nv_additional,
+            },
         }
     )
 

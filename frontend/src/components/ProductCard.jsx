@@ -22,12 +22,18 @@ function ProductCard({
   const { setProductData } = useKiosk();
 
   const handleProductClick = () => {
-    console.log("CLICKED");
+    console.log("CLICKED:", product.name);
+
+    const normalizedProduct = {
+      ...product,
+      shortDescription: product.shortDescription || product.short_description || product.description || "",
+      longDescription: product.longDescription || product.long_description || product.description || "",
+    };
 
     setProductData({
       screen: "product",
       data: {
-        product,
+        product: normalizedProduct,
         recommendations: [],
       },
     });

@@ -12,7 +12,12 @@ dist/
 # Local files
 .env
 .env.*
+!.env.example
+
 *.mp3
+*.db
+*.sqlite
+*.sqlite3
 
 # macOS
 .DS_Store

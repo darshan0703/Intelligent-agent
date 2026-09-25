@@ -1,0 +1,29 @@
+﻿version: '1.0'
+name: 'intent_global'
+instructions: |
+  Classify the customer restaurant request into exactly one intent action.
+
+  CONTEXT:
+  Current category on screen: {{ current_category }}
+  Cart summary: {{ cart_summary }}
+  Recently discussed items: {{ recent_items }}
+
+  CLASSIFICATION RULES:
+  - show_category   : customer wants to see or browse a food category (e.g. "show me burgers", "what drinks do you have")
+  - add_item        : customer names a specific item they want to order (e.g. "give me a Whopper", "I will have the Coke")
+  - recommend       : customer asks for a suggestion, recommendation, or is undecided (e.g. "what is good?", "recommend something")
+  - remove_item     : customer wants to remove something from their cart
+  - expand_context  : customer wants more options after something was already shown (e.g. "show me more", "any other options?")
+  - decline_offer   : customer rejects a suggestion or upsell offer (e.g. "no thanks", "I am fine", "that will be all")
+  - checkout        : customer wants to complete the order and pay (e.g. "that is all", "pay now", "checkout")
+  - correct_item    : customer is correcting a previous misunderstanding (e.g. "no I meant the small one", "actually change that")
+  - greeting        : simple greeting with no order intent (e.g. "hi", "hello", "good morning")
+  - exit            : customer wants to end the interaction without ordering (e.g. "never mind", "cancel everything", "bye")
+  - unknown         : intent genuinely cannot be determined from the input
+
+  IMPORTANT:
+  - Return ONLY structured JSON matching the GlobalIntent schema
+  - Do NOT add explanation text outside the JSON
+  - Confidence should be a float between 0.0 and 1.0
+  - extracted_item should be the item name if intent is add_item or remove_item, else null
+  - extracted_category should be the food category if intent is show_category, else null

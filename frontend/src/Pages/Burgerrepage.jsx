@@ -19,20 +19,84 @@ import BackButton from "../components/BackButton";
 import FooterDecoration from "../components/FooterDecoration";
 import { useKiosk } from "../context/KioskContext";
 
+import { getSessionId } from "../utils/session";
+
+const API_BASE_URL =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) ||
+  (typeof process !== "undefined" && process.env?.REACT_APP_API_BASE_URL) ||
+  "http://127.0.0.1:8000";
+
 function Burger() {
   const navigate = useNavigate();
 
   const {
     recommendationData,
+    foodPreference,
+    setFoodPreference,
   } = useKiosk();
 
   const [
     selectedType,
     setSelectedType
-  ] = useState("both");
+  ] = useState(() => {
+    if (recommendationData?.ui_action === "filter_veg" || recommendationData?.preference === "veg") return "veg";
+    if (recommendationData?.ui_action === "filter_non_veg" || recommendationData?.preference === "non_veg") return "non veg";
+    if (foodPreference && foodPreference !== "both") return foodPreference;
+    return sessionStorage.getItem("dietary_preference") || "both";
+  });
 
-  const data =
-    recommendationData?.data || {};
+  const [fallbackData, setFallbackData] = useState(() => {
+    return (typeof window !== "undefined" && window.__CATEGORY_CACHE__?.['burger']) || null;
+  });
+
+  useEffect(() => {
+    if (recommendationData?.ui_action === "filter_veg" || recommendationData?.preference === "veg") {
+      setSelectedType("veg");
+    } else if (recommendationData?.ui_action === "filter_non_veg" || recommendationData?.preference === "non_veg") {
+      setSelectedType("non veg");
+    } else if (foodPreference) {
+      setSelectedType(foodPreference);
+    }
+  }, [recommendationData, foodPreference]);
+
+  // ==========================================
+  // SCREEN SYNC & BACKEND RECOMMENDATIONS FETCH
+  // ==========================================
+
+  useEffect(() => {
+    syncScreen("recommended_burgers");
+    const sid = getSessionId();
+    const prefParam = foodPreference && foodPreference !== "both" ? `&preference=${encodeURIComponent(foodPreference)}` : "";
+    fetch(`${API_BASE_URL}/recommendations/category/burger?session_id=${sid}${prefParam}`)
+      .then((res) => res.json())
+      .then((resData) => {
+        if (resData && resData.success) {
+          const cached = {
+            both: resData.both,
+            veg: resData.veg,
+            non_veg: resData.non_veg,
+            priority: resData.priority,
+            premium: resData.premium,
+            additional: resData.additional,
+          };
+          if (typeof window !== "undefined") {
+            window.__CATEGORY_CACHE__ = window.__CATEGORY_CACHE__ || {};
+            window.__CATEGORY_CACHE__['burger'] = cached;
+          }
+          setFallbackData(cached);
+        }
+      })
+      .catch((err) => console.error("Burger fetch error:", err));
+  }, [foodPreference]);
+
+  const isBurgerRec =
+    recommendationData?.category === "burger" ||
+    recommendationData?.screen === "recommended_burgers" ||
+    Boolean(recommendationData?.data?.both || recommendationData?.data?.veg);
+
+  const memoryCache = (typeof window !== "undefined" && window.__CATEGORY_CACHE__?.['burger']) || null;
+  const validRecData = isBurgerRec ? recommendationData?.data : null;
+  const data = validRecData || fallbackData || memoryCache || {};
 
   // ==========================================
   // ALL BACKEND RECOMMENDATION DATA
@@ -40,23 +104,23 @@ function Burger() {
 
   const bothRecommendations =
     data.both || {
-      priority: [],
-      premium: [],
-      additional: []
+      priority: data.priority || [],
+      premium: data.premium || [],
+      additional: data.additional || []
     };
 
   const vegRecommendations =
-    data.veg || {
-      priority: [],
-      premium: [],
-      additional: []
+    data.veg || fallbackData?.veg || memoryCache?.veg || {
+      priority: (data.priority || []).filter(i => (i.foodType || i.type || i.food_type) === "veg"),
+      premium: (data.premium || []).filter(i => (i.foodType || i.type || i.food_type) === "veg"),
+      additional: (data.additional || []).filter(i => (i.foodType || i.type || i.food_type) === "veg")
     };
 
   const nonVegRecommendations =
-    data.non_veg || {
-      priority: [],
-      premium: [],
-      additional: []
+    data.non_veg || fallbackData?.non_veg || memoryCache?.non_veg || {
+      priority: (data.priority || []).filter(i => (i.foodType || i.type || i.food_type || "").toLowerCase().includes("non")),
+      premium: (data.premium || []).filter(i => (i.foodType || i.type || i.food_type || "").toLowerCase().includes("non")),
+      additional: (data.additional || []).filter(i => (i.foodType || i.type || i.food_type || "").toLowerCase().includes("non"))
     };
 
   // ==========================================
@@ -66,26 +130,68 @@ function Burger() {
   const selectedRecommendations =
     selectedType === "veg"
       ? vegRecommendations
-      : selectedType === "non veg"
+      : selectedType === "non veg" || selectedType === "non_veg"
         ? nonVegRecommendations
         : bothRecommendations;
 
-  const priorityItems =
-    selectedRecommendations.priority || [];
+  const filterBySelectedType = (items) => {
+    if (!items || !Array.isArray(items)) return [];
+    if (selectedType === "veg") {
+      return items.filter(i => {
+        const ft = (i.foodType || i.type || i.food_type || "").toLowerCase();
+        return ft === "veg" || (!ft.includes("non") && !/chicken|mutton/i.test(i.name || ""));
+      });
+    }
+    if (selectedType === "non veg" || selectedType === "non_veg") {
+      return items.filter(i => {
+        const ft = (i.foodType || i.type || i.food_type || "").toLowerCase();
+        return ft.includes("non") || /chicken|mutton/i.test(i.name || "");
+      });
+    }
+    return items;
+  };
 
-  const premiumItems =
-    selectedRecommendations.premium || [];
+  let priorityItems = filterBySelectedType(selectedRecommendations.priority || []);
+  let premiumItems = filterBySelectedType(selectedRecommendations.premium || []);
+  let additionalItems = filterBySelectedType(selectedRecommendations.additional || []);
 
-  const additionalItems =
-    selectedRecommendations.additional || [];
+  // Backfill slots defensively so sections NEVER collapse into blank white space
+  const allCandidatePool = [
+    ...(selectedRecommendations.priority || []),
+    ...(selectedRecommendations.premium || []),
+    ...(selectedRecommendations.additional || []),
+    ...(fallbackData?.veg?.priority || []),
+    ...(fallbackData?.veg?.premium || []),
+    ...(fallbackData?.veg?.additional || []),
+    ...(fallbackData?.both?.priority || []),
+    ...(fallbackData?.both?.premium || []),
+    ...(fallbackData?.both?.additional || []),
+    ...(memoryCache?.veg?.priority || []),
+    ...(memoryCache?.veg?.premium || []),
+    ...(memoryCache?.veg?.additional || []),
+    ...(memoryCache?.both?.priority || []),
+    ...(memoryCache?.both?.premium || []),
+    ...(memoryCache?.both?.additional || []),
+  ];
+  const filteredCandidatePool = filterBySelectedType(allCandidatePool);
+  const dedupedCandidates = Array.from(new Map(filteredCandidatePool.map(item => [item.id || item.name, item])).values());
 
-  // ==========================================
-  // SCREEN SYNC
-  // ==========================================
+  const usedIds = new Set(priorityItems.map(i => i.id || i.name));
+  if (premiumItems.length < 2) {
+    const candidates = dedupedCandidates.filter(i => !usedIds.has(i.id || i.name) && !premiumItems.some(p => (p.id || p.name) === (i.id || i.name)));
+    premiumItems = [...premiumItems, ...candidates].slice(0, 2);
+  }
+  premiumItems.forEach(i => usedIds.add(i.id || i.name));
 
-  useEffect(() => {
-    syncScreen("recommended_burgers");
-  }, []);
+  if (additionalItems.length < 4) {
+    const candidates = dedupedCandidates.filter(i => !usedIds.has(i.id || i.name) && !additionalItems.some(m => (m.id || m.name) === (i.id || i.name)));
+    additionalItems = [...additionalItems, ...candidates].slice(0, 4);
+  }
+  // Hard fallback: if still fewer than 4, recycle available filtered candidates so 4 slots are NEVER skipped
+  if (additionalItems.length < 4 && filteredCandidatePool.length > 0) {
+    const fallbackSlice = filteredCandidatePool.filter(i => !additionalItems.some(m => (m.id || m.name) === (i.id || i.name)));
+    additionalItems = [...additionalItems, ...fallbackSlice, ...filteredCandidatePool].slice(0, 4);
+  }
 
   // ==========================================
   // FILTER CHANGES
@@ -106,7 +212,10 @@ function Burger() {
       setSelectedType(
         normalizedFilter
       );
-    }, []);
+      if (setFoodPreference) {
+        setFoodPreference(normalizedFilter);
+      }
+    }, [setFoodPreference]);
 
   // ==========================================
   // VOICE UI ACTION LISTENER

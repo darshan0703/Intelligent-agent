@@ -5,7 +5,7 @@ import BackButton from "../components/BackButton";
 import Menusidebar from "../components/Menusidebar";
 import CartContainer from "../components/CartContainer";
 import MenuSection from "../components/MenuSection";
-import FooterDecoration from "../components/FooterDecoration";
+import SpotlightShelf from "../components/SpotlightShelf";
 
 import {
   useRef,
@@ -13,12 +13,17 @@ import {
   useEffect
 } from "react";
 
+const API_BASE_URL =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) ||
+  (typeof process !== "undefined" && process.env?.REACT_APP_API_BASE_URL) ||
+  "http://127.0.0.1:8000";
+
 function Dessertmenu() {
 
   const [dessertSections, setDessertSections] = useState([]);
 
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/menu/desserts")
+    fetch(`${API_BASE_URL}/menu/desserts`)
       .then((res) => res.json())
       .then(setDessertSections);
   }, []);
@@ -28,20 +33,63 @@ function Dessertmenu() {
   const sectionRefs = useRef({});
 
   const [activeCategory, setActiveCategory] =
-    useState(
-      dessertSections[0]?.title || ""
-    );
+    useState("");
 
-  const categories = dessertSections.map(
+  const [quickFilter, setQuickFilter] =
+    useState("all");
+
+  const filterProducts = (products) => {
+    if (!products || !Array.isArray(products)) {
+      return [];
+    }
+
+    let list = products;
+    if (quickFilter === "bestseller") {
+      list = list.filter(
+        p => (p.badge && p.badge.toLowerCase().includes("bestseller")) || /sundae|lava|mousse|pie|shake/i.test(p.name)
+      );
+    } else if (quickFilter === "value") {
+      list = list.filter(
+        p => Number(p.price) <= 99 || (p.badge && p.badge.toLowerCase().includes("value"))
+      );
+    } else if (quickFilter === "veg") {
+      list = list.filter(
+        p => p.type !== "non veg" && p.foodType !== "non veg"
+      );
+    }
+
+    return list;
+  };
+
+  const safeSections = Array.isArray(dessertSections) ? dessertSections : [];
+  const visibleSections = safeSections
+    .map(section => ({
+      ...section,
+      products: filterProducts(section.products)
+    }))
+    .filter(section => section.products.length > 0);
+
+  const categories = visibleSections.map(
     section => section.title
   );
+
+  useEffect(() => {
+    if (
+      visibleSections.length > 0 &&
+      !visibleSections.some(
+        section => section.title === activeCategory
+      )
+    ) {
+      setActiveCategory(visibleSections[0].title);
+    }
+  }, [visibleSections]);
 
   const scrollToCategory = (categoryTitle) => {
 
     setActiveCategory(categoryTitle);
 
     const section =
-      dessertSections.find(
+      visibleSections.find(
         section =>
           section.title === categoryTitle
       );
@@ -70,9 +118,9 @@ function Dessertmenu() {
         menu.clientHeight / 4;
 
       let currentCategory =
-        dessertSections[0]?.title;
+        visibleSections[0]?.title;
 
-      dessertSections.forEach(section => {
+      visibleSections.forEach(section => {
 
         const element =
           sectionRefs.current[
@@ -100,8 +148,8 @@ function Dessertmenu() {
       if (isNearBottom) {
 
         currentCategory =
-          dessertSections[
-            dessertSections.length - 1
+          visibleSections[
+            visibleSections.length - 1
           ]?.title;
 
       }
@@ -130,7 +178,7 @@ function Dessertmenu() {
 
     };
 
-  }, [dessertSections]);
+  }, [visibleSections]);
 
   return (
 
@@ -157,7 +205,13 @@ function Dessertmenu() {
         ref={menuContentRef}
       >
 
-        {dessertSections.map(
+        <SpotlightShelf
+          category="dessert"
+          activeQuickFilter={quickFilter}
+          onQuickFilterSelect={(f) => setQuickFilter(prev => prev === f ? "all" : f)}
+        />
+
+        {visibleSections.map(
           section => (
 
             <div
@@ -184,8 +238,6 @@ function Dessertmenu() {
       </div>
 
       <CartContainer />
-
-      <FooterDecoration />
 
     </div>
 
