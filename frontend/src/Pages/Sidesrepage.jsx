@@ -4,13 +4,13 @@ import Header from "../components/Header";
 import ProductCard from "../components/ProductCard";
 import CartContainer from "../components/CartContainer";
 import BackButton from "../components/BackButton";
-import Menufilters from "../components/Menufilters";
+import FooterDecoration from "../components/FooterDecoration";
 
 import fire from "../assets/images/fire.png";
 import crown from "../assets/images/crown.png";
 
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useKiosk } from "../context/KioskContext";
 import { syncScreen } from "../services/screenService";
 import { getSessionId } from "../utils/session";
@@ -22,7 +22,7 @@ const API_BASE_URL =
 
 function Sides() {
   const navigate = useNavigate();
-  const { recommendationData, foodPreference, setFoodPreference } = useKiosk();
+  const { recommendationData, foodPreference } = useKiosk();
 
   const [selectedType, setSelectedType] = useState(() => {
     if (recommendationData?.ui_action === "filter_veg" || recommendationData?.preference === "veg") return "veg";
@@ -34,10 +34,6 @@ function Sides() {
   const [fallbackData, setFallbackData] = useState(() => {
     return (typeof window !== "undefined" && window.__CATEGORY_CACHE__?.['side']) || null;
   });
-  const [headline, setHeadline] = useState("");
-  const [subline, setSubline] = useState("");
-  const [circadianBadge, setCircadianBadge] = useState("");
-  const [manifestationNudge, setManifestationNudge] = useState("");
 
   useEffect(() => {
     if (recommendationData?.ui_action === "filter_veg" || recommendationData?.preference === "veg") {
@@ -70,10 +66,6 @@ function Sides() {
             window.__CATEGORY_CACHE__['side'] = cached;
           }
           setFallbackData(cached);
-          if (data.headline) setHeadline(data.headline);
-          if (data.subline) setSubline(data.subline);
-          if (data.circadian_badge) setCircadianBadge(data.circadian_badge);
-          if (data.manifestation_nudge) setManifestationNudge(data.manifestation_nudge);
         }
       })
       .catch((err) => console.error("Sides fetch error:", err));
@@ -114,19 +106,18 @@ function Sides() {
         ? nonVegRecommendations
         : bothRecommendations;
 
-  // Strict client-side dietary guard
   const filterBySelectedType = (items) => {
     if (!items || !Array.isArray(items)) return [];
     if (selectedType === "veg") {
       return items.filter(i => {
         const ft = (i.foodType || i.type || i.food_type || "").toLowerCase();
-        return ft === "veg" || (!ft.includes("non") && !/chicken|wings|nugget/i.test(i.name || ""));
+        return ft === "veg" || (!ft.includes("non") && !/chicken|wings|nugget|bone/i.test(i.name || ""));
       });
     }
     if (selectedType === "non veg" || selectedType === "non_veg") {
       return items.filter(i => {
         const ft = (i.foodType || i.type || i.food_type || "").toLowerCase();
-        return ft.includes("non") || /chicken|wings|nugget/i.test(i.name || "");
+        return ft.includes("non") || /chicken|wings|nugget|bone/i.test(i.name || "");
       });
     }
     return items;
@@ -155,58 +146,26 @@ function Sides() {
     ...(memoryCache?.both?.additional || []),
   ];
   const filteredCandidatePool = filterBySelectedType(allCandidatePool);
-  const dedupedCandidates = Array.from(new Map(filteredCandidatePool.map(item => [item.id, item])).values());
+  const dedupedCandidates = Array.from(new Map(filteredCandidatePool.map(item => [item.id || item.name, item])).values());
 
-  const usedIds = new Set(hotSides.map(i => i.id));
+  const usedIds = new Set(hotSides.map(i => i.id || i.name));
   if (premiumSides.length < 2) {
-    const candidates = dedupedCandidates.filter(i => !usedIds.has(i.id) && !premiumSides.some(p => p.id === i.id));
+    const candidates = dedupedCandidates.filter(i => !usedIds.has(i.id || i.name) && !premiumSides.some(p => (p.id || p.name) === (i.id || i.name)));
     premiumSides = [...premiumSides, ...candidates].slice(0, 2);
   }
-  premiumSides.forEach(i => usedIds.add(i.id));
+  premiumSides.forEach(i => usedIds.add(i.id || i.name));
 
   if (moreSides.length < 4) {
-    const candidates = dedupedCandidates.filter(i => !usedIds.has(i.id) && !moreSides.some(m => m.id === i.id));
+    const candidates = dedupedCandidates.filter(i => !usedIds.has(i.id || i.name) && !moreSides.some(m => (m.id || m.name) === (i.id || i.name)));
     moreSides = [...moreSides, ...candidates].slice(0, 4);
   }
-  // Hard fallback: if still fewer than 4, recycle available filtered candidates so 4 slots are NEVER skipped
   if (moreSides.length < 4 && filteredCandidatePool.length > 0) {
-    const fallbackSlice = filteredCandidatePool.filter(i => !moreSides.some(m => m.id === i.id));
+    const fallbackSlice = filteredCandidatePool.filter(i => !moreSides.some(m => (m.id || m.name) === (i.id || i.name)));
     moreSides = [...moreSides, ...fallbackSlice, ...filteredCandidatePool].slice(0, 4);
   }
 
-  const handleFilterChange = useCallback((filter) => {
-    const normalizedFilter = filter.trim().toLowerCase();
-    setSelectedType(normalizedFilter);
-    if (setFoodPreference) {
-      setFoodPreference(normalizedFilter);
-    }
-  }, [setFoodPreference]);
-
-  useEffect(() => {
-    const handleVoiceUIAction = (event) => {
-      const action = event.detail?.action;
-      if (action === "filter_veg") {
-        handleFilterChange("veg");
-      } else if (action === "filter_non_veg") {
-        handleFilterChange("non veg");
-      } else if (action === "filter_both") {
-        handleFilterChange("both");
-      } else if (action === "view_more") {
-        navigate("/sidesmenu", { state: { activeFilter: selectedType } });
-      } else if (action === "go_back") {
-        navigate(-1);
-      }
-    };
-
-    window.addEventListener("kiosk-ui-action", handleVoiceUIAction);
-    return () => window.removeEventListener("kiosk-ui-action", handleVoiceUIAction);
-  }, [handleFilterChange, navigate, selectedType]);
-
-
   return (
-
     <div className="sides-page">
-
       {/* SECTION ICONS */}
       <img
         src={fire}
@@ -225,28 +184,13 @@ function Sides() {
 
       <BackButton />
 
-      {/* DYNAMIC PERSUASION & CIRCADIAN NUDGE */}
-      {(circadianBadge || manifestationNudge) && (
-        <div className="repage-circadian-banner">
-          {circadianBadge && <span className="repage-circadian-tag">{circadianBadge}</span>}
-          {manifestationNudge && <span className="repage-nudge-tag">{manifestationNudge}</span>}
-        </div>
-      )}
-
-      {/* FILTERS */}
-      <Menufilters
-        filters={["both", "veg", "non veg"]}
-        activeFilter={selectedType}
-        onFilterChange={handleFilterChange}
-      />
-
       {/* PRIORITY */}
-
       {hotSides[0] && (
         <ProductCard
           product={hotSides[0]}
           variant="large"
           className="card-1"
+          badge="popular"
         />
       )}
 
@@ -255,16 +199,17 @@ function Sides() {
           product={hotSides[1]}
           variant="large"
           className="card-2"
+          badge="popular"
         />
       )}
 
       {/* PREMIUM */}
-
       {premiumSides[0] && (
         <ProductCard
           product={premiumSides[0]}
           variant="large"
           className="card-3"
+          badge="premium"
         />
       )}
 
@@ -273,11 +218,11 @@ function Sides() {
           product={premiumSides[1]}
           variant="large"
           className="card-4"
+          badge="premium"
         />
       )}
 
       {/* ADDITIONAL */}
-
       {moreSides[0] && (
         <ProductCard
           product={moreSides[0]}
@@ -311,16 +256,13 @@ function Sides() {
       )}
 
       {/* TITLES */}
-
       <p className="fresh-text">
-        {headline || "Hot & Crispy Picks"}
+        Hot & Crispy Picks
       </p>
 
       <p className="fresh-text2">
-        {subline || "Freshly prepared favorites"}
+        Freshly prepared favorites
       </p>
-
-      <div className="thin-line-2"></div>
 
       <p className="premium-text">
         Premium Sides
@@ -330,25 +272,25 @@ function Sides() {
         Perfect add-ons for every meal
       </p>
 
-      <div className="thin-line-3"></div>
-
-      <p className="more-text">
-        More Side Options
-      </p>
-
+      {/* MORE OPTIONS */}
       <div className="more-header">
+        <p className="more-text">
+          More Side Options
+        </p>
 
         <button
           className="view-all-btn"
-          onClick={() => navigate("/sidesmenu", { state: { activeFilter: selectedType || foodPreference || "both" } })}
+          onClick={() => navigate("/sidesmenu")}
         >
-          View All →
+          View All Sides →
         </button>
-
       </div>
 
+      {/* CART */}
       <CartContainer />
 
+      {/* FOOTER */}
+      <FooterDecoration />
     </div>
   );
 }

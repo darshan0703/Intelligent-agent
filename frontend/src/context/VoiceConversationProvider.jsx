@@ -38,17 +38,6 @@ export function VoiceConversationProvider({ children }) {
 
   const [voiceEnabled, setVoiceEnabled] = useState(false);
 
-  // Mic and Sound Mute controls with persistent local storage
-  const [isMicMuted, setIsMicMuted] = useState(() => {
-    return localStorage.getItem("kiosk_mic_muted") === "true";
-  });
-  const isMicMutedRef = useRef(isMicMuted);
-
-  const [isSoundMuted, setIsSoundMuted] = useState(() => {
-    return localStorage.getItem("kiosk_sound_muted") === "true";
-  });
-  const isSoundMutedRef = useRef(isSoundMuted);
-
   // True for the entire voice interaction.
   // It represents the voice interface being enabled,
   // NOT an individual browser recognition session.
@@ -61,7 +50,6 @@ export function VoiceConversationProvider({ children }) {
   const listenForCustomer = useCallback(() => {
     if (
       !voiceEnabledRef.current ||
-      isMicMutedRef.current ||
       processingRef.current
     ) {
       return;
@@ -72,7 +60,6 @@ export function VoiceConversationProvider({ children }) {
     startListening(async (transcript) => {
       if (
         !voiceEnabledRef.current ||
-        isMicMutedRef.current ||
         processingRef.current
       ) {
         return;
@@ -113,8 +100,8 @@ export function VoiceConversationProvider({ children }) {
           }
         );
 
-        // Speak the backend's response if sound is not muted
-        if (data?.message && !isSoundMutedRef.current) {
+        // Speak the backend's response.
+        if (data?.message) {
           speak(
             data.message,
             () => {
@@ -122,7 +109,7 @@ export function VoiceConversationProvider({ children }) {
 
               // Continue the same voice interaction.
               // This does NOT create a new transaction.
-              if (voiceEnabledRef.current && !isMicMutedRef.current) {
+              if (voiceEnabledRef.current) {
                 listenForCustomer();
               }
             }
@@ -130,7 +117,7 @@ export function VoiceConversationProvider({ children }) {
         } else {
           processingRef.current = false;
 
-          if (voiceEnabledRef.current && !isMicMutedRef.current) {
+          if (voiceEnabledRef.current) {
             listenForCustomer();
           }
         }
@@ -142,7 +129,7 @@ export function VoiceConversationProvider({ children }) {
 
         processingRef.current = false;
 
-        if (voiceEnabledRef.current && !isMicMutedRef.current) {
+        if (voiceEnabledRef.current) {
           listenForCustomer();
         }
       }
@@ -154,40 +141,6 @@ export function VoiceConversationProvider({ children }) {
     executeUIAction,
   ]);
 
-  const toggleMicMute = useCallback(() => {
-    setIsMicMuted((prev) => {
-      const next = !prev;
-      isMicMutedRef.current = next;
-      localStorage.setItem("kiosk_mic_muted", String(next));
-      if (next) {
-        stopListening();
-        processingRef.current = false;
-        console.log("MIC MUTED (OFF)");
-      } else {
-        console.log("MIC UNMUTED (ON)");
-        if (voiceEnabledRef.current) {
-          listenForCustomer();
-        }
-      }
-      return next;
-    });
-  }, [listenForCustomer]);
-
-  const toggleSoundMute = useCallback(() => {
-    setIsSoundMuted((prev) => {
-      const next = !prev;
-      isSoundMutedRef.current = next;
-      localStorage.setItem("kiosk_sound_muted", String(next));
-      if (next) {
-        stopListening();
-        console.log("SOUND MUTED (OFF)");
-      } else {
-        console.log("SOUND UNMUTED (ON)");
-      }
-      return next;
-    });
-  }, []);
-
   /*
    * Barge-in:
    *
@@ -196,7 +149,7 @@ export function VoiceConversationProvider({ children }) {
    */
   useEffect(() => {
     setInterruptionHandler(() => {
-      if (!voiceEnabledRef.current || isMicMutedRef.current) {
+      if (!voiceEnabledRef.current) {
         return;
       }
 
@@ -231,21 +184,15 @@ export function VoiceConversationProvider({ children }) {
         "VOICE INTERFACE ENABLED"
       );
 
-      // Initial cashier greeting if sound is not muted
-      if (!isSoundMutedRef.current) {
-        speak(
-          "Hi! Welcome to Burger King. What can I get for you today?",
-          () => {
-            if (voiceEnabledRef.current && !isMicMutedRef.current) {
-              listenForCustomer();
-            }
+      // Initial cashier greeting.
+      speak(
+        "Hi! Welcome to Burger King. What can I get for you today?",
+        () => {
+          if (voiceEnabledRef.current) {
+            listenForCustomer();
           }
-        );
-      } else {
-        if (voiceEnabledRef.current && !isMicMutedRef.current) {
-          listenForCustomer();
         }
-      }
+      );
     }, [listenForCustomer]);
 
   const stopVoiceConversation =
@@ -268,10 +215,6 @@ export function VoiceConversationProvider({ children }) {
         voiceActive: voiceEnabled,
         startVoiceConversation,
         stopVoiceConversation,
-        isMicMuted,
-        toggleMicMute,
-        isSoundMuted,
-        toggleSoundMute,
       }}
     >
       {children}

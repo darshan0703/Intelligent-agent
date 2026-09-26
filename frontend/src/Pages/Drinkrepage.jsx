@@ -14,8 +14,8 @@ import fire from "../assets/images/fire.png";
 import crown from "../assets/images/crown.png";
 
 import { useKiosk } from "../context/KioskContext";
-
 import { getSessionId } from "../utils/session";
+import { syncScreen } from "../services/screenService";
 
 const API_BASE_URL =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) ||
@@ -24,25 +24,31 @@ const API_BASE_URL =
 
 function Drink() {
   const navigate = useNavigate();
-
   const { recommendationData } = useKiosk();
 
-  const [selectedType, setSelectedType] =
-    useState("both");
+  const [selectedType, setSelectedType] = useState("both");
 
-  const [fallbackData, setFallbackData] = useState(null);
+  const [fallbackData, setFallbackData] = useState(() => {
+    return (typeof window !== "undefined" && window.__CATEGORY_CACHE__?.['drink']) || null;
+  });
 
   useEffect(() => {
+    syncScreen("recommended_drinks");
     const sid = getSessionId();
     fetch(`${API_BASE_URL}/recommendations/category/drink?session_id=${sid}`)
       .then((res) => res.json())
       .then((resData) => {
         if (resData && resData.success) {
-          setFallbackData({
+          const cached = {
             priority: resData.priority,
             premium: resData.premium,
             additional: resData.additional,
-          });
+          };
+          if (typeof window !== "undefined") {
+            window.__CATEGORY_CACHE__ = window.__CATEGORY_CACHE__ || {};
+            window.__CATEGORY_CACHE__['drink'] = cached;
+          }
+          setFallbackData(cached);
         }
       })
       .catch((err) => console.error("Drink fetch error:", err));
@@ -53,8 +59,9 @@ function Drink() {
     recommendationData?.screen === "recommended_drinks" ||
     Boolean(recommendationData?.data?.priority);
 
+  const memoryCache = (typeof window !== "undefined" && window.__CATEGORY_CACHE__?.['drink']) || null;
   const validRecData = isDrinkRec ? recommendationData?.data : null;
-  const data = validRecData || fallbackData || {};
+  const data = validRecData || fallbackData || memoryCache || {};
 
   const allDrinks = {
     priority: data.priority || [],
@@ -64,116 +71,96 @@ function Drink() {
 
   const filterProducts = useCallback(
     (products) => {
+      if (!products || !Array.isArray(products)) return [];
       if (selectedType === "both") {
         return products;
       }
-
       return products.filter(
         (product) =>
-          (product.type || product.serving_type || "").toLowerCase() ===
-          selectedType
+          (product.type || product.serving_type || "").toLowerCase() === selectedType
       );
     },
     [selectedType]
   );
 
-  let freshDrinks =
-    filterProducts(allDrinks.priority);
+  let freshDrinks = filterProducts(allDrinks.priority);
+  let premiumDrinks = filterProducts(allDrinks.premium);
+  let moreDrinks = filterProducts(allDrinks.additional);
 
-  let premiumDrinks =
-    filterProducts(allDrinks.premium);
-
-  let moreDrinks =
-    filterProducts(allDrinks.additional);
-
-  // Defensive backfill so cards never remain blank
+  // Pool of all candidate items for defensive backfill
   const allPool = [
     ...(allDrinks.priority || []),
     ...(allDrinks.premium || []),
     ...(allDrinks.additional || []),
+    ...(fallbackData?.priority || []),
+    ...(fallbackData?.premium || []),
+    ...(fallbackData?.additional || []),
+    ...(memoryCache?.priority || []),
+    ...(memoryCache?.premium || []),
+    ...(memoryCache?.additional || []),
   ];
   const filteredPool = filterProducts(allPool);
-  const dedupedPool = Array.from(new Map(filteredPool.map(i => [i.id || i.name, i])).values());
+  const dedupedFiltered = Array.from(new Map(filteredPool.map(i => [i.id || i.name, i])).values());
+  const dedupedAll = Array.from(new Map(allPool.map(i => [i.id || i.name, i])).values());
 
   const usedIds = new Set(freshDrinks.map(i => i.id || i.name));
+
+  // Ensure priority has at least 2 cards
+  if (freshDrinks.length < 2) {
+    const pool = dedupedFiltered.length >= 2 ? dedupedFiltered : dedupedAll;
+    const cands = pool.filter(i => !usedIds.has(i.id || i.name));
+    freshDrinks = [...freshDrinks, ...cands].slice(0, 2);
+    freshDrinks.forEach(i => usedIds.add(i.id || i.name));
+  }
+
+  // Ensure premium has at least 2 cards
   if (premiumDrinks.length < 2) {
-    const cands = dedupedPool.filter(i => !usedIds.has(i.id || i.name));
+    const pool = dedupedFiltered.length >= 4 ? dedupedFiltered : dedupedAll;
+    const cands = pool.filter(i => !usedIds.has(i.id || i.name));
     premiumDrinks = [...premiumDrinks, ...cands].slice(0, 2);
   }
   premiumDrinks.forEach(i => usedIds.add(i.id || i.name));
 
+  // Ensure additional has at least 4 cards (never blank)
   if (moreDrinks.length < 4) {
-    const cands = dedupedPool.filter(i => !usedIds.has(i.id || i.name));
+    const pool = dedupedFiltered.length >= 6 ? dedupedFiltered : dedupedAll;
+    const cands = pool.filter(i => !usedIds.has(i.id || i.name));
     moreDrinks = [...moreDrinks, ...cands].slice(0, 4);
   }
+  // Hard guarantee: if still under 4, recycle items from candidate pool so slots never show blank white
+  if (moreDrinks.length < 4 && dedupedAll.length > 0) {
+    const recycle = dedupedAll.filter(i => !moreDrinks.some(m => (m.id || m.name) === (i.id || i.name)));
+    moreDrinks = [...moreDrinks, ...recycle, ...dedupedAll].slice(0, 4);
+  }
 
-  const handleFilterChange =
-    useCallback((filter) => {
-      const normalizedFilter =
-        filter.trim().toLowerCase();
-
-      console.log(
-        "CHANGING DRINK FILTER:",
-        normalizedFilter
-      );
-
-      setSelectedType(
-        normalizedFilter
-      );
-    }, []);
+  const handleFilterChange = useCallback((filter) => {
+    const normalizedFilter = filter.trim().toLowerCase();
+    setSelectedType(normalizedFilter);
+  }, []);
 
   useEffect(() => {
     const handleVoiceUIAction = (event) => {
-      const action =
-        event.detail?.action;
-
-      console.log(
-        "DRINK PAGE RECEIVED UI ACTION:",
-        action
-      );
-
+      const action = event.detail?.action;
       if (action === "filter_cold") {
         handleFilterChange("cold");
-      }
-
-      else if (action === "filter_hot") {
+      } else if (action === "filter_hot") {
         handleFilterChange("hot");
-      }
-
-      else if (action === "filter_both") {
+      } else if (action === "filter_both") {
         handleFilterChange("both");
-      }
-
-      else if (action === "view_more") {
+      } else if (action === "view_more") {
         navigate("/drinkmenu");
-      }
-
-      else if (action === "go_back") {
+      } else if (action === "go_back") {
         navigate(-1);
       }
     };
 
-    window.addEventListener(
-      "kiosk-ui-action",
-      handleVoiceUIAction
-    );
-
-    return () => {
-      window.removeEventListener(
-        "kiosk-ui-action",
-        handleVoiceUIAction
-      );
-    };
-  }, [
-    handleFilterChange,
-    navigate
-  ]);
+    window.addEventListener("kiosk-ui-action", handleVoiceUIAction);
+    return () => window.removeEventListener("kiosk-ui-action", handleVoiceUIAction);
+  }, [handleFilterChange, navigate]);
 
   return (
     <div className="drink-page">
-
       {/* SECTION ICONS */}
-
       <img
         src={fire}
         alt="fire"
@@ -187,13 +174,11 @@ function Drink() {
       />
 
       {/* HEADER */}
-
       <Header title="Choose Your Drink" />
 
       <BackButton />
 
       {/* FILTERS */}
-
       <div className="drink-filter-position">
         <Menufilters
           filters={[
@@ -202,14 +187,11 @@ function Drink() {
             "hot"
           ]}
           activeFilter={selectedType}
-          onFilterChange={
-            handleFilterChange
-          }
+          onFilterChange={handleFilterChange}
         />
       </div>
 
       {/* PRIORITY */}
-
       {freshDrinks[0] && (
         <ProductCard
           product={freshDrinks[0]}
@@ -229,7 +211,6 @@ function Drink() {
       )}
 
       {/* PREMIUM */}
-
       {premiumDrinks[0] && (
         <ProductCard
           product={premiumDrinks[0]}
@@ -249,7 +230,6 @@ function Drink() {
       )}
 
       {/* ADDITIONAL */}
-
       {moreDrinks[0] && (
         <ProductCard
           product={moreDrinks[0]}
@@ -283,7 +263,6 @@ function Drink() {
       )}
 
       {/* TITLES */}
-
       <p className="fresh-text">
         Freshly Made Drinks
       </p>
@@ -301,7 +280,6 @@ function Drink() {
       </p>
 
       {/* MORE OPTIONS */}
-
       <div className="more-header">
         <p className="more-text">
           More Drink Options
@@ -309,22 +287,17 @@ function Drink() {
 
         <button
           className="view-all-btn"
-          onClick={() =>
-            navigate("/drinkmenu")
-          }
+          onClick={() => navigate("/drinkmenu")}
         >
           View All Drinks →
         </button>
       </div>
 
       {/* CART */}
-
       <CartContainer />
 
       {/* FOOTER */}
-
       <FooterDecoration />
-
     </div>
   );
 }

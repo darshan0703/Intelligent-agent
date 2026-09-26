@@ -841,6 +841,19 @@ def text_to_speech(request: dict):
 # LOCAL WHISPER SPEECH TO TEXT
 # ============================================================
 
+_whisper_py_model = None
+
+def _get_whisper_py_model():
+    global _whisper_py_model
+    if _whisper_py_model is None:
+        try:
+            from faster_whisper import WhisperModel
+            _whisper_py_model = WhisperModel("tiny.en", device="cpu", compute_type="int8")
+        except Exception as e:
+            print("Failed to initialize faster_whisper:", e)
+    return _whisper_py_model
+
+
 @app.post("/stt")
 async def speech_to_text(
     file: UploadFile = File(...)
@@ -884,28 +897,42 @@ async def speech_to_text(
         file.content_type,
     )
 
-    if not Path(whisper_cli).exists():
-        print("ERROR: Whisper CLI not found.")
+    has_cli = Path(whisper_cli).exists() and Path(whisper_model).exists() and Path(ffmpeg).exists()
 
+    if not has_cli:
+        print("Whisper CLI or FFmpeg binary not found on host. Falling back to faster-whisper engine...")
+        py_model = _get_whisper_py_model()
+        if py_model is not None:
+            try:
+                audio_data = await file.read()
+                with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as tmp:
+                    tmp.write(audio_data)
+                    tmp_path = tmp.name
+                try:
+                    segments, _ = py_model.transcribe(tmp_path, language="en")
+                    transcript = " ".join(seg.text for seg in segments).strip()
+                    print("WHISPER TRANSCRIPT:", transcript)
+                    print("=" * 80 + "\n")
+                    return {
+                        "success": True,
+                        "text": transcript,
+                    }
+                finally:
+                    try:
+                        os.unlink(tmp_path)
+                    except Exception:
+                        pass
+            except Exception as e:
+                print("Python Whisper error:", e)
+                return {
+                    "success": False,
+                    "message": "Speech recognition failed.",
+                }
+
+        print("ERROR: Whisper CLI not found.")
         return {
             "success": False,
             "message": "Whisper CLI not found.",
-        }
-
-    if not Path(whisper_model).exists():
-        print("ERROR: Whisper model not found.")
-
-        return {
-            "success": False,
-            "message": "Whisper model not found.",
-        }
-
-    if not Path(ffmpeg).exists():
-        print("ERROR: FFmpeg not found.")
-
-        return {
-            "success": False,
-            "message": "FFmpeg not found.",
         }
 
     try:

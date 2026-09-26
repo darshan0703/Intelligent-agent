@@ -11,13 +11,12 @@ import { useKiosk } from "../context/KioskContext";
 import { useCart } from "../context/CartContext";
 
 import { sendMessage } from "../services/api";
-
 import { handleKioskResponse } from "../services/responseHandler";
-
 import { syncScreen } from "../services/screenService";
 
 import Header from "../components/Header";
 import CartContainer from "../components/CartContainer";
+import FooterDecoration from "../components/FooterDecoration";
 
 import cb from "../assets/images/container burger.png";
 import cd from "../assets/images/container drinks.png";
@@ -27,29 +26,20 @@ import co from "../assets/images/container offers.png";
 import cl from "../assets/images/container light.png";
 
 
-import { getSessionId, resetSessionId } from "../utils/session";
-
-const API_BASE_URL =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) ||
-  (typeof process !== "undefined" && process.env?.REACT_APP_API_BASE_URL) ||
-  "http://127.0.0.1:8000";
-
 function Categories() {
-
   const navigate = useNavigate();
 
   const {
     setRecommendationData,
     setProductData,
-    resetSessionState,
   } = useKiosk();
 
   const {
     cart,
     itemCount,
     total,
-    clearCart,
   } = useCart();
+
 
   // ==========================================
   // SYNC CURRENT SCREEN WITH BACKEND
@@ -59,49 +49,21 @@ function Categories() {
     syncScreen("category_selection");
   }, []);
 
-  // ==========================================
-  // EXIT / END SESSION HANDLER
-  // ==========================================
-
-  const handleExitSession = async () => {
-    try {
-      const sid = getSessionId();
-      await fetch(`${API_BASE_URL}/session/reset`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session_id: sid }),
-      }).catch(() => {});
-    } catch (err) {
-      console.error("Session exit error:", err);
-    } finally {
-      if (clearCart) clearCart();
-      if (resetSessionState) resetSessionState();
-      resetSessionId();
-      navigate("/");
-    }
-  };
-
 
   // ==========================================
   // CATEGORY CLICK
   // ==========================================
 
-  const handleCategoryClick = async (
-    category
-  ) => {
-
+  const handleCategoryClick = async (category) => {
     try {
-
       const data = await sendMessage(
         `I want a ${category}`
       );
-
 
       console.log(
         "BACKEND RESPONSE:",
         data
       );
-
 
       handleKioskResponse(
         data,
@@ -111,18 +73,13 @@ function Categories() {
           setProductData,
         }
       );
-
     }
-
     catch (error) {
-
       console.error(
         `${category} API Error:`,
         error
       );
-
     }
-
   };
 
 
@@ -136,29 +93,22 @@ function Categories() {
     "\"Can I have a Cold Coffee?\""
   ];
 
-
   const [
     currentPhrase,
     setCurrentPhrase
   ] = useState(0);
 
-
   useEffect(() => {
-
     const interval = setInterval(() => {
-
       setCurrentPhrase(
         (prev) =>
           (prev + 1) %
           phrases.length
       );
-
     }, 2000);
-
 
     return () =>
       clearInterval(interval);
-
   }, []);
 
 
@@ -167,31 +117,17 @@ function Categories() {
   // ==========================================
 
   return (
-
     <div className="app-wrapper">
-
-      <div className="header-glow"></div>
-
 
       <div className="categories-page">
 
+        {/* HEADER */}
         <Header
-          title="Welcome to Burger King"
+          title="Welcome to Burger KING!"
         />
-
-        {/* EXIT / NEW SESSION BUTTON */}
-        <button
-          className="exit-kiosk-btn"
-          onClick={handleExitSession}
-          title="End session and start over"
-        >
-          <span className="exit-icon">🚪</span>
-          <span className="exit-text">Exit Session</span>
-        </button>
 
 
         {/* BURGER */}
-
         <img
           src={cb}
           alt="container burger"
@@ -203,7 +139,6 @@ function Categories() {
 
 
         {/* DRINKS */}
-
         <img
           src={cd}
           alt="container drinks"
@@ -215,7 +150,6 @@ function Categories() {
 
 
         {/* DESSERT */}
-
         <img
           src={cr}
           alt="container recommend"
@@ -227,7 +161,6 @@ function Categories() {
 
 
         {/* SIDES */}
-
         <img
           src={cf}
           alt="container fresh"
@@ -239,7 +172,6 @@ function Categories() {
 
 
         {/* OFFERS */}
-
         <img
           src={co}
           alt="container offers"
@@ -248,7 +180,6 @@ function Categories() {
 
 
         {/* LIGHT */}
-
         <img
           src={cl}
           alt="container light"
@@ -256,29 +187,31 @@ function Categories() {
         />
 
 
+        {/* DIVIDER */}
         <div className="thin-line-two"></div>
 
 
-        <div className="try-phrase-box">
-          <div className="try-phrase-header">
-            <span className="try-phrase-icon">🎙️</span>
-            <span className="try-phrase-label">Try asking our AI Voice Cashier:</span>
-          </div>
-          <div className="try-phrase-badge">
-            <span className="rotating-phrase">{phrases[currentPhrase]}</span>
-          </div>
-        </div>
+        {/* TRY PHRASES */}
+        <p className="try-text">
+          Try these phrases :
+        </p>
+
+        <p className="rotating-phrase">
+          {phrases[currentPhrase]}
+        </p>
 
 
+        {/* CART */}
         <CartContainer />
+
+
+        {/* BOTTOM ORANGE FOOTER */}
+        <FooterDecoration />
 
       </div>
 
     </div>
-
   );
-
 }
-
 
 export default Categories;

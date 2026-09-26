@@ -13,6 +13,7 @@ import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useKiosk } from "../context/KioskContext";
 import { getSessionId } from "../utils/session";
+import { syncScreen } from "../services/screenService";
 
 const API_BASE_URL =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) ||
@@ -23,19 +24,27 @@ function Dessert() {
   const navigate = useNavigate();
 
   const { recommendationData } = useKiosk();
-  const [fallbackData, setFallbackData] = useState(null);
+  const [fallbackData, setFallbackData] = useState(() => {
+    return (typeof window !== "undefined" && window.__CATEGORY_CACHE__?.['dessert']) || null;
+  });
 
   useEffect(() => {
+    syncScreen("recommended_desserts");
     const sid = getSessionId();
     fetch(`${API_BASE_URL}/recommendations/category/dessert?session_id=${sid}`)
       .then((res) => res.json())
       .then((resData) => {
         if (resData && resData.success) {
-          setFallbackData({
+          const cached = {
             priority: resData.priority,
             premium: resData.premium,
             additional: resData.additional,
-          });
+          };
+          if (typeof window !== "undefined") {
+            window.__CATEGORY_CACHE__ = window.__CATEGORY_CACHE__ || {};
+            window.__CATEGORY_CACHE__['dessert'] = cached;
+          }
+          setFallbackData(cached);
         }
       })
       .catch((err) => console.error("Dessert fetch error:", err));
@@ -47,7 +56,8 @@ function Dessert() {
     Boolean(recommendationData?.data?.priority);
 
   const validRecData = isDessertRec ? recommendationData?.data : null;
-  const data = validRecData || fallbackData || {};
+  const memoryCache = typeof window !== "undefined" ? window.__CATEGORY_CACHE__?.['dessert'] : null;
+  const data = validRecData || fallbackData || memoryCache || {};
 
   let freshDesserts = data.priority || [];
   let premiumDesserts = data.premium || [];
@@ -57,6 +67,9 @@ function Dessert() {
     ...(data.priority || []),
     ...(data.premium || []),
     ...(data.additional || []),
+    ...(memoryCache?.priority || []),
+    ...(memoryCache?.premium || []),
+    ...(memoryCache?.additional || []),
   ];
   const dedupedPool = Array.from(new Map(allPool.map(i => [i.id || i.name, i])).values());
 
@@ -70,6 +83,11 @@ function Dessert() {
   if (moreDesserts.length < 4) {
     const cands = dedupedPool.filter(i => !usedIds.has(i.id || i.name));
     moreDesserts = [...moreDesserts, ...cands].slice(0, 4);
+  }
+  // Hard guarantee: if still under 4, recycle items from candidate pool so slots never show blank white
+  if (moreDesserts.length < 4 && dedupedPool.length > 0) {
+    const recycle = dedupedPool.filter(i => !moreDesserts.some(m => (m.id || m.name) === (i.id || i.name)));
+    moreDesserts = [...moreDesserts, ...recycle, ...dedupedPool].slice(0, 4);
   }
 
   return (

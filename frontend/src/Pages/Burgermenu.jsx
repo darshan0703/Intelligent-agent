@@ -6,7 +6,7 @@ import Menusidebar from "../components/Menusidebar";
 import Menufilters from "../components/Menufilters";
 import CartContainer from "../components/CartContainer";
 import MenuSection from "../components/MenuSection";
-import SpotlightShelf from "../components/SpotlightShelf";
+import FooterDecoration from "../components/FooterDecoration";
 
 import {
   useRef,
@@ -16,11 +16,6 @@ import {
 import { useLocation } from "react-router-dom";
 import { useKiosk } from "../context/KioskContext";
 import { syncScreen } from "../services/screenService";
-
-const API_BASE_URL =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) ||
-  (typeof process !== "undefined" && process.env?.REACT_APP_API_BASE_URL) ||
-  "http://127.0.0.1:8000";
 
 function Burgermenu() {
   const location = useLocation();
@@ -35,15 +30,11 @@ function Burgermenu() {
   const [burgerSections, setBurgerSections] = useState([]);
 
   useEffect(() => {
-    const isFiltered = activeFilter && activeFilter !== "both";
-    const queryParam = isFiltered ? `?preference=${encodeURIComponent(activeFilter)}` : "";
-    fetch(`${API_BASE_URL}/menu/burgers${queryParam}`)
-        .then(res => res.json())
-        .then(data => {
-          if (Array.isArray(data)) setBurgerSections(data);
-        })
-        .catch(err => console.warn("Failed to fetch burgers:", err));
-  }, [activeFilter]);
+    fetch("http://127.0.0.1:8000/menu/burgers")
+      .then(res => res.json())
+      .then(setBurgerSections)
+      .catch(err => console.error("Error fetching burger menu:", err));
+  }, []);
 
   useEffect(() => {
     syncScreen("burger_menu");
@@ -51,67 +42,31 @@ function Burgermenu() {
 
   const menuContentRef = useRef(null);
   const sectionRefs = useRef({});
-
   const [activeCategory, setActiveCategory] = useState("");
 
-  useEffect(() => {
-    if (foodPreference) {
-      setActiveFilter(foodPreference);
+  const handleFilterChange = (filter) => {
+    setActiveFilter(filter);
+    if (setFoodPreference) {
+      setFoodPreference(filter);
     }
-  }, [foodPreference]);
-
-  const handleFilterChange = (f) => {
-    setActiveFilter(f);
-    if (setFoodPreference) setFoodPreference(f);
   };
-
-  const [quickFilter, setQuickFilter] = useState("all");
 
   const filterProducts = (products) => {
-    if (!products || !Array.isArray(products)) {
-      return [];
+    if (!products || !Array.isArray(products)) return [];
+    if (activeFilter === "both") {
+      return products;
     }
-
-    let list = products;
-    if (activeFilter !== "both") {
-      list = list.filter(
-        product => product.type === activeFilter || product.foodType === activeFilter || product.food_type === activeFilter
-      );
-    }
-
-    if (quickFilter === "bestseller") {
-      list = list.filter(
-        p => (p.badge && p.badge.toLowerCase().includes("bestseller")) || /whopper|royale/i.test(p.name)
-      );
-    } else if (quickFilter === "value") {
-      list = list.filter(
-        p => Number(p.price) <= 99 || (p.badge && p.badge.toLowerCase().includes("value"))
-      );
-    } else if (quickFilter === "spicy") {
-      list = list.filter(
-        p => (p.badge && /spicy|heat/i.test(p.badge)) || /spicy|peri|fiery/i.test(p.name)
-      );
-    } else if (quickFilter === "veg") {
-      list = list.filter(
-        p => p.type === "veg" || p.foodType === "veg" || p.food_type === "veg"
-      );
-    }
-
-    return list;
+    return products.filter(
+      product => (product.type === activeFilter || product.foodType === activeFilter)
+    );
   };
 
-  const safeSections = Array.isArray(burgerSections) ? burgerSections : [];
-  const visibleSections = safeSections
+  const visibleSections = (burgerSections || [])
     .map(section => ({
       ...section,
-      products: filterProducts(
-        section.products
-      )
+      products: filterProducts(section.products)
     }))
-    .filter(
-      section =>
-        section.products.length > 0
-    );
+    .filter(section => section.products && section.products.length > 0);
 
   const categories = visibleSections.map(
     section => section.title
@@ -120,30 +75,20 @@ function Burgermenu() {
   useEffect(() => {
     if (
       visibleSections.length > 0 &&
-      !visibleSections.some(
-        section =>
-          section.title === activeCategory
-      )
+      !visibleSections.some(section => section.title === activeCategory)
     ) {
-      setActiveCategory(
-        visibleSections[0].title
-      );
+      setActiveCategory(visibleSections[0].title);
     }
   }, [activeFilter, visibleSections]);
 
   const scrollToCategory = (categoryTitle) => {
     setActiveCategory(categoryTitle);
-
     const section = visibleSections.find(
-      section =>
-        section.title === categoryTitle
+      section => section.title === categoryTitle
     );
-
     if (!section) return;
 
-    sectionRefs.current[
-      section.id
-    ]?.scrollIntoView({
+    sectionRefs.current[section.id]?.scrollIntoView({
       behavior: "smooth",
       block: "start"
     });
@@ -154,74 +99,35 @@ function Burgermenu() {
     if (!menu) return;
 
     const handleScroll = () => {
-      const scrollPosition =
-        menu.scrollTop +
-        menu.clientHeight / 4;
-
-      let currentCategory =
-        visibleSections[0]?.title;
+      const scrollPosition = menu.scrollTop + menu.clientHeight / 4;
+      let currentCategory = visibleSections[0]?.title;
 
       visibleSections.forEach(section => {
-        const element =
-          sectionRefs.current[section.id];
-
-        if (
-          element &&
-          scrollPosition >= element.offsetTop
-        ) {
-          currentCategory =
-            section.title;
+        const element = sectionRefs.current[section.id];
+        if (element && scrollPosition >= element.offsetTop) {
+          currentCategory = section.title;
         }
       });
 
       const isNearBottom =
-        menu.scrollTop +
-          menu.clientHeight >=
-        menu.scrollHeight - 50;
+        menu.scrollTop + menu.clientHeight >= menu.scrollHeight - 50;
 
       if (isNearBottom) {
         currentCategory =
-          visibleSections[
-            visibleSections.length - 1
-          ]?.title;
+          visibleSections[visibleSections.length - 1]?.title;
       }
 
       setActiveCategory(prev =>
-        prev !== currentCategory
-          ? currentCategory
-          : prev
+        prev !== currentCategory ? currentCategory : prev
       );
     };
 
     handleScroll();
-    menu.addEventListener(
-      "scroll",
-      handleScroll
-    );
-
+    menu.addEventListener("scroll", handleScroll);
     return () => {
-      menu.removeEventListener(
-        "scroll",
-        handleScroll
-      );
+      menu.removeEventListener("scroll", handleScroll);
     };
   }, [activeFilter, visibleSections]);
-
-  useEffect(() => {
-    const handleVoiceUIAction = (event) => {
-      const action = event.detail?.action;
-      if (action === "filter_veg") {
-        setActiveFilter("veg");
-      } else if (action === "filter_non_veg") {
-        setActiveFilter("non veg");
-      } else if (action === "filter_both") {
-        setActiveFilter("both");
-      }
-    };
-
-    window.addEventListener("kiosk-ui-action", handleVoiceUIAction);
-    return () => window.removeEventListener("kiosk-ui-action", handleVoiceUIAction);
-  }, []);
 
   return (
     <div className="menu-page">
@@ -235,33 +141,17 @@ function Burgermenu() {
       />
 
       <Menufilters
-        filters={[
-          "both",
-          "veg",
-          "non veg"
-        ]}
+        filters={["both", "veg", "non veg"]}
         activeFilter={activeFilter}
         onFilterChange={handleFilterChange}
       />
 
-      <div
-        className="menu-content"
-        ref={menuContentRef}
-      >
-        <SpotlightShelf
-          category="burger"
-          activeFilter={activeFilter}
-          activeQuickFilter={quickFilter}
-          onQuickFilterSelect={(f) => setQuickFilter(prev => prev === f ? "all" : f)}
-        />
-
+      <div className="menu-content" ref={menuContentRef}>
         {visibleSections.map(section => (
           <div
             key={section.id}
             ref={(el) => {
-              sectionRefs.current[
-                section.id
-              ] = el;
+              sectionRefs.current[section.id] = el;
             }}
           >
             <MenuSection
@@ -273,6 +163,7 @@ function Burgermenu() {
       </div>
 
       <CartContainer />
+      <FooterDecoration />
     </div>
   );
 }
