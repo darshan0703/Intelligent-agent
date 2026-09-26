@@ -18,12 +18,12 @@ import Header from "../components/Header";
 import CartContainer from "../components/CartContainer";
 import FooterDecoration from "../components/FooterDecoration";
 
-import cb from "../assets/images/container burger.png";
-import cd from "../assets/images/container drinks.png";
-import cr from "../assets/images/container recommend.png";
-import cf from "../assets/images/container fresh.png";
-import co from "../assets/images/container offers.png";
-import cl from "../assets/images/container light.png";
+import cb from "../assets/images/Container burger.png";
+import cd from "../assets/images/Container drinks.png";
+import cr from "../assets/images/Container recommend.png";
+import cf from "../assets/images/Container fresh.png";
+import co from "../assets/images/Container offers.png";
+import cl from "../assets/images/Container light.png";
 
 
 function Categories() {

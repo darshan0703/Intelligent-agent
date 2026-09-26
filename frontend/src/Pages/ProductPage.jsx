@@ -51,7 +51,7 @@ function ProductPage() {
 
     try {
       const response = await fetch(
-        "http://localhost:8000/meal/options",
+        "/meal/options",
         {
           method: "POST",
           headers: {
@@ -159,7 +159,7 @@ function ProductPage() {
   const handleAddToCart = async () => {
     try {
       const response = await fetch(
-        "http://127.0.0.1:8000/cart/add",
+        "/cart/add",
         {
           method: "POST",
           headers: {

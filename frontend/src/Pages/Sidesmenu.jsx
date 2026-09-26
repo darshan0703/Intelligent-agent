@@ -19,7 +19,7 @@ function Sidesmenu() {
   const [sidesSections, setSidesSections] = useState([]);
 
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/menu/sides")
+    fetch("/menu/sides")
       .then((res) => res.json())
       .then(setSidesSections);
   }, []);

@@ -17,7 +17,7 @@ function CartPage() {
   const updateItem = async (itemIndex, action) => {
     try {
       const response = await fetch(
-        "http://127.0.0.1:8000/cart/item",
+        "/cart/item",
         {
           method: "PATCH",
           headers: {
@@ -47,7 +47,7 @@ function CartPage() {
 
   try {
     const response = await fetch(
-      "http://127.0.0.1:8000/order/complete",
+      "/order/complete",
       {
         method: "POST",
         headers: {

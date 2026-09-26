@@ -1,8 +1,9 @@
 from database import supabase
 
+
 MEAL_UPGRADE_PRICES = {
     "medium": 140,
-    "large": 145
+    "large": 145,
 }
 
 
@@ -14,7 +15,7 @@ def serialize_meal_option(item, extra_price, is_default=False):
         "price": float(item["price"]),
         "extra_price": float(extra_price),
         "is_default": is_default,
-        "section": item["section"]
+        "section": item["section"],
     }
 
 
@@ -46,13 +47,24 @@ def get_default_meal(meal_size):
         .execute()
     )
 
+    if not side.data or not drink.data:
+        return None
+
     return {
         "side": side.data,
-        "drink": drink.data
+        "drink": drink.data,
     }
 
 
-def get_upgrade_options(meal_size, role):
+def get_upgrade_options(meal_size, role=None):
+    """
+    Fetch meal upgrade rules only once for a meal size.
+
+    If role is supplied, filter the result in Python.
+    This avoids making duplicate Supabase requests for
+    side and drink options during the same meal build.
+    """
+
     response = (
         supabase.table("meal_upgrade_rules")
         .select("""
@@ -74,18 +86,21 @@ def get_upgrade_options(meal_size, role):
 
     options = []
 
-    for row in response.data:
-        item = row["menu_items"]
+    for row in response.data or []:
+        item = row.get("menu_items")
 
-        if item["meal_role"] != role:
+        if not item:
             continue
 
-        if not item["is_available"]:
+        if role is not None and item.get("meal_role") != role:
+            continue
+
+        if not item.get("is_available"):
             continue
 
         options.append({
             **item,
-            "extra_price": row["extra_price"]
+            "extra_price": row["extra_price"],
         })
 
     return options
@@ -112,52 +127,73 @@ def build_meal(item_id, meal_size):
     side_default = defaults["side"]
     drink_default = defaults["drink"]
 
+    # ==========================================================
+    # FETCH ALL UPGRADE OPTIONS ONCE
+    # ==========================================================
+
+    upgrade_options = get_upgrade_options(meal_size)
+
+    # ==========================================================
+    # SPLIT THEM LOCALLY
+    # ==========================================================
+
     side_options = [
         serialize_meal_option(
             item,
             item["extra_price"],
-            item["id"] == side_default["id"]
+            item["id"] == side_default["id"],
         )
-        for item in get_upgrade_options(meal_size, "side")
+        for item in upgrade_options
+        if item.get("meal_role") == "side"
     ]
 
     drink_options = [
         serialize_meal_option(
             item,
             item["extra_price"],
-            item["id"] == drink_default["id"]
+            item["id"] == drink_default["id"],
         )
-        for item in get_upgrade_options(meal_size, "drink")
+        for item in upgrade_options
+        if item.get("meal_role") == "drink"
     ]
 
     upgrade_price = MEAL_UPGRADE_PRICES[meal_size]
 
     return {
         "size": meal_size,
+
         "burger": {
             "id": burger.data["id"],
             "name": burger.data["name"],
             "price": float(burger.data["price"]),
             "image": burger.data["meal_image"],
-            "foodType": burger.data["food_type"]
+            "foodType": burger.data["food_type"],
         },
+
         "side": {
             "id": side_default["id"],
             "name": side_default["name"],
             "price": float(side_default["price"]),
-            "image": side_default["image"]
+            "image": side_default["image"],
         },
+
         "drink": {
             "id": drink_default["id"],
             "name": drink_default["name"],
             "price": float(drink_default["price"]),
-            "image": drink_default["image"]
+            "image": drink_default["image"],
         },
+
         "burger_price": float(burger.data["price"]),
         "upgrade_price": float(upgrade_price),
-        "meal_price": float(burger.data["price"]) + float(upgrade_price),
+
+        "meal_price": (
+            float(burger.data["price"])
+            + float(upgrade_price)
+        ),
+
         "side_options": side_options,
-        "drink_options": drink_options
+        "drink_options": drink_options,
     }
 
 
@@ -178,7 +214,7 @@ def get_meal_options(item_id):
             "success": True,
             "product_id": product.data["id"],
             "product_name": product.data["name"],
-            "is_meal_available": False
+            "is_meal_available": False,
         }
 
     return {
@@ -188,6 +224,6 @@ def get_meal_options(item_id):
         "is_meal_available": True,
         "meals": {
             "medium": build_meal(item_id, "medium"),
-            "large": build_meal(item_id, "large")
-        }
+            "large": build_meal(item_id, "large"),
+        },
     }
