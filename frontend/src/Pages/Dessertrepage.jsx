@@ -59,36 +59,25 @@ function Dessert() {
   const memoryCache = typeof window !== "undefined" ? window.__CATEGORY_CACHE__?.['dessert'] : null;
   const data = validRecData || fallbackData || memoryCache || {};
 
-  let freshDesserts = data.priority || [];
-  let premiumDesserts = data.premium || [];
-  let moreDesserts = data.additional || [];
+  let freshDesserts = [];
+  let premiumDesserts = [];
+  let moreDesserts = [];
 
-  const allPool = [
-    ...(data.priority || []),
-    ...(data.premium || []),
-    ...(data.additional || []),
-    ...(memoryCache?.priority || []),
-    ...(memoryCache?.premium || []),
-    ...(memoryCache?.additional || []),
-  ];
-  const dedupedPool = Array.from(new Map(allPool.map(i => [i.id || i.name, i])).values());
+  const usedIds = new Set();
 
-  const usedIds = new Set(freshDesserts.map(i => i.id || i.name));
-  if (premiumDesserts.length < 2) {
-    const cands = dedupedPool.filter(i => !usedIds.has(i.id || i.name));
-    premiumDesserts = [...premiumDesserts, ...cands].slice(0, 2);
-  }
+  // 1. Priority / Popular Desserts (Top 2 distinct items)
+  const rawPriority = data.priority || fallbackData?.priority || memoryCache?.priority || [];
+  freshDesserts = rawPriority.slice(0, 2);
+  freshDesserts.forEach(i => usedIds.add(i.id || i.name));
+
+  // 2. Premium Desserts (Top 2 distinct items, strictly excluding Priority)
+  const rawPremium = data.premium || fallbackData?.premium || memoryCache?.premium || [];
+  premiumDesserts = rawPremium.filter(i => !usedIds.has(i.id || i.name)).slice(0, 2);
   premiumDesserts.forEach(i => usedIds.add(i.id || i.name));
 
-  if (moreDesserts.length < 4) {
-    const cands = dedupedPool.filter(i => !usedIds.has(i.id || i.name));
-    moreDesserts = [...moreDesserts, ...cands].slice(0, 4);
-  }
-  // Hard guarantee: if still under 4, recycle items from candidate pool so slots never show blank white
-  if (moreDesserts.length < 4 && dedupedPool.length > 0) {
-    const recycle = dedupedPool.filter(i => !moreDesserts.some(m => (m.id || m.name) === (i.id || i.name)));
-    moreDesserts = [...moreDesserts, ...recycle, ...dedupedPool].slice(0, 4);
-  }
+  // 3. More / Additional Desserts (Top 4 distinct items, strictly excluding Priority and Premium)
+  const rawAdditional = data.additional || fallbackData?.additional || memoryCache?.additional || [];
+  moreDesserts = rawAdditional.filter(i => !usedIds.has(i.id || i.name)).slice(0, 4);
 
   return (
     <div className="dessert-page">

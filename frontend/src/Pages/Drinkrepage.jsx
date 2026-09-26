@@ -103,35 +103,21 @@ function Drink() {
   const dedupedFiltered = Array.from(new Map(filteredPool.map(i => [i.id || i.name, i])).values());
   const dedupedAll = Array.from(new Map(allPool.map(i => [i.id || i.name, i])).values());
 
-  const usedIds = new Set(freshDrinks.map(i => i.id || i.name));
+  const usedIds = new Set();
+  
+  // 1. Fresh/Priority Drinks (Top 2 distinct items)
+  const availablePriority = filterProducts(data.priority || fallbackData?.priority || memoryCache?.priority || []);
+  freshDrinks = availablePriority.slice(0, 2);
+  freshDrinks.forEach(i => usedIds.add(i.id || i.name));
 
-  // Ensure priority has at least 2 cards
-  if (freshDrinks.length < 2) {
-    const pool = dedupedFiltered.length >= 2 ? dedupedFiltered : dedupedAll;
-    const cands = pool.filter(i => !usedIds.has(i.id || i.name));
-    freshDrinks = [...freshDrinks, ...cands].slice(0, 2);
-    freshDrinks.forEach(i => usedIds.add(i.id || i.name));
-  }
-
-  // Ensure premium has at least 2 cards
-  if (premiumDrinks.length < 2) {
-    const pool = dedupedFiltered.length >= 4 ? dedupedFiltered : dedupedAll;
-    const cands = pool.filter(i => !usedIds.has(i.id || i.name));
-    premiumDrinks = [...premiumDrinks, ...cands].slice(0, 2);
-  }
+  // 2. Premium Drinks (Top 2 distinct items, strictly excluding Priority)
+  const rawPremium = filterProducts(data.premium || fallbackData?.premium || memoryCache?.premium || []);
+  premiumDrinks = rawPremium.filter(i => !usedIds.has(i.id || i.name)).slice(0, 2);
   premiumDrinks.forEach(i => usedIds.add(i.id || i.name));
 
-  // Ensure additional has at least 4 cards (never blank)
-  if (moreDrinks.length < 4) {
-    const pool = dedupedFiltered.length >= 6 ? dedupedFiltered : dedupedAll;
-    const cands = pool.filter(i => !usedIds.has(i.id || i.name));
-    moreDrinks = [...moreDrinks, ...cands].slice(0, 4);
-  }
-  // Hard guarantee: if still under 4, recycle items from candidate pool so slots never show blank white
-  if (moreDrinks.length < 4 && dedupedAll.length > 0) {
-    const recycle = dedupedAll.filter(i => !moreDrinks.some(m => (m.id || m.name) === (i.id || i.name)));
-    moreDrinks = [...moreDrinks, ...recycle, ...dedupedAll].slice(0, 4);
-  }
+  // 3. More/Additional Drinks (Top 4 distinct items, strictly excluding Priority and Premium)
+  const rawAdditional = filterProducts(data.additional || fallbackData?.additional || memoryCache?.additional || []);
+  moreDrinks = rawAdditional.filter(i => !usedIds.has(i.id || i.name)).slice(0, 4);
 
   const handleFilterChange = useCallback((filter) => {
     const normalizedFilter = filter.trim().toLowerCase();
