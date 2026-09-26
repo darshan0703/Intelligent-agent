@@ -245,4 +245,4 @@ def get_meal_options(item_id: int):
         }
 
     finally:
-        db.close()
+        db.close() 
