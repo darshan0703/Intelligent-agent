@@ -21,7 +21,7 @@ function Burgermenu() {
   const [burgerSections, setBurgerSections] = useState([]);
 
  useEffect(() => {
-    fetch("http://127.0.0.1:8000/menu/burgers")
+    fetch("/menu/burgers")
         .then(res => res.json())
         .then(setBurgerSections);
  }, []);
