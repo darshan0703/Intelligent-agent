@@ -128,3 +128,94 @@ def run_recommendation_pipeline(
         "premium": premium,
         "additional": additional,
     }
+
+
+def evaluate_7tier_pipeline(
+    candidates: List[Any],
+    context: Any = None,
+    anchor_price: float | None = None,
+    **kwargs: Any,
+) -> tuple[List[Dict[str, Any]], List[Any]]:
+    """
+    Modular implementation of candidate evaluation.
+    Chains the independent modules (m01..m13) cleanly.
+    Returns (evaluated_entries, raw_candidates).
+    """
+    if not candidates:
+        return [], []
+
+    pref = getattr(context, "dietary_lock", None) if context else None
+    cart_lines = getattr(context, "cart_lines", []) if context else []
+    cart_items = []
+    for l in cart_lines:
+        if isinstance(l, dict):
+            cart_items.append(l)
+        else:
+            p = getattr(l, "unit_price", getattr(l, "price", 0))
+            p_val = float(p.amount if hasattr(p, "amount") else p)
+            cart_items.append({
+                "id": getattr(l, "item_id", getattr(l, "id", None)),
+                "name": getattr(l, "item_name", getattr(l, "name", "")),
+                "category": getattr(l, "category", ""),
+                "price": p_val,
+            })
+
+    anchor_item = getattr(context, "anchor_item", None) if context else None
+    anchor_dict = None
+    if anchor_item:
+        if isinstance(anchor_item, dict):
+            anchor_dict = anchor_item
+        else:
+            p_val = anchor_price or float(anchor_item.price.amount if hasattr(anchor_item.price, "amount") else anchor_item.price)
+            anchor_dict = {
+                "id": getattr(anchor_item, "id", None),
+                "name": getattr(anchor_item, "name", ""),
+                "price": p_val,
+                "category": str(getattr(anchor_item, "category", "")),
+            }
+
+    evaluated = []
+    for c in candidates:
+        if isinstance(c, dict):
+            c_dict = dict(c)
+        else:
+            p = getattr(c, "price", 0)
+            p_val = float(p.amount if hasattr(p, "amount") else p)
+            c_dict = {
+                "id": getattr(c, "id", None),
+                "name": getattr(c, "name", ""),
+                "price": p_val,
+                "category": str(c.category.value if hasattr(c.category, "value") else c.category).lower(),
+                "foodType": str(c.food_type.value if hasattr(c.food_type, "value") else c.food_type).lower() if getattr(c, "food_type", None) else "",
+                "priority": getattr(c, "display_order", 10) or 10,
+            }
+
+        if pref:
+            res = apply_dietary_lock([c_dict], pref, cart_items)
+            if not res:
+                continue
+
+        base_score = float(c_dict.get("priority", 10))
+        m2 = score_anti_redundancy(c_dict, anchor_dict)
+        m3 = score_flavor_synergy(c_dict, anchor_dict, cart_items)
+        m9 = score_margin_multiplier(c_dict, anchor_price)
+        m10 = score_sensory_contrast(c_dict, anchor_dict)
+        m12 = score_circadian_craving(c_dict, None)
+
+        composite_score = base_score * m2 * m3 * m9 * m10 * m12
+        evaluated.append({
+            "item": c,
+            "composite_score": composite_score,
+            "signals": {
+                "base": base_score,
+                "anti_redundancy": m2,
+                "flavor_synergy": m3,
+                "margin": m9,
+                "sensory": m10,
+                "circadian": m12,
+            },
+        })
+
+    evaluated.sort(key=lambda x: x["composite_score"], reverse=True)
+    return evaluated, candidates
+

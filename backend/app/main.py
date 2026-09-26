@@ -820,10 +820,7 @@ def create_app() -> FastAPI:
         c = await _cs.get_cart(session_id)
         SessionLearner.update_from_cart(session_id, c.lines)
         try:
-            from app.intelligence.recommendation.bandit import ThompsonSamplingBandit
             from app.intelligence.recommendation.heuristics.kitchen_load import KitchenLoadTracker
-            ThompsonSamplingBandit.record_interaction("product_rec", item.id, converted=True)
-            ThompsonSamplingBandit.record_interaction("checkout_rec", item.id, converted=True)
             station = KitchenLoadTracker.map_item_to_station(item)
             KitchenLoadTracker.increment_queue(branch_id, station, delta=quantity)
         except Exception:
@@ -1019,7 +1016,8 @@ def create_app() -> FastAPI:
         import time
         from app.intelligence.recommendation.session_learner import SessionLearner
         from app.intelligence.recommendation.heuristics.circadian_clock import CircadianCravingAnalyzer
-        from app.intelligence.recommendation.scoring import RecommendationContext, evaluate_7tier_pipeline
+        from app.intelligence.recommendation.catalog_meta import RecommendationContext
+        from app.intelligence.recommendation.pipeline_runner import evaluate_7tier_pipeline
         from app.intelligence.recommendation.gatekeeper import Gatekeeper
         from app.observability.recommendation_telemetry import RecommendationTelemetryLogger
         from app.infrastructure.repositories.catalog_repository import get_category_default_image

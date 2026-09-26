@@ -62,7 +62,7 @@ class AntiRedundancyConstraint:
         # Direct substring match check for universal fast-food craving items
         if any(w in name for w in ["nugget", "nuggets", "fries", "french fries", "wing", "wings", "bucket"]):
             return True
-        from app.intelligence.recommendation.scoring import get_item_sub_role
+        from app.intelligence.recommendation.catalog_meta import get_item_sub_role
         if get_item_sub_role(candidate) == "sharing_bucket":
             return True
         for u in cls.UNIVERSAL_SIDES:
@@ -297,7 +297,7 @@ class OverrideHierarchy:
         if anchor_price is not None and anchor_price > Decimal("0"):
             item_price = item.price.amount if hasattr(item.price, "amount") else Decimal(str(item.price))
             # Sharing buckets (group/party bulk items) bypass single-portion budget ceilings
-            from app.intelligence.recommendation.scoring import get_item_sub_role
+            from app.intelligence.recommendation.catalog_meta import get_item_sub_role
             is_sharing = get_item_sub_role(item) == "sharing_bucket"
             if not is_sharing and anchor_price <= Decimal("150.00") and item_cat != "burger":
                 if item_price > (anchor_price * Decimal(str(max_price_ratio))):

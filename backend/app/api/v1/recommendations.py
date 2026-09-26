@@ -30,19 +30,21 @@ from app.infrastructure.repositories.catalog_repository import (
 )
 from app.infrastructure.repositories.session_repository import RedisSessionRepository
 from app.application.session_service import SessionService
-from app.intelligence.recommendation.engine import HybridRecommendationEngine, ACTION_WEIGHT
-from app.intelligence.recommendation.scoring import (
+from app.intelligence.recommendation.catalog_meta import (
     RecommendationContext,
-    evaluate_7tier_pipeline,
-    sensory_contrast_score,
-    price_proximity_score,
-    circadian_score,
     calculate_effective_anchor,
     get_item_sub_role,
     get_item_spice_level,
     calculate_velocity_multiplier,
     calculate_yield_boost,
     _item_name,
+    classify_beverage_subrole,
+    classify_dessert_subrole,
+    is_heavy_dairy_beverage,
+)
+from app.intelligence.recommendation.pipeline_runner import (
+    evaluate_7tier_pipeline,
+    run_recommendation_pipeline,
 )
 from app.intelligence.recommendation.constraints import (
     AntiRedundancyConstraint,
@@ -65,7 +67,7 @@ _catalog_repo = SQLAlchemyCatalogRepository()
 _session_repo = RedisSessionRepository()
 _session_service = SessionService(_session_repo)
 _cart_service = CartService(_catalog_repo)
-_engine = HybridRecommendationEngine(_catalog_repo)
+_constraint_filter = ConstraintFilter()
 
 
 # ── REQUEST MODELS ────────────────────────────────────────────────────────────
@@ -395,7 +397,7 @@ async def get_product_recommendations(
         eff_max_ratio = 2.0 if (float(anchor.price.amount) >= 169.0 and target_role in ("drink", "dessert")) else 1.5
 
         # 1. Strict Override Hierarchy Filter with Anti-Redundancy Constraint in MEAL_COMPLETION
-        valid_candidates = _engine.constraint_filter.filter_candidates(
+        valid_candidates = _constraint_filter.filter_candidates(
             candidates=candidates,
             session=session,
             cart_item_ids=chosen_ids,
@@ -444,7 +446,7 @@ async def get_product_recommendations(
                 continue
 
             if "drink" in cand_cat:
-                subrole = _engine.ranker.classify_beverage_subrole(cand_item)
+                subrole = classify_beverage_subrole(cand_item)
                 if subrole == "sweet_indulgence" and "sweet_indulgence" in chosen_drink_subroles:
                     continue
 
@@ -491,7 +493,7 @@ async def get_product_recommendations(
             )
             chosen_ids.add(selected_cand.id)
             if "drink" in str(selected_cand.category).lower():
-                chosen_drink_subroles.add(_engine.ranker.classify_beverage_subrole(selected_cand))
+                chosen_drink_subroles.add(classify_beverage_subrole(selected_cand))
             sel_base = AntiRedundancyConstraint.extract_base_ingredient(selected_cand)
             if sel_base:
                 assigned_base_ingredients.add(sel_base)
@@ -591,7 +593,7 @@ async def get_category_spotlight(
     dismissed_ids = set(profile.dismissed_item_ids)
 
     # 4. Filter and Score Candidates
-    valid_candidates = _engine.constraint_filter.filter_candidates(
+    valid_candidates = _constraint_filter.filter_candidates(
         candidates=candidates,
         session=session,
         cart_item_ids=set(),
@@ -829,7 +831,7 @@ async def post_checkout_recommendations(req: CheckoutRecommendationRequest):
             categories_present.add("burger")
         if "drink" in cat_str or "beverage" in cat_str:
             categories_present.add("drink")
-            if _engine.ranker.is_heavy_dairy_beverage(l):
+            if is_heavy_dairy_beverage(l):
                 has_heavy_dairy = True
         if "side" in cat_str:
             categories_present.add("side")
@@ -928,7 +930,7 @@ async def post_checkout_recommendations(req: CheckoutRecommendationRequest):
     eff_anchor = calculate_effective_anchor(normalized_lines, default_anchor=float(cart_total) if cart_total > Decimal("0") else 100.0)
 
     # 4. Strict Override Hierarchy Filter with Absolute Cart Exclusion (ID & Name)
-    valid_candidates = _engine.constraint_filter.filter_candidates(
+    valid_candidates = _constraint_filter.filter_candidates(
         candidates=raw_candidates,
         session=session,
         cart_item_ids=cart_item_ids,
@@ -1032,20 +1034,20 @@ async def post_checkout_recommendations(req: CheckoutRecommendationRequest):
         cat_str = str(it.category.value if hasattr(it.category, "value") else it.category).lower()
         # Enforce beverage balance: never show two sweet indulgence drinks together
         if "drink" in cat_str or "beverage" in cat_str:
-            subrole = _engine.ranker.classify_beverage_subrole(it)
+            subrole = classify_beverage_subrole(it)
             if subrole == "sweet_indulgence" and "sweet_indulgence" in chosen_drink_subroles:
                 return False
 
         # Enforce dessert diversity: never show all cold_dairy desserts if hot_baked available
         if "dessert" in cat_str:
-            dessert_subrole = _engine.ranker.classify_dessert_subrole(it)
+            dessert_subrole = classify_dessert_subrole(it)
             if dessert_subrole == "cold_dairy":
                 cold_count = sum(1 for r in chosen_dessert_subroles if r == "cold_dairy")
                 if cold_count >= 2:
                     has_hot = any(
                         c.id not in chosen_ids
                         and "dessert" in str(c.category.value if hasattr(c.category, "value") else c.category).lower()
-                        and _engine.ranker.classify_dessert_subrole(c) == "hot_baked"
+                        and classify_dessert_subrole(c) == "hot_baked"
                         for c in candidates
                     )
                     if has_hot:
@@ -1063,9 +1065,9 @@ async def post_checkout_recommendations(req: CheckoutRecommendationRequest):
 
         cat_str = str(it.category.value if hasattr(it.category, "value") else it.category).lower()
         if "drink" in cat_str or "beverage" in cat_str:
-            chosen_drink_subroles.add(_engine.ranker.classify_beverage_subrole(it))
+            chosen_drink_subroles.add(classify_beverage_subrole(it))
         if "dessert" in cat_str:
-            chosen_dessert_subroles.append(_engine.ranker.classify_dessert_subrole(it))
+            chosen_dessert_subroles.append(classify_dessert_subrole(it))
 
         cand_name_l = (it.name or "").lower()
         sub_role = getattr(it, "sub_role", None) or getattr(it, "sub_category", None) or ""

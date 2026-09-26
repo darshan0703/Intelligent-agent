@@ -480,7 +480,7 @@ When a customer or LLM/voice agent selects a dietary filter (e.g. `veg`) on **an
    - [`Burgermenu.jsx`](file:///C:/Users/Hemanth%20Raju%20N/Downloads/Working%20Model/TheAtom/frontend/src/Pages/Burgermenu.jsx): Re-queries `/menu/burgers?preference=veg` and client-filters sections.
 3. **Sides Recommendation & Catalog Pages**:
    - [`Sidesrepage.jsx`](file:///C:/Users/Hemanth%20Raju%20N/Downloads/Working%20Model/TheAtom/frontend/src/Pages/Sidesrepage.jsx): Equipped with matching `<Menufilters>` (`All`, `Veg`, `Non-Veg`), initializes `selectedType` to session `foodPreference`, queries `/recommendations/category/side?preference=veg`, and enforces client-side tri-state guards. Non-veg items (wings, nuggets) are strictly excluded.
-   - [`Sidesmenu.jsx`](file:///C:/Users/Hemanth%20Raju%20N/Downloads/Working%20Model/TheAtom/frontend/src/Pages/Sidesmenu.jsx): Re-queries `/menu/sides?preference=veg`; SpotlightShelf filters to veg items.
+   - [`Sidesmenu.jsx`](file:///C:/Users/Hemanth%20Raju%20N/Downloads/Working%20Model/TheAtom/frontend/src/Pages/Sidesmenu.jsx): Re-queries `/menu/sides?preference=veg` and renders filtered catalog sections with clean native grid.
 4. **Meal Flow & Product Detail**:
    - [`ProductPage.jsx`](file:///C:/Users/Hemanth%20Raju%20N/Downloads/Working%20Model/TheAtom/frontend/src/Pages/ProductPage.jsx): Passes `preference: foodPreference` in `POST /meal/options`; filters companion recommendations to veg.
    - [`MealPage.jsx`](file:///C:/Users/Hemanth%20Raju%20N/Downloads/Working%20Model/TheAtom/frontend/src/Pages/Mealpage.jsx): Filters `side_options` so only vegetarian sides (Fries, Hashbrowns, Dips) render; automatically auto-swaps non-veg default sides to veg.

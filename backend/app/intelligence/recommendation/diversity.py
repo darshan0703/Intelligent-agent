@@ -169,10 +169,17 @@ class MMRDiversity:
         Re-ranks candidates using MMR.
         If job_code provided, looks up the job-specific λ from JOB_MMR_LAMBDA.
         """
-        # Import here to avoid circular at module load time
-        from app.intelligence.recommendation.job_config import JOB_MMR_LAMBDA
-        if job_code and job_code in JOB_MMR_LAMBDA:
-            lambda_param = JOB_MMR_LAMBDA[job_code]
+        # Job-specific lambda mapping
+        job_lambdas = {
+            "DISCOVERY": 0.75,
+            "MEAL_COMPLETION": 0.60,
+            "CLOSURE": 0.50,
+            "SUBSTITUTE": 0.80,
+            "UPGRADE": 1.0,
+            "PRODUCT_CROSSSELL": 0.55,
+        }
+        if job_code and job_code in job_lambdas:
+            lambda_param = job_lambdas[job_code]
 
         if not candidates or len(candidates) <= top_k:
             return sorted(candidates, key=lambda c: c.weighted_score, reverse=True)
