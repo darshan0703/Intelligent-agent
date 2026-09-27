@@ -1,13 +1,13 @@
-from langchain_core.tools import tool
-
-from services.menu_service import (
-    get_available,
-    get_category,
-    get_product,
-)
 from typing import Optional
 
+from langchain_core.tools import tool
+
+from services.menu_service import get_product
 from services.recommendation import get_agent_recommendations
+from services.product_selector import resolve_product
+from services.productservice import handle_product
+from state import conversation_context
+
 
 # ==========================================================
 # ITEM DETAILS
@@ -21,13 +21,6 @@ def get_menu_item_details(item_name: str):
     Use this when you need information about a particular item,
     including its description, price, category, food type,
     availability, meal availability, or other stored details.
-
-    Args:
-        item_name:
-            The name of the menu item.
-
-    Returns:
-        The matching menu item details, or None if no item is found.
     """
 
     return get_product(item_name)
@@ -40,25 +33,11 @@ def get_menu_item_details(item_name: str):
 @tool
 def get_recommendations(
     category: Optional[str] = None,
-    food_type: str | None = None,
+    food_type: Optional[str] = None,
 ):
     """
     Get restaurant recommendations using the existing deterministic
     recommendation system.
-
-    Use this when you need to recommend items to a customer rather
-    than simply search for available menu items.
-
-    Args:
-        category:
-            Optional category such as burger, drink, side, or dessert.
-
-        food_type:
-            Optional food preference such as veg or non veg.
-
-    Returns:
-        Recommendation candidates selected by the restaurant's
-        deterministic recommendation logic.
     """
 
     return get_agent_recommendations(
@@ -80,14 +59,6 @@ def create_open_category_tool(conversation_context):
         Open a restaurant category on the kiosk.
 
         Use this when the customer wants to browse a category.
-
-        Args:
-            category:
-                The restaurant category to open.
-
-        Returns:
-            Only the information needed by the agent after
-            the category has been opened.
         """
 
         response = handle_category(
@@ -96,7 +67,6 @@ def create_open_category_tool(conversation_context):
         )
 
         # Keep the complete KioskResponse inside the application.
-        # The frontend needs the full menu data.
         if hasattr(response, "screen") and hasattr(response, "data"):
 
             conversation_context["_last_kiosk_response"] = response
@@ -111,7 +81,6 @@ def create_open_category_tool(conversation_context):
                 "success": True,
                 "category": category,
 
-                # Only one of each is exposed to the agent.
                 "priority_recommendation": (
                     {
                         "name": priority[0].get("name"),
@@ -134,13 +103,100 @@ def create_open_category_tool(conversation_context):
             }
 
         return response
+
     return open_category
-    
+
+
 # ==========================================================
-# ALL STATIC RESTAURANT TOOLS
+# PRODUCT SELECTION
+# ==========================================================
+
+@tool
+def select_product(product_query: str):
+    """
+    Resolve a customer's reference to a specific restaurant product.
+
+    Use this capability when the customer is referring to a particular
+    menu item they want, are asking about, or are checking whether it
+    is available.
+
+    The query should contain the product the customer is referring to.
+    The resolver checks the real restaurant menu and returns matching
+    products.
+
+    Do not determine whether the product exists yourself.
+    Do not invent product names or variants.
+    """
+
+    result = resolve_product(
+        product_query,
+        conversation_context,
+    )
+
+    # ==========================================================
+    # PRODUCT FOUND
+    # ==========================================================
+
+    if result["status"] == "selected":
+
+        product = result["product"]
+
+        # Build the existing product-page KioskResponse.
+        response = handle_product(
+            product["name"],
+            conversation_context,
+        )
+
+        # Store the complete response for the API layer.
+        conversation_context["_last_kiosk_response"] = response
+
+        return {
+            "success": True,
+            "status": "selected",
+            "product": {
+                "id": product.get("id"),
+                "name": product.get("name"),
+                "price": product.get("price"),
+            },
+            "screen": response.screen,
+        }
+
+    # ==========================================================
+    # MULTIPLE PRODUCTS MATCH
+    # ==========================================================
+
+    if result["status"] == "ambiguous":
+
+        return {
+            "success": True,
+            "status": "ambiguous",
+            "matches": [
+                {
+                    "id": product.get("id"),
+                    "name": product.get("name"),
+                    "price": product.get("price"),
+                }
+                for product in result["matches"]
+            ],
+        }
+
+    # ==========================================================
+    # PRODUCT NOT FOUND
+    # ==========================================================
+
+    return {
+        "success": False,
+        "status": "not_found",
+        "product_query": product_query,
+    }
+
+
+# ==========================================================
+# STATIC RESTAURANT TOOLS
 # ==========================================================
 
 restaurant_tools = [
     get_menu_item_details,
     get_recommendations,
+    select_product,
 ]

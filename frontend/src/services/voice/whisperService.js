@@ -1,5 +1,5 @@
 const STT_URL =
-  "http://127.0.0.1:8000/stt";
+  "/stt";
 
 export async function sendAudioToWhisper(
   blob,

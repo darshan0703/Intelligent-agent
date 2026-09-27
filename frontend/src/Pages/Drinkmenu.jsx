@@ -19,7 +19,7 @@ function Drinkmenu() {
   const [drinkSections, setDrinkSections] = useState([]);
 
  useEffect(() => {
-    fetch("http://127.0.0.1:8000/menu/drinks")
+    fetch("/menu/drinks")
         .then((res) => res.json())
         .then(setDrinkSections);
 }, []);

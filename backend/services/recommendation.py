@@ -1,22 +1,22 @@
-from datetime import date
+from datetime import date, datetime
 from services.menu_service import get_available, get_category
 
 def get_priority_items(menu):
     today = date.today()
 
     for item in menu:
-        days_to_expiry = (item["expiry"] - today).days
+        expiry = item["expiry"]
+
+        # Supabase returns ISO date strings
+        if isinstance(expiry, str):
+            expiry = datetime.fromisoformat(expiry).date()
+
+        days_to_expiry = (expiry - today).days
         expiry_score = max(0, 30 - days_to_expiry)
+
         item["priority"] = item["stock"] + expiry_score
-        
-    menu_sorted = sorted(
-        menu,
-        key=lambda x: x["priority"],
-        reverse=True
-    )
 
-    return menu_sorted[:2]
-
+    return sorted(menu, key=lambda x: x["priority"], reverse=True)
 
 def build_recommendations(items):
     priority = get_priority_items(items)

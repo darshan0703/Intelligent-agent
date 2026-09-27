@@ -1,248 +1,229 @@
-from httpx import options
-from sqlalchemy.orm import Session
+from database import supabase
 
-from database import SessionLocal
-from models import MenuItem, MealDefault, MealUpgradeRule
 
 MEAL_UPGRADE_PRICES = {
     "medium": 140,
-    "large": 145
+    "large": 145,
 }
 
-def get_default_meal(db: Session, meal_size: str):
 
+def serialize_meal_option(item, extra_price, is_default=False):
+    return {
+        "id": item["id"],
+        "name": item["name"],
+        "image": item["image"],
+        "price": float(item["price"]),
+        "extra_price": float(extra_price),
+        "is_default": is_default,
+        "section": item["section"],
+    }
+
+
+def get_default_meal(meal_size):
     default = (
-        db.query(MealDefault)
-        .filter(MealDefault.meal_size == meal_size)
-        .first()
+        supabase.table("meal_defaults")
+        .select("default_side_id, default_drink_id")
+        .eq("meal_size", meal_size)
+        .single()
+        .execute()
     )
 
-    if not default:
+    if not default.data:
         return None
 
     side = (
-        db.query(MenuItem)
-        .filter(MenuItem.id == default.default_side_id)
-        .first()
+        supabase.table("menu_items")
+        .select("*")
+        .eq("id", default.data["default_side_id"])
+        .single()
+        .execute()
     )
 
     drink = (
-        db.query(MenuItem)
-        .filter(MenuItem.id == default.default_drink_id)
-        .first()
+        supabase.table("menu_items")
+        .select("*")
+        .eq("id", default.data["default_drink_id"])
+        .single()
+        .execute()
     )
 
-    return {
-        "side": side,
-        "drink": drink
-    }
-
-def serialize_meal_option(menu_item, extra_price, is_default=False):
+    if not side.data or not drink.data:
+        return None
 
     return {
-        "id": menu_item.id,
-        "name": menu_item.name,
-        "image": menu_item.image,
-        "price": float(menu_item.price),
-        "extra_price": float(extra_price),
-        "is_default": is_default,
-        "section": menu_item.section
+        "side": side.data,
+        "drink": drink.data,
     }
 
-def get_side_options(
-    db: Session,
-    meal_size: str,
-    default_side=None,
-):
-    if default_side is None:
-        default_data = get_default_meal(db, meal_size)
-        default_side = default_data["side"] if default_data else None
 
-    default_side_id = default_side.id if default_side else None
+def get_upgrade_options(meal_size, role=None):
+    """
+    Fetch meal upgrade rules only once for a meal size.
+
+    If role is supplied, filter the result in Python.
+    This avoids making duplicate Supabase requests for
+    side and drink options during the same meal build.
+    """
+
+    response = (
+        supabase.table("meal_upgrade_rules")
+        .select("""
+            extra_price,
+            menu_items!inner(
+                id,
+                name,
+                image,
+                price,
+                section,
+                meal_role,
+                is_available
+            )
+        """)
+        .eq("meal_size", meal_size)
+        .eq("is_enabled", True)
+        .execute()
+    )
+
     options = []
 
-    upgrades = (
-        db.query(MealUpgradeRule, MenuItem)
-        .join(
-            MenuItem,
-            MenuItem.id == MealUpgradeRule.item_id
-        )
-        .filter(
-            MealUpgradeRule.meal_size == meal_size,
-            MealUpgradeRule.is_enabled == True,
-            MenuItem.meal_role == "side",
-            MenuItem.is_available == True
-        )
-        .all()
-    )
+    for row in response.data or []:
+        item = row.get("menu_items")
 
-    for rule, item in upgrades:
-        options.append(
-            serialize_meal_option(
-                item,
-                rule.extra_price,
-                item.id == default_side_id
-            )
-        )
+        if not item:
+            continue
+
+        if role is not None and item.get("meal_role") != role:
+            continue
+
+        if not item.get("is_available"):
+            continue
+
+        options.append({
+            **item,
+            "extra_price": row["extra_price"],
+        })
 
     return options
 
-def get_drink_options(
-    db: Session,
-    meal_size: str,
-    default_drink=None,
-):
-    if default_drink is None:
-        default_data = get_default_meal(db, meal_size)
-        default_drink = default_data["drink"] if default_data else None
 
-    default_drink_id = default_drink.id if default_drink else None
-    options = []
-
-    upgrades = (
-        db.query(MealUpgradeRule, MenuItem)
-        .join(
-            MenuItem,
-            MenuItem.id == MealUpgradeRule.item_id
-        )
-        .filter(
-            MealUpgradeRule.meal_size == meal_size,
-            MealUpgradeRule.is_enabled == True,
-            MenuItem.meal_role == "drink",
-            MenuItem.is_available == True
-        )
-        .all()
+def build_meal(item_id, meal_size):
+    burger = (
+        supabase.table("menu_items")
+        .select("*")
+        .eq("id", item_id)
+        .eq("meal_role", "main")
+        .single()
+        .execute()
     )
 
-    for rule, item in upgrades:
-        options.append(
-            serialize_meal_option(
-                item,
-                rule.extra_price,
-                item.id == default_drink_id
-            )
-        )
-
-    return options
-
-def build_meal(
-    db: Session,
-    item_id: int,
-    meal_size: str,
-    burger=None,
-):
-    if burger is None:
-        burger = (
-            db.query(MenuItem)
-            .filter(
-                MenuItem.id == item_id,
-                MenuItem.meal_role == "main"
-            )
-            .first()
-        )
-
-    if not burger or burger.meal_role != "main":
+    if not burger.data:
         return None
 
-    defaults = get_default_meal(
-        db,
-        meal_size
-    )
+    defaults = get_default_meal(meal_size)
 
-    if not defaults or not defaults.get("side") or not defaults.get("drink"):
+    if not defaults:
         return None
 
-    upgrade_price = MEAL_UPGRADE_PRICES.get(meal_size)
+    side_default = defaults["side"]
+    drink_default = defaults["drink"]
 
-    if upgrade_price is None:
-        return None
+    # ==========================================================
+    # FETCH ALL UPGRADE OPTIONS ONCE
+    # ==========================================================
 
-    side_options = get_side_options(
-        db,
-        meal_size,
-        default_side=defaults["side"]
-    )
+    upgrade_options = get_upgrade_options(meal_size)
 
-    drink_options = get_drink_options(
-        db,
-        meal_size,
-        default_drink=defaults["drink"]
-    )
+    # ==========================================================
+    # SPLIT THEM LOCALLY
+    # ==========================================================
+
+    side_options = [
+        serialize_meal_option(
+            item,
+            item["extra_price"],
+            item["id"] == side_default["id"],
+        )
+        for item in upgrade_options
+        if item.get("meal_role") == "side"
+    ]
+
+    drink_options = [
+        serialize_meal_option(
+            item,
+            item["extra_price"],
+            item["id"] == drink_default["id"],
+        )
+        for item in upgrade_options
+        if item.get("meal_role") == "drink"
+    ]
+
+    upgrade_price = MEAL_UPGRADE_PRICES[meal_size]
 
     return {
         "size": meal_size,
+
         "burger": {
-            "id": burger.id,
-            "name": burger.name,
-            "price": float(burger.price),
-            "image": burger.meal_image,
-            "foodType": burger.food_type
+            "id": burger.data["id"],
+            "name": burger.data["name"],
+            "price": float(burger.data["price"]),
+            "image": burger.data["meal_image"],
+            "foodType": burger.data["food_type"],
         },
+
         "side": {
-            "id": defaults["side"].id,
-            "name": defaults["side"].name,
-            "price": float(defaults["side"].price),
-            "image": defaults["side"].image
+            "id": side_default["id"],
+            "name": side_default["name"],
+            "price": float(side_default["price"]),
+            "image": side_default["image"],
         },
+
         "drink": {
-            "id": defaults["drink"].id,
-            "name": defaults["drink"].name,
-            "price": float(defaults["drink"].price),
-            "image": defaults["drink"].image
+            "id": drink_default["id"],
+            "name": drink_default["name"],
+            "price": float(drink_default["price"]),
+            "image": drink_default["image"],
         },
-        "burger_price": float(burger.price),
+
+        "burger_price": float(burger.data["price"]),
         "upgrade_price": float(upgrade_price),
-        "meal_price": float(burger.price) + float(upgrade_price),
+
+        "meal_price": (
+            float(burger.data["price"])
+            + float(upgrade_price)
+        ),
+
         "side_options": side_options,
-        "drink_options": drink_options
+        "drink_options": drink_options,
     }
 
 
-def get_meal_options(item_id: int):
-    db: Session = SessionLocal()
+def get_meal_options(item_id):
+    product = (
+        supabase.table("menu_items")
+        .select("*")
+        .eq("id", item_id)
+        .single()
+        .execute()
+    )
 
-    try:
-        product = (
-            db.query(MenuItem)
-            .filter(MenuItem.id == item_id)
-            .first()
-        )
+    if not product.data:
+        return None
 
-        if not product:
-            return None
-
-        if not product.is_meal_available:
-            return {
-                "success": True,
-                "product_id": product.id,
-                "product_name": product.name,
-                "is_meal_available": False
-            }
-
-        medium = build_meal(
-            db,
-            item_id,
-            "medium",
-            burger=product
-        )
-
-        large = build_meal(
-            db,
-            item_id,
-            "large",
-            burger=product
-        )
-
+    if not product.data["is_meal_available"]:
         return {
             "success": True,
-            "product_id": product.id,
-            "product_name": product.name,
-            "is_meal_available": True,
-            "meals": {
-                "medium": medium,
-                "large": large
-            }
+            "product_id": product.data["id"],
+            "product_name": product.data["name"],
+            "is_meal_available": False,
         }
 
-    finally:
-        db.close() 
+    return {
+        "success": True,
+        "product_id": product.data["id"],
+        "product_name": product.data["name"],
+        "is_meal_available": True,
+        "meals": {
+            "medium": build_meal(item_id, "medium"),
+            "large": build_meal(item_id, "large"),
+        },
+    }

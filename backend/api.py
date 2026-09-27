@@ -1,6 +1,6 @@
-#Hemnath's
 import io
 import os
+import shutil
 import subprocess
 import tempfile
 import uuid
@@ -9,6 +9,7 @@ from services.cashier_agent import run_cashier_agent
 
 import numpy as np
 import soundfile as sf
+import whisper
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -244,6 +245,7 @@ def message(request: MessageRequest):
         ),
     }
 
+
 @app.post("/cart/add")
 def cart_add(request: AddToCartRequest):
     return cart_add_item(
@@ -260,7 +262,6 @@ def cart_clear():
 @app.post("/meal/options")
 def meal_options(request: dict):
     item_id = request.get("item_id")
-    is_manual = bool(request.get("manual") or request.get("is_manual"))
 
     if item_id is None:
         return {
@@ -268,31 +269,22 @@ def meal_options(request: dict):
             "message": "item_id is required",
         }
 
-    try:
-        norm_item_id = int(item_id)
-    except (TypeError, ValueError):
-        norm_item_id = item_id
-
-    declined_products = conversation_context.setdefault(
-        "declined_meal_products", []
+    meal_flow = conversation_context.get(
+        "meal_flow"
     )
 
-    is_declined = (
-        norm_item_id in declined_products
-        or item_id in declined_products
-        or str(item_id) in [str(x) for x in declined_products]
-    )
-
-    if not is_manual and is_declined:
+    if (
+        meal_flow
+        and meal_flow.get("item_id") == item_id
+        and meal_flow.get("status") == "declined"
+    ):
         return {
             "success": True,
             "is_meal_available": False,
             "message": "Meal offer was declined.",
         }
 
-    offer = get_meal_options(
-        norm_item_id if isinstance(norm_item_id, int) else item_id
-    )
+    offer = get_meal_options(item_id)
 
     if not offer:
         return {
@@ -301,7 +293,7 @@ def meal_options(request: dict):
         }
 
     conversation_context["meal_flow"] = {
-        "item_id": norm_item_id,
+        "item_id": item_id,
         "status": "pending",
     }
 
@@ -309,34 +301,22 @@ def meal_options(request: dict):
 
 
 @app.post("/meal/decline")
-def decline_meal(request: dict = None):
-    declined_products = conversation_context.setdefault(
-        "declined_meal_products", []
-    )
-
-    item_id = request.get("item_id") if isinstance(request, dict) else None
-    if item_id is not None:
-        try:
-            item_id = int(item_id)
-        except (TypeError, ValueError):
-            pass
-
+def decline_meal():
     meal_flow = conversation_context.get(
         "meal_flow"
     )
 
-    if meal_flow:
-        meal_flow["status"] = "declined"
-        if item_id is None:
-            item_id = meal_flow.get("item_id")
+    if not meal_flow:
+        return {
+            "success": False,
+            "message": "No active meal flow.",
+        }
 
-    if item_id is not None and item_id not in declined_products:
-        declined_products.append(item_id)
+    meal_flow["status"] = "declined"
 
     return {
         "success": True,
         "meal_flow": meal_flow,
-        "declined_meal_products": declined_products,
     }
 
 
@@ -447,66 +427,44 @@ def text_to_speech(request: dict):
 # LOCAL WHISPER SPEECH TO TEXT
 # ============================================================
 
+print("INITIALIZING WHISPER STT...")
+
+WHISPER_MODEL_NAME = os.getenv("WHISPER_MODEL", "small.en")
+
+try:
+    whisper_model = whisper.load_model(WHISPER_MODEL_NAME)
+    print(f"WHISPER STT READY: {WHISPER_MODEL_NAME}")
+except Exception as e:
+    whisper_model = None
+    print("WHISPER INITIALIZATION ERROR:", repr(e))
+
+
 @app.post("/stt")
 async def speech_to_text(
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
 ):
-    whisper_cli = os.path.expanduser(
-        "~/whisper.cpp/build/bin/whisper-cli"
-    )
-
-    whisper_model = os.path.expanduser(
-        "~/whisper.cpp/models/ggml-small.en.bin"
-    )
-
-    ffmpeg = "/opt/homebrew/bin/ffmpeg"
-
     print("\n" + "=" * 80)
     print("STT REQUEST")
     print("=" * 80)
 
-    print(
-        "WHISPER CLI:",
-        whisper_cli,
-    )
+    # Find FFmpeg automatically so the same code works on
+    # macOS, Linux/Codespaces, and other environments.
+    ffmpeg = shutil.which("ffmpeg")
 
-    print(
-        "WHISPER MODEL:",
-        whisper_model,
-    )
+    print("WHISPER MODEL:", WHISPER_MODEL_NAME)
+    print("FFMPEG:", ffmpeg)
+    print("UPLOADED FILE:", file.filename)
+    print("CONTENT TYPE:", file.content_type)
 
-    print(
-        "FFMPEG:",
-        ffmpeg,
-    )
-
-    print(
-        "UPLOADED FILE:",
-        file.filename,
-    )
-
-    print(
-        "CONTENT TYPE:",
-        file.content_type,
-    )
-
-    if not Path(whisper_cli).exists():
-        print("ERROR: Whisper CLI not found.")
+    if whisper_model is None:
+        print("ERROR: Whisper model is not initialized.")
 
         return {
             "success": False,
-            "message": "Whisper CLI not found.",
+            "message": "Whisper model is not initialized.",
         }
 
-    if not Path(whisper_model).exists():
-        print("ERROR: Whisper model not found.")
-
-        return {
-            "success": False,
-            "message": "Whisper model not found.",
-        }
-
-    if not Path(ffmpeg).exists():
+    if not ffmpeg:
         print("ERROR: FFmpeg not found.")
 
         return {
@@ -531,9 +489,17 @@ async def speech_to_text(
                 "bytes",
             )
 
-            input_file.write_bytes(
-                audio_data
-            )
+            if not audio_data:
+                return {
+                    "success": False,
+                    "message": "Uploaded audio file is empty.",
+                }
+
+            input_file.write_bytes(audio_data)
+
+            # --------------------------------------------------------
+            # Convert browser WebM/Opus audio to 16 kHz mono WAV.
+            # --------------------------------------------------------
 
             print("STARTING FFMPEG...")
 
@@ -562,86 +528,44 @@ async def speech_to_text(
             )
 
             if ffmpeg_result.returncode != 0:
-                print(
-                    "FFMPEG ERROR:"
-                )
-
-                print(
-                    ffmpeg_result.stderr
-                )
+                print("FFMPEG ERROR:")
+                print(ffmpeg_result.stderr)
 
                 return {
                     "success": False,
                     "message": "Audio conversion failed.",
                 }
 
-            print(
-                "WAV CREATED:",
-                wav_file.exists(),
-            )
+            print("WAV CREATED:", wav_file.exists())
 
-            if wav_file.exists():
-                print(
-                    "WAV SIZE:",
-                    wav_file.stat().st_size,
-                    "bytes",
-                )
-
-            print(
-                "STARTING WHISPER..."
-            )
-
-            whisper_result = subprocess.run(
-                [
-                    whisper_cli,
-                    "-m",
-                    whisper_model,
-                    "-f",
-                    str(wav_file),
-                    "-l",
-                    "en",
-                    "-nt",
-                    "-np",
-                ],
-                capture_output=True,
-                text=True,
-                timeout=30,
-            )
-
-            print(
-                "WHISPER FINISHED:",
-                whisper_result.returncode,
-            )
-
-            if whisper_result.stderr:
-                print(
-                    "WHISPER STDERR:"
-                )
-
-                print(
-                    whisper_result.stderr
-                )
-
-            if whisper_result.returncode != 0:
-                print(
-                    "WHISPER ERROR"
-                )
-
+            if not wav_file.exists():
                 return {
                     "success": False,
-                    "message": "Speech recognition failed.",
+                    "message": "WAV file was not created.",
                 }
 
-            transcript = (
-                whisper_result.stdout
-                .strip()
-            )
-
             print(
-                "WHISPER TRANSCRIPT:",
-                transcript,
+                "WAV SIZE:",
+                wav_file.stat().st_size,
+                "bytes",
             )
 
+            # --------------------------------------------------------
+            # Transcribe using the installed openai-whisper package.
+            # This replaces the old whisper.cpp CLI dependency.
+            # --------------------------------------------------------
+
+            print("STARTING WHISPER...")
+
+            whisper_result = whisper_model.transcribe(
+                str(wav_file),
+                language="en",
+                fp16=False,
+            )
+
+            transcript = whisper_result.get("text", "").strip()
+
+            print("WHISPER TRANSCRIPT:", transcript)
             print("=" * 80 + "\n")
 
             return {

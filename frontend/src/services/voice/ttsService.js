@@ -59,7 +59,7 @@ export async function speakText(
     );
 
     const response = await fetch(
-      "http://127.0.0.1:8000/tts",
+      "/tts",
       {
         method: "POST",
         headers: {
