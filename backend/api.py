@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
-from kokoro import KPipeline
+#from kokoro import KPipeline
 from langchain_groq import ChatGroq
 from pydantic import BaseModel
 
@@ -41,14 +41,18 @@ from state import conversation_context, reset_conversation
 
 load_dotenv()
 
-
-print("INITIALIZING KOKORO TTS...")
+'''print("INITIALIZING KOKORO TTS...")
 
 tts_pipeline = KPipeline(
     lang_code="a"
 )
+<<<<<<< HEAD
 
 print("KOKORO TTS READY")
+=======
+ 
+print("KOKORO TTS READY")'''
+>>>>>>> 9f50195b (WIP: recommendation progress)
 
 
 app = FastAPI()

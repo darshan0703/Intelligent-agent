@@ -1,257 +1,519 @@
-.categories-page {
+/* =====================================================
+   MAIN PAGE
+===================================================== */
 
+.categories-page {
   position: relative;
 
   width: 1080px;
-
   height: 1920px;
 
   overflow: hidden;
 
   background: var(--bg);
-
 }
 
 
-/* ==========================================
+/* =====================================================
    HEADER GLOW
-========================================== */
+===================================================== */
 
 .header-glow {
-
   position: absolute;
 
   top: -250px;
-
   left: -150px;
 
   width: 1400px;
-
   height: 500px;
 
-  background: radial-gradient(
-
-    circle,
-
-    rgba(255,122,0,0.12) 0%,
-
-    rgba(255,122,0,0) 70%
-
-  );
+  background:
+    radial-gradient(
+      circle,
+      rgba(255, 122, 0, 0.12) 0%,
+      rgba(255, 122, 0, 0) 70%
+    );
 
   pointer-events: none;
-
 }
 
 
-/* ==========================================
-   SECOND LINE
-========================================== */
+/* =====================================================
+   DIVIDER
+===================================================== */
 
 .thin-line-two {
-
   position: absolute;
 
-  left: 0px;
+  left: 0;
 
   top: 1250px;
 
   width: 1080px;
-
   height: 3px;
 
-  background: linear-gradient(
-
-    to right,
-
-    transparent,
-
-    rgba(91,43,17,0.4),
-
-    transparent
-
-  );
-
+  background:
+    linear-gradient(
+      to right,
+      transparent,
+      rgba(91, 43, 17, 0.4),
+      transparent
+    );
 }
 
 
-/* ==========================================
-   CATEGORY CONTAINER IMAGES
-========================================== */
+/* =====================================================
+   CATEGORY CARD
+===================================================== */
 
-/*
-   All category cards share the same
-   touch/button behaviour.
-*/
-
-.cb-image,
-.cd-image,
-.cr-image,
-.cf-image,
-.cl-image,
-.co-image {
-
+.category-card {
   position: absolute;
 
-  width: 497px;
+  width: 470px;
+  height: 220px;
 
-  height: auto;
+  display: flex;
+  align-items: center;
 
-  transition: transform 0.15s ease;
+  /* Container background */
+  background: #ffffff;
+
+  /* Container border */
+  border: 2px solid #e5e2df;
+
+  /* Rounded corners */
+  border-radius: 34px;
+
+  /* Keep everything inside the container */
+  box-sizing: border-box;
+
+  /* Inner spacing */
+  padding: 14px 18px;
+
+  /* Prevent content from overflowing */
+  overflow: hidden;
 
   cursor: pointer;
 
   user-select: none;
 
-  -webkit-user-drag: none;
-
   touch-action: manipulation;
 
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+/* =====================================================
+   CARD TOUCH / HOVER
+===================================================== */
+
+.category-card:hover {
+  box-shadow:
+    0 4px 12px rgba(91, 43, 17, 0.06);
+}
+
+.category-card:active {
+  transform: scale(0.985);
 }
 
 
-/* ==========================================
-   CATEGORY POSITIONS
-========================================== */
+/* =====================================================
+   IMAGE WRAPPER
+===================================================== */
+
+.category-image-wrapper {
+
+  width: 155px;
+  height: 185px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  flex-shrink: 0;
+}
 
 
-/* BURGERS */
+/* =====================================================
+   CATEGORY IMAGE
+===================================================== */
 
-.cb-image {
+.category-image {
 
-  left: 36px;
+  width: 155px;
+  height: 155px;
 
-  top: 390px;
+  object-fit: contain;
+
+  display: block;
+ 
+  flex-shrink: 0;
+
+  pointer-events: none;
+
+  -webkit-user-drag: none;
+}
+
+
+/* =====================================================
+   TEXT AREA
+===================================================== */
+
+.category-content {
+
+  flex: 1;
+
+  min-width: 0;
+
+  display: flex;
+
+  flex-direction: column;
+
+  justify-content: center;
+
+  align-items: flex-start;
+
+  text-align: left;
+
+  padding-left: 8px;
+
+  padding-right: 5px;
+}
+
+
+/* =====================================================
+   TITLE
+===================================================== */
+
+.category-title {
+
+  margin: 0;
+/* =====================================================
+   TEXT INSIDE CATEGORY CONTAINER
+===================================================== */
+
+.category-content {
+  flex: 1;
+
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  justify-content: center;
+  align-items: flex-start;
+
+  text-align: left;
+
+  padding-left: 8px;
+  padding-right: 4px;
+}
+
+
+/* MAIN TITLE */
+
+.category-title {
+  margin: 0;
+
+  color: #5b2d17;
+
+  font-family: "Flame", sans-serif;
+
+  font-size: 31px;
+
+  font-weight: 700;
+
+  line-height: 1.02;
+
+  letter-spacing: -0.4px;
+
+  text-align: left;
+
+  white-space: normal;
+}
+
+
+/* SECOND LINE */
+
+.category-subtitle {
+  margin: 5px 0 0;
+
+  color: #5b2d17;
+
+  font-family: "Flame", sans-serif;
+
+  font-size: 25px;
+
+  font-weight: 700;
+
+  line-height: 1.02;
+
+  letter-spacing: -0.2px;
+
+  text-align: left;
+
+  white-space: normal;
+}
+
+
+/* THIRD / ADDITIONAL LINE */
+
+.category-tag {
+  margin: 5px 0 0;
+
+  padding: 0;
+
+  color: #5b2d17;
+
+  font-family: "Flame", sans-serif;
+
+  font-size: 24px;
+
+  font-weight: 700;
+
+  line-height: 1.02;
+
+  letter-spacing: -0.2px;
+
+  text-align: left;
+
+  white-space: normal;
+
+  background: transparent;
+
+  border: none;
+
+  box-shadow: none;
+}
+  color: #5b2d17;
+
+  font-family:
+    "Flame",
+    "Arial Rounded MT Bold",
+    Arial,
+    sans-serif;
+  font-size: 32px;
+
+  font-weight: 700;
+
+  line-height: 1.05;
+
+  letter-spacing: -0.5px;
+
+  white-space: normal;
+
+  max-width: 215px;
+}
+
+
+/* =====================================================
+   SUBTITLE
+===================================================== */
+
+.category-subtitle {
+
+  margin: 6px 0 0;
+
+  color: #5b2d17;
+
+  font-family:
+    "Flame",
+    "Arial Rounded MT Bold",
+    Arial,
+    sans-serif;
+
+  font-size: 23px;
+
+  font-weight: 700;
+
+  line-height: 1.05;
+
+  max-width: 220px;
+}
+
+
+/* =====================================================
+   THIRD LINE
+===================================================== */
+
+.category-tag {
+
+  margin: 6px 0 0;
+
+  padding: 0;
+
+  color: #5b2d17;
+
+  font-family:
+    "Flame",
+    "Arial Rounded MT Bold",
+    Arial,
+    sans-serif;
+
+  font-size: 22px;
+
+  font-weight: 700;
+
+  line-height: 1.05;
+
+  max-width: 220px;
+
+  background: transparent;
+
+  border: none;
+
+  border-radius: 0;
+
+  box-shadow: none;
+}
+
+
+/* =====================================================
+   ARROW
+===================================================== */
+
+.category-arrow {
+
+  width: 55px;
+  height: 55px;
+
+  min-width: 55 px;
+
+  border: none;
+
+  border-radius: 60%;
+
+  background: #f36b21;
+
+  color: #ffffff;
+
+  font-family: Arial, sans-serif;
+
+  font-size: 40px;
+
+  font-weight: 400;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  cursor: pointer;
+
+  flex-shrink: 0;
+
+  line-height: 1;
+
+  padding: 0;
+
+  margin-left: 8px;
+
+  box-shadow: none;
+
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease;
+}
+
+
+/* =====================================================
+   ARROW PRESS
+===================================================== */
+
+.category-arrow:active {
+
+  transform: scale(0.90);
 
 }
 
 
-/* DRINKS */
+/* =====================================================
+   DISABLED CARD
+===================================================== */
 
-.cd-image {
+.category-card-disabled {
 
-  left: 557px;
+  cursor: default;
 
-  top: 390px;
+}
+
+.category-card-disabled:active {
+
+  transform: none;
 
 }
 
 
-/* RECOMMEND / DESSERT */
-
-.cr-image {
-
-  left: 36px;
-
-  top: 671px;
-
-}
-
-
-/* FRESH / SIDES */
-
-.cf-image {
-
-  left: 557px;
-
-  top: 671px;
-
-}
-
-
-/* LIGHT */
-
-.cl-image {
-
-  left: 36px;
-
-  top: 952px;
-
-}
-
-
-/* OFFERS */
-
-.co-image {
-
-  left: 557px;
-
-  top: 952px;
-
-}
-
-
-/* ==========================================
-   TOUCH / PRESS EFFECT
-========================================== */
-
-/*
-   When the customer touches any card,
-   it slightly shrinks just like a
-   physical button being pressed.
-*/
-
-.cb-image:active,
-.cd-image:active,
-.cr-image:active,
-.cf-image:active,
-.cl-image:active,
-.co-image:active {
-
-  transform: scale(0.97);
-
-}
-
-
-/* ==========================================
-   TRY TEXT
-========================================== */
+/* =====================================================
+   TRY THESE PHRASES
+===================================================== */
 
 .try-text {
 
   position: absolute;
 
   left: 21px;
-
   top: 1280px;
+
+  margin: 0;
 
   color: var(--bk-brown);
 
-  font-family: 'Flame';
+  font-family:
+    "Flame",
+    "Arial Rounded MT Bold",
+    Arial,
+    sans-serif;
 
   font-size: 40px;
 
   font-weight: 700;
 
-  line-height: 100%;
-
+  line-height: 1;
 }
 
 
-/* ==========================================
+/* =====================================================
    ROTATING PHRASE
-========================================== */
+===================================================== */
 
 .rotating-phrase {
 
   position: absolute;
 
   left: 260px;
-
   top: 1360px;
+
+  margin: 0;
 
   color: var(--bk-orange);
 
-  font-family: 'Flame';
+  font-family:
+    "Flame",
+    "Arial Rounded MT Bold",
+    Arial,
+    sans-serif;
 
   font-size: 50px;
 
   font-weight: 700;
 
-  animation: smoothFloat 2s ease-in-out infinite;
+  line-height: 1;
 
+  white-space: nowrap;
+
+  animation:
+    smoothFloat 2s ease-in-out infinite;
 }
 
+
+/* =====================================================
+   PHRASE ANIMATION
+===================================================== */
 
 @keyframes smoothFloat {
 
@@ -259,7 +521,8 @@
 
     opacity: 0;
 
-    transform: translateY(20px);
+    transform:
+      translateY(20px);
 
     filter: blur(3px);
 
@@ -269,9 +532,10 @@
 
     opacity: 1;
 
-    transform: translateY(0px);
+    transform:
+      translateY(0);
 
-    filter: blur(0px);
+    filter: blur(0);
 
   }
 
@@ -279,9 +543,10 @@
 
     opacity: 1;
 
-    transform: translateY(0px);
+    transform:
+      translateY(0);
 
-    filter: blur(0px);
+    filter: blur(0);
 
   }
 
@@ -289,18 +554,18 @@
 
     opacity: 0;
 
-    transform: translateY(-20px);
+    transform:
+      translateY(-20px);
 
     filter: blur(3px);
 
   }
-
 }
 
 
-/* ==========================================
-   CART IMAGE
-========================================== */
+/* =====================================================
+   FOOTER IMAGE
+===================================================== */
 
 .cc-image {
 
@@ -313,13 +578,12 @@
   width: 1003px;
 
   height: auto;
-
 }
 
 
-/* ==========================================
-   ITEMS COUNT
-========================================== */
+/* =====================================================
+   CART ITEMS
+===================================================== */
 
 .cart-items {
 
@@ -334,13 +598,12 @@
   font-size: 36px;
 
   font-weight: 700;
-
 }
 
 
-/* ==========================================
-   TOTAL
-========================================== */
+/* =====================================================
+   CART TOTAL
+===================================================== */
 
 .cart-total {
 
@@ -350,10 +613,9 @@
 
   right: 60px;
 
-  color: #FFFFFF;
+  color: #ffffff;
 
   font-size: 40px;
 
   font-weight: 700;
-
 }
