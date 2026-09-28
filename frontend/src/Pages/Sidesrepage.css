@@ -33,6 +33,19 @@
 
 
 /* =========================================
+   SIDES FILTER POSITION
+   Same positioning as Burger filters
+   ========================================= */
+
+.sides-filter-position {
+  position: absolute;
+  left: 230px;
+  top: -6px;
+  z-index: 20;
+}
+
+
+/* =========================================
    TITLES
    ========================================= */
 
@@ -96,7 +109,6 @@
   top: 1165px;
   left: 900px;
   width: 1014px;
-
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -123,19 +135,13 @@ p.more-header-text {
 .view-all-btn {
   border: none;
   background: transparent;
-
   color: var(--bk-red);
-
   font-family: "Flame";
-
   font-size: 24px;
   font-weight: 700;
-
   margin: 0;
   padding: 0;
-
   cursor: pointer;
-
   transition: 0.2s ease;
 }
 

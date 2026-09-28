@@ -9,46 +9,69 @@ export function handleKioskResponse(
     executeUIAction,
   }
 ) {
-  console.log("HANDLING RESPONSE:", data);
+  console.log("========== KIOSK RESPONSE ==========");
+  console.log("FULL RESPONSE:", data);
 
-  if (!data) return;
-
-  // Current-screen UI action, normally used by voice.
-  if (data.data?.ui_action && executeUIAction) {
-    console.log(
-      "BACKEND REQUESTED UI ACTION:",
-      data.data.ui_action
-    );
-
-    executeUIAction(
-      data.data.ui_action,
-      data.data?.value
-    );
-
+  if (!data) {
+    console.warn("NO BACKEND RESPONSE");
     return;
   }
 
-  // Only replace recommendation data when the
-  // backend actually returned screen data.
-  if (
-    data.screen &&
-    data.data &&
-    Object.keys(data.data).length > 0
-  ) {
+  // 1. Handle UI action
+  const uiAction =
+    data?.data?.ui_action ||
+    data?.ui_action;
+
+  const uiValue =
+    data?.data?.value ||
+    data?.value;
+
+  if (uiAction && executeUIAction) {
+    console.log("UI ACTION:", uiAction);
+    console.log("UI VALUE:", uiValue);
+
+    executeUIAction(uiAction, uiValue);
+  }
+
+  // 2. Handle screen data
+  if (data?.screen && data?.data) {
+    console.log("SCREEN:", data.screen);
+    console.log("SCREEN DATA:", data.data);
+
     if (data.screen === "product") {
-      setProductData(data);
+      setProductData?.(data);
     } else {
-      setRecommendationData(data);
+      setRecommendationData?.(data);
     }
   }
 
-  // Only navigate when the backend actually
-  // selected a screen.
-  if (data.screen) {
+  // 3. Navigate to the screen
+  if (data?.screen) {
     const route = getRoute(data.screen);
 
+    console.log("BACKEND SCREEN:", data.screen);
+    console.log("FRONTEND ROUTE:", route);
+
     if (route) {
+      console.log("NAVIGATING TO:", route);
       navigate(route);
+    } else {
+      console.warn(
+        "NO ROUTE FOUND FOR:",
+        data.screen
+      );
     }
   }
+
+  // 4. Display message in console
+  if (data?.message) {
+    console.log("MESSAGE:", data.message);
+  }
+
+  // 5. Cart
+  if (data?.cart) {
+    console.log("CART:", data.cart);
+  }
+
+  console.log("====================================");
 }

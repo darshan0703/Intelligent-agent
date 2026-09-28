@@ -4,20 +4,17 @@ import { useState, useEffect } from "react";
 import { useKiosk } from "../context/KioskContext";
 import { useCart } from "../context/CartContext";
 import { useLocation, useNavigate } from "react-router-dom";
-
 import Header from "../components/Header";
 import PreviousButton from "../components/PreviousButton";
 import CartContainer from "../components/CartContainer";
 import MealPopup from "../components/MealPopup";
 import FooterDecoration from "../components/FooterDecoration";
-
 import vegIcon from "../assets/images/veg.png";
 import nonVegIcon from "../assets/images/nonveg.png";
 
 function ProductPage() {
   const navigate = useNavigate();
   const location = useLocation();
-
   const origin = location.state?.origin || "/";
 
   const {
@@ -28,83 +25,131 @@ function ProductPage() {
     setMealPopupOpen,
   } = useKiosk();
 
-  const { syncCart, itemCount, total } = useCart();
-
+  const { syncCart } = useCart();
   const product = productData?.data?.product;
-
   const recommendations =
     productData?.data?.recommendations || [];
-
   const [quantity, setQuantity] = useState(1);
 
-  /* =========================================
-     CHECK MEAL OFFER
-  ========================================= */
+  // Meal upgrades are available only for burger products.
+  const isBurger =
+    product?.category?.toLowerCase() === "burger" ||
+    product?.category?.toLowerCase() === "burgers";
 
-  const checkMealOffer = async () => {
-    if (!product) return;
+  const getDismissedKey = () => {
+    const sessionId =
+      localStorage.getItem("session_id") || "default";
+    return `dismissed_meals_${sessionId}`;
+  };
 
-    console.log("REQUEST:", {
-      id: product.id,
-      name: product.name,
-    });
+  const isProductDismissed = (productId) => {
+    try {
+      const dismissed = JSON.parse(
+        sessionStorage.getItem(getDismissedKey()) || "[]"
+      );
+      return dismissed.includes(productId);
+    } catch {
+      return false;
+    }
+  };
+
+  const dismissProduct = (productId) => {
+    try {
+      const dismissed = JSON.parse(
+        sessionStorage.getItem(getDismissedKey()) || "[]"
+      );
+
+      if (!dismissed.includes(productId)) {
+        sessionStorage.setItem(
+          getDismissedKey(),
+          JSON.stringify([...dismissed, productId])
+        );
+      }
+    } catch {
+      // Ignore sessionStorage errors.
+    }
+  };
+
+  const checkMealOffer = async ({
+    automatic = false,
+    productId = product?.id,
+    signal,
+  } = {}) => {
+    if (!product || !isBurger) return;
+
+    const requestedProductId = productId;
 
     try {
-      const response = await fetch(
-        "/meal/options",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            item_id: product.id,
-          }),
-        }
-      );
+      const response = await fetch("/meal/options", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          item_id: requestedProductId,
+        }),
+        signal,
+      });
 
       const data = await response.json();
 
-      console.log("MEAL OFFER:", data);
+      if (signal?.aborted || product?.id !== requestedProductId) {
+        return;
+      }
 
-      if (
-        data.success &&
-        data.is_meal_available
-      ) {
-        console.log("OPENING MEAL POPUP");
+      if (data.success && data.is_meal_available) {
+        if (automatic && isProductDismissed(requestedProductId)) {
+          setMealPopupOpen(false);
+          return;
+        }
 
         setMealData(data);
         setMealPopupOpen(true);
       } else {
-        console.log("NO MEAL POPUP");
-
         setMealPopupOpen(false);
       }
     } catch (error) {
-      console.error(
-        "Failed to load meal offer:",
-        error
-      );
+      if (error.name === "AbortError") return;
 
-      setMealPopupOpen(false);
+      console.error("Failed to load meal offer:", error);
+
+      if (product?.id === requestedProductId) {
+        setMealPopupOpen(false);
+      }
     }
   };
-
-  /* =========================================
-     AUTOMATIC MEAL POPUP
-  ========================================= */
 
   useEffect(() => {
     if (!product) return;
 
-    checkMealOffer();
-  }, [product]);
+    if (!isBurger) {
+      setMealPopupOpen(false);
+      setMealData(null);
+      return;
+    }
 
-  /* =========================================
-     MANUAL MEAL BUTTON
-  ========================================= */
+    const controller = new AbortController();
+    const currentProductId = product.id;
+
+    setMealPopupOpen(false);
+    setMealData(null);
+
+    if (!isProductDismissed(currentProductId)) {
+      checkMealOffer({
+        automatic: true,
+        productId: currentProductId,
+        signal: controller.signal,
+      });
+    }
+
+    return () => {
+      controller.abort();
+    };
+  }, [product?.id, isBurger]);
 
   const handleMealButtonClick = () => {
+    if (!isBurger) return;
+
     if (
       mealData?.success &&
       mealData?.is_meal_available
@@ -113,12 +158,11 @@ function ProductPage() {
       return;
     }
 
-    checkMealOffer();
+    checkMealOffer({
+      automatic: false,
+      productId: product.id,
+    });
   };
-
-  /* =========================================
-     CONTINUE WITH MEAL
-  ========================================= */
 
   const handleContinue = (mealSize) => {
     navigate("/mealpage", {
@@ -129,17 +173,11 @@ function ProductPage() {
     });
   };
 
-  /* =========================================
-     NO PRODUCT
-  ========================================= */
-
   if (!product) {
     return (
       <div className="product-page">
         <Header title="Product Details" />
-
         <PreviousButton />
-
         <h2
           style={{
             textAlign: "center",
@@ -152,33 +190,23 @@ function ProductPage() {
     );
   }
 
-  /* =========================================
-     ADD TO CART
-  ========================================= */
-
   const handleAddToCart = async () => {
     try {
-      const response = await fetch(
-        "/cart/add",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            item_name: product.name,
-            quantity: quantity,
-          }),
-        }
-      );
+      const response = await fetch("/cart/add", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          item_name: product.name,
+          quantity: quantity,
+        }),
+      });
 
       const data = await response.json();
 
-      console.log("ADD TO CART:", data);
-
       if (data.success) {
         syncCart(data);
-
         navigate(origin);
       }
     } catch (error) {
@@ -186,49 +214,28 @@ function ProductPage() {
     }
   };
 
-  /* =========================================
-     UI
-  ========================================= */
-
   return (
     <div className="product-page">
-
-      {/* HEADER */}
       <Header title="Product Details" />
-
-      {/* BACK */}
       <PreviousButton />
 
-      {/* PRODUCT IMAGE */}
       <img
         src={product.image}
         alt={product.name}
         className="product-image"
       />
 
-      {/* PRODUCT TITLE */}
       <div className="product-title-container">
-
         <h1 className="product-name">
-
           {(() => {
-            const words =
-              product.name.split(" ");
-
-            const midpoint =
-              Math.ceil(words.length / 2);
+            const words = product.name.split(" ");
+            const midpoint = Math.ceil(words.length / 2);
 
             return (
               <>
-                {words
-                  .slice(0, midpoint)
-                  .join(" ")}
-
+                {words.slice(0, midpoint).join(" ")}
                 <br />
-
-                {words
-                  .slice(midpoint)
-                  .join(" ")}
+                {words.slice(midpoint).join(" ")}
               </>
             );
           })()}
@@ -244,52 +251,41 @@ function ProductPage() {
               className="product-type-icon"
             />
           )}
-
         </h1>
-
       </div>
 
-      {/* SHORT DESCRIPTION */}
       <p className="product-short-description">
         {product.shortDescription}
       </p>
 
-      {/* =====================================
-          PRICE + UPGRADE TO MEAL
-      ===================================== */}
-
       <div className="product-price-row">
-
         <p className="product-price">
           ₹ {product.price}
         </p>
 
-        <button
-          className="meal-upgrade-btn"
-          onClick={handleMealButtonClick}
-        >
-          Upgrade to a Meal
-        </button>
-
+        {isBurger && (
+          <button
+            className="meal-upgrade-btn"
+            onClick={handleMealButtonClick}
+          >
+            Upgrade to a Meal
+          </button>
+        )}
       </div>
 
-      {/* ABOUT */}
       <h2 className="section-title about-title">
         About This Item
       </h2>
 
-      {/* DESCRIPTION */}
       <p className="product-description">
         {product.longDescription}
       </p>
 
-      {/* RECOMMENDED */}
       <h2 className="section-title recommended-title">
         Recommended With
       </h2>
 
       <div className="recommendations">
-
         {recommendations.map((item) => (
           <div
             key={item.id}
@@ -298,48 +294,31 @@ function ProductPage() {
             {item.name}
           </div>
         ))}
-
       </div>
 
-      {/* =====================================
-          QUANTITY
-      ===================================== */}
-
       <div className="quantity-selector">
-
         <button
           className="qty-btn"
           onClick={() =>
             setQuantity((prev) =>
-              prev > 1
-                ? prev - 1
-                : 1
+              prev > 1 ? prev - 1 : 1
             )
           }
         >
           −
         </button>
 
-        <span className="qty-value">
-          {quantity}
-        </span>
+        <span className="qty-value">{quantity}</span>
 
         <button
           className="qty-btn"
           onClick={() =>
-            setQuantity(
-              (prev) => prev + 1
-            )
+            setQuantity((prev) => prev + 1)
           }
         >
           +
         </button>
-
       </div>
-
-      {/* =====================================
-          ADD TO CART
-      ===================================== */}
 
       <button
         className="add-cart-btn"
@@ -350,22 +329,21 @@ function ProductPage() {
         }`}
       </button>
 
-      {/* CART */}
       <CartContainer />
 
-      {/* MEAL POPUP */}
-      <MealPopup
-        open={mealPopupOpen}
-        meals={mealData}
-        onClose={() => {
-          setMealPopupOpen(false);
-        }}
-        onContinue={handleContinue}
-      />
+      {isBurger && (
+        <MealPopup
+          open={mealPopupOpen}
+          meals={mealData}
+          onClose={() => {
+            dismissProduct(product.id);
+            setMealPopupOpen(false);
+          }}
+          onContinue={handleContinue}
+        />
+      )}
 
-      {/* FOOTER */}
       <FooterDecoration />
-
     </div>
   );
 }
