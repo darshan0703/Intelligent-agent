@@ -38,26 +38,36 @@ export function VoiceConversationProvider({ children }) {
 
   const [voiceEnabled, setVoiceEnabled] = useState(false);
 
-  // True for the entire voice interaction.
-  // It represents the voice interface being enabled,
-  // NOT an individual browser recognition session.
   const voiceEnabledRef = useRef(false);
 
-  // Prevent multiple customer messages from being
-  // processed at the same time.
   const processingRef = useRef(false);
 
+  // Prevent multiple listening sessions
+  const listeningRef = useRef(false);
+
+  /*
+   * Start listening for the customer.
+   */
   const listenForCustomer = useCallback(() => {
-    if (
-      !voiceEnabledRef.current ||
-      processingRef.current
-    ) {
+    if (!voiceEnabledRef.current) {
+      return;
+    }
+
+    if (processingRef.current) {
+      return;
+    }
+
+    if (listeningRef.current) {
       return;
     }
 
     console.log("STARTING CUSTOMER LISTENING");
 
+    listeningRef.current = true;
+
     startListening(async (transcript) => {
+      listeningRef.current = false;
+
       if (
         !voiceEnabledRef.current ||
         processingRef.current
@@ -73,11 +83,14 @@ export function VoiceConversationProvider({ children }) {
           transcript
         );
 
-        // Stop the current recording/listening cycle.
+        /*
+         * Stop microphone listening for this turn.
+         */
         stopListening();
 
-        // Send the same customer message through
-        // the normal TheAtom conversation pipeline.
+        /*
+         * Send customer message to backend.
+         */
         const data =
           await processCustomerMessage(
             transcript
@@ -88,8 +101,11 @@ export function VoiceConversationProvider({ children }) {
           data
         );
 
-        // Apply exactly the same screen/UI response
-        // used by the rest of the kiosk.
+        /*
+         * Update kiosk UI immediately.
+         *
+         * This happens before TTS playback.
+         */
         handleKioskResponse(
           data,
           {
@@ -100,15 +116,19 @@ export function VoiceConversationProvider({ children }) {
           }
         );
 
-        // Speak the backend's response.
+        /*
+         * Speak backend response.
+         */
         if (data?.message) {
           speak(
             data.message,
             () => {
               processingRef.current = false;
 
-              // Continue the same voice interaction.
-              // This does NOT create a new transaction.
+              /*
+               * Start listening again after
+               * the cashier finishes speaking.
+               */
               if (voiceEnabledRef.current) {
                 listenForCustomer();
               }
@@ -121,6 +141,7 @@ export function VoiceConversationProvider({ children }) {
             listenForCustomer();
           }
         }
+
       } catch (error) {
         console.error(
           "VOICE MESSAGE ERROR:",
@@ -142,10 +163,10 @@ export function VoiceConversationProvider({ children }) {
   ]);
 
   /*
-   * Barge-in:
+   * BARGE-IN
    *
-   * voiceService detects the customer speaking while
-   * the kiosk is talking. It stops TTS and calls this.
+   * If the customer speaks while TTS is playing,
+   * voiceService stops the TTS and calls this handler.
    */
   useEffect(() => {
     setInterruptionHandler(() => {
@@ -157,10 +178,17 @@ export function VoiceConversationProvider({ children }) {
         "CUSTOMER TOOK THE TURN"
       );
 
-      // The previous cashier response is no longer
-      // relevant once the customer interrupts.
+      /*
+       * The previous cashier response
+       * is no longer relevant.
+       */
       processingRef.current = false;
 
+      listeningRef.current = false;
+
+      /*
+       * Start listening immediately.
+       */
       listenForCustomer();
     });
 
@@ -169,14 +197,26 @@ export function VoiceConversationProvider({ children }) {
     };
   }, [listenForCustomer]);
 
+  /*
+   * START VOICE CONVERSATION
+   */
   const startVoiceConversation =
     useCallback(() => {
+
+      /*
+       * Prevent duplicate initialization.
+       */
       if (voiceEnabledRef.current) {
+        console.log(
+          "VOICE INTERFACE ALREADY ENABLED"
+        );
+
         return;
       }
 
       voiceEnabledRef.current = true;
       processingRef.current = false;
+      listeningRef.current = false;
 
       setVoiceEnabled(true);
 
@@ -184,21 +224,36 @@ export function VoiceConversationProvider({ children }) {
         "VOICE INTERFACE ENABLED"
       );
 
-      // Initial cashier greeting.
+      /*
+       * IMPORTANT:
+       *
+       * Start listening BEFORE the welcome TTS finishes.
+       *
+       * This allows barge-in.
+       */
+      listenForCustomer();
+
+      /*
+       * Welcome message.
+       *
+       * We do NOT wait for this to finish
+       * before starting the microphone.
+       */
       speak(
-        "Hi! Welcome to Burger King. What can I get for you today?",
-        () => {
-          if (voiceEnabledRef.current) {
-            listenForCustomer();
-          }
-        }
+        "Hi! Welcome to Burger King. What can I get for you today?"
       );
+
     }, [listenForCustomer]);
 
+  /*
+   * STOP VOICE CONVERSATION
+   */
   const stopVoiceConversation =
     useCallback(() => {
+
       voiceEnabledRef.current = false;
       processingRef.current = false;
+      listeningRef.current = false;
 
       stopListening();
 
@@ -207,6 +262,7 @@ export function VoiceConversationProvider({ children }) {
       console.log(
         "VOICE INTERFACE DISABLED"
       );
+
     }, []);
 
   return (
