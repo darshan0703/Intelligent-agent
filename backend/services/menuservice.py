@@ -113,40 +113,28 @@ def build_recommendations(
 
     if normalized_type in ("veg", "non veg"):
 
-        priority = get_priority_items(items)
+        priority_all = get_priority_items(items)
+        priority = priority_all[:2]
+
+        used_names = {item["name"] for item in priority}
 
         premium = []
-
-        for item in sorted(
-            items,
-            key=lambda x: x["price"],
-            reverse=True
-        ):
-
-            if item not in priority:
+        for item in sorted(items, key=lambda x: x["price"], reverse=True):
+            if item["name"] not in used_names:
                 premium.append(item)
-
+                used_names.add(item["name"])
             if len(premium) == 2:
                 break
 
         additional = []
-
         for item in items:
-
-            if (
-                item not in priority
-                and item not in premium
-            ):
+            if item["name"] not in used_names:
                 additional.append(item)
-
+                used_names.add(item["name"])
             if len(additional) == 4:
                 break
 
-        return (
-            priority[:2],
-            premium[:2],
-            additional[:4]
-        )
+        return (priority, premium, additional)
 
     # =====================================================
     # BOTH
@@ -191,78 +179,24 @@ def build_recommendations(
     priority = []
 
     if veg_priority:
-        priority.append(
-            veg_priority[0]
-        )
-
+        priority.append(veg_priority[0])
     if non_veg_priority:
-        priority.append(
-            non_veg_priority[0]
-        )
+        priority.append(non_veg_priority[0])
 
-    # -----------------------------------------------------
-    # PREMIUM
-    # -----------------------------------------------------
+    used_names = {item["name"] for item in priority}
 
-    used_names = {
-        item["name"]
-        for item in priority
-    }
-
-    veg_premium_candidates = sorted(
-        [
-            item
-            for item in veg_items
-            if item["name"] not in used_names
-        ],
+    premium_candidates = sorted(
+        [item for item in items if item["name"] not in used_names],
         key=lambda x: x["price"],
         reverse=True
     )
+    premium = premium_candidates[:2]
+    used_names.update(item["name"] for item in premium)
 
-    non_veg_premium_candidates = sorted(
-        [
-            item
-            for item in non_veg_items
-            if item["name"] not in used_names
-        ],
-        key=lambda x: x["price"],
-        reverse=True
-    )
-
-    premium = []
-
-    if veg_premium_candidates:
-        premium.append(
-            veg_premium_candidates[0]
-        )
-
-    if non_veg_premium_candidates:
-        premium.append(
-            non_veg_premium_candidates[0]
-        )
-
-    # -----------------------------------------------------
-    # ADDITIONAL
-    # -----------------------------------------------------
-
-    used_names.update(
-        item["name"]
-        for item in premium
-    )
-
-    remaining = [
-        item
-        for item in items
-        if item["name"] not in used_names
-    ]
-
+    remaining = [item for item in items if item["name"] not in used_names]
     additional = remaining[:4]
 
-    return (
-        priority[:2],
-        premium[:2],
-        additional[:4]
-    )
+    return (priority[:2], premium[:2], additional[:4])
 
 
 # =========================================================
@@ -756,15 +690,65 @@ def handle_drink_selection(
 # SIDES
 # =========================================================
 
+def build_category_recommendation_data(items):
+    veg_items = [
+        item for item in items
+        if item.get("foodType", "").lower().replace("_", " ").strip() == "veg"
+    ]
+    non_veg_items = [
+        item for item in items
+        if item.get("foodType", "").lower().replace("_", " ").strip() == "non veg"
+    ]
+
+    both = build_recommendations(items, "both")
+    veg = build_recommendations(veg_items, "veg")
+    non_veg = build_recommendations(non_veg_items, "non veg")
+
+    return {
+        "both": {"priority": both[0], "premium": both[1], "additional": both[2]},
+        "veg": {"priority": veg[0], "premium": veg[1], "additional": veg[2]},
+        "non_veg": {"priority": non_veg[0], "premium": non_veg[1], "additional": non_veg[2]},
+    }
+
+
 def handle_side_selection(
     conversation_context
 ):
+    sides = get_category("side")
 
-    return build_category_response(
-        category="side",
-        title="Sides",
+    if not sides:
+        return KioskResponse(
+            screen=ScreenTypes.RECOMMENDED_SIDES,
+            message="Sorry, no sides are available right now.",
+            data={}
+        )
+
+    recommendation_data = build_category_recommendation_data(sides)
+    both = recommendation_data["both"]
+
+    conversation_context["last_offer"] = [
+        item["name"]
+        for item in both["priority"] + both["premium"] + both["additional"]
+    ]
+
+    message_parts = []
+    if both["priority"]:
+        message_parts.append(f"I'd recommend our {both['priority'][0]['name']}.")
+    if both["premium"]:
+        message_parts.append(f"For something premium, we also have {both['premium'][0]['name']}.")
+    if both["additional"]:
+        message_parts.append("We also have more side options if you'd like to explore them.")
+
+    return KioskResponse(
         screen=ScreenTypes.RECOMMENDED_SIDES,
-        conversation_context=conversation_context
+        message=" ".join(message_parts),
+        data={
+            "selected_type": "both",
+            "all_sides": sides,
+            "both": recommendation_data["both"],
+            "veg": recommendation_data["veg"],
+            "non_veg": recommendation_data["non_veg"]
+        }
     )
 
 
