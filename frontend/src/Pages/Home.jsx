@@ -11,23 +11,32 @@ import oc from "../assets/images/orange curve.png";
 
 function Home() {
   const navigate = useNavigate();
+
   const { startVoiceConversation } = useVoiceConversation();
 
   const [starting, setStarting] = useState(false);
 
   const handleStart = async () => {
+    // Prevent multiple clicks
     if (starting) return;
 
     setStarting(true);
 
     try {
+      // Start backend session
       const session = await startSession();
 
+      // Save session ID
       localStorage.setItem("session_id", session.session_id);
 
+      // Start voice conversation.
+      // This already handles the welcome TTS.
+      // DO NOT call speakText() separately here.
       startVoiceConversation();
 
+      // Move to category page
       navigate("/Categories");
+
     } catch (err) {
       console.error("START SESSION ERROR:", err);
 
@@ -39,6 +48,7 @@ function Home() {
 
   return (
     <div className="home">
+
       <h1 className="home-title">
         Welcome to
       </h1>
@@ -67,6 +77,7 @@ function Home() {
       >
         {starting ? "STARTING..." : "TOUCH TO START"}
       </div>
+
     </div>
   );
 }

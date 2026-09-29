@@ -8,115 +8,73 @@ export async function initializeSileroVAD({
   onSpeechStart,
   onSpeechEnd,
 }) {
-  if (initialized || initializing) {
+  // Already initialized
+  if (initialized && vad) {
+    console.log("SILERO VAD ALREADY READY");
+    return vad;
+  }
+
+  // Prevent duplicate initialization
+  if (initializing) {
+    console.log("SILERO VAD INITIALIZATION ALREADY IN PROGRESS");
     return vad;
   }
 
   initializing = true;
 
   try {
-    console.log(
-      "INITIALIZING SILERO VAD..."
-    );
+    console.log("=================================");
+    console.log("INITIALIZING SILERO VAD...");
+    console.log("=================================");
 
     vad = await MicVAD.new({
-      /*
-       * IMPORTANT:
-       *
-       * Load Silero's model and
-       * AudioWorklet files directly
-       * from the CDN.
-       *
-       * This avoids Vite trying to
-       * dynamically load ONNX files
-       * from /node_modules/.vite/deps/
-       */
-
       baseAssetPath:
         "https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.30/dist/",
-
-      /*
-       * Load ONNX Runtime WASM and
-       * .mjs backend files from CDN.
-       *
-       * This fixes the error:
-       *
-       * Failed to fetch dynamically
-       * imported module
-       *
-       * ort-wasm-simd-threaded.mjs
-       */
 
       onnxWASMBasePath:
         "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/",
 
       /*
-       * Use the microphone stream
-       * already managed by the
-       * browser.
+       * Slightly more sensitive than the previous settings.
+       * This helps detect normal microphone speech.
        */
-
-      positiveSpeechThreshold: 0.7,
-
-      negativeSpeechThreshold: 0.4,
+      positiveSpeechThreshold: 0.5,
+      negativeSpeechThreshold: 0.3,
 
       /*
-       * In version 0.0.30,
-       * these values are measured
-       * in milliseconds.
+       * Keep speech detection responsive.
        */
-
-      redemptionMs: 800,
-
-      minSpeechMs: 250,
-
-      /*
-       * Called when Silero believes
-       * human speech has started.
-       */
+      redemptionMs: 500,
+      minSpeechMs: 150,
 
       onSpeechStart: () => {
-        console.log(
-          "SILERO: SPEECH STARTED"
-        );
+        console.log("SILERO: SPEECH STARTED");
 
-        onSpeechStart?.();
+        if (onSpeechStart) {
+          onSpeechStart();
+        }
       },
-
-      /*
-       * Called when Silero believes
-       * the customer has stopped
-       * speaking.
-       */
 
       onSpeechEnd: (audio) => {
-        console.log(
-          "SILERO: SPEECH ENDED"
-        );
+        console.log("SILERO: SPEECH ENDED");
 
-        onSpeechEnd?.(audio);
+        if (onSpeechEnd) {
+          onSpeechEnd(audio);
+        }
       },
 
-      /*
-       * Prevent false speech events
-       * from becoming errors.
-       */
-
       onVADMisfire: () => {
-        console.log(
-          "SILERO: VAD MISFIRE"
-        );
+        console.log("SILERO: VAD MISFIRE");
       },
     });
 
     initialized = true;
 
-    console.log(
-      "SILERO VAD READY"
-    );
+    console.log("=================================");
+    console.log("SILERO VAD READY");
+    console.log("=================================");
 
     return vad;
-
   } catch (error) {
     console.error(
       "SILERO VAD INITIALIZATION ERROR:",
@@ -124,11 +82,9 @@ export async function initializeSileroVAD({
     );
 
     vad = null;
-
     initialized = false;
 
     throw error;
-
   } finally {
     initializing = false;
   }
@@ -139,16 +95,17 @@ export async function startSileroVAD() {
     console.error(
       "SILERO VAD NOT INITIALIZED"
     );
-
     return;
   }
 
-  console.log(
-    "STARTING SILERO VAD"
-  );
+  console.log("STARTING SILERO VAD");
 
   try {
     await vad.start();
+
+    console.log(
+      "SILERO VAD LISTENING"
+    );
   } catch (error) {
     console.error(
       "SILERO START ERROR:",
@@ -162,9 +119,7 @@ export async function pauseSileroVAD() {
     return;
   }
 
-  console.log(
-    "PAUSING SILERO VAD"
-  );
+  console.log("PAUSING SILERO VAD");
 
   try {
     await vad.pause();
@@ -181,13 +136,10 @@ export async function destroySileroVAD() {
     return;
   }
 
-  console.log(
-    "DESTROYING SILERO VAD"
-  );
+  console.log("DESTROYING SILERO VAD");
 
   try {
     await vad.destroy();
-
   } catch (error) {
     console.error(
       "SILERO VAD CLEANUP ERROR:",
@@ -196,9 +148,7 @@ export async function destroySileroVAD() {
   }
 
   vad = null;
-
   initialized = false;
-
   initializing = false;
 }
 
