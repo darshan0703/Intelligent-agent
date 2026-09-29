@@ -1,80 +1,81 @@
 import "./Drinkrepage.css";
 
 import { useNavigate } from "react-router-dom";
+
 import { useState, useEffect, useCallback } from "react";
 
 import Header from "../components/Header";
+
 import ProductCard from "../components/ProductCard";
+
 import CartContainer from "../components/CartContainer";
+
 import BackButton from "../components/BackButton";
+
 import FooterDecoration from "../components/FooterDecoration";
+
 import Menufilters from "../components/Menufilters";
 
 import fire from "../assets/images/fire.png";
+
 import crown from "../assets/images/crown.png";
 
 import { useKiosk } from "../context/KioskContext";
 
 function Drink() {
+
   const navigate = useNavigate();
 
   const { recommendationData } = useKiosk();
 
-  const [selectedType, setSelectedType] =
-    useState("both");
+  const [selectedType, setSelectedType] = useState("both");
 
-  const data =
-    recommendationData?.data || {};
+  const data = recommendationData?.data || {};
 
-  const allDrinks = {
-    priority: data.priority || [],
-    premium: data.premium || [],
-    additional: data.additional || [],
+  // Backend returns drink recommendations grouped by type.
+  const bothRecommendations = data.both || {
+    priority: [],
+    premium: [],
+    additional: [],
   };
 
-  const filterProducts = useCallback(
-    (products) => {
-      if (selectedType === "both") {
-        return products;
-      }
+  const coldRecommendations = data.cold || {
+    priority: [],
+    premium: [],
+    additional: [],
+  };
 
-      return products.filter(
-        (product) =>
-          product.type?.toLowerCase() ===
-          selectedType
-      );
-    },
-    [selectedType]
-  );
+  const hotRecommendations = data.hot || {
+    priority: [],
+    premium: [],
+    additional: [],
+  };
 
-  const freshDrinks =
-    filterProducts(allDrinks.priority);
+  const selectedRecommendations =
+    selectedType === "cold"
+      ? coldRecommendations
+      : selectedType === "hot"
+        ? hotRecommendations
+        : bothRecommendations;
 
-  const premiumDrinks =
-    filterProducts(allDrinks.premium);
+  const freshDrinks = selectedRecommendations.priority || [];
+  const premiumDrinks = selectedRecommendations.premium || [];
+  const moreDrinks = selectedRecommendations.additional || [];
 
-  const moreDrinks =
-    filterProducts(allDrinks.additional);
+  const handleFilterChange = useCallback((filter) => {
+    const normalizedFilter = filter.trim().toLowerCase();
 
-  const handleFilterChange =
-    useCallback((filter) => {
-      const normalizedFilter =
-        filter.trim().toLowerCase();
+    console.log(
+      "CHANGING DRINK FILTER:",
+      normalizedFilter
+    );
 
-      console.log(
-        "CHANGING DRINK FILTER:",
-        normalizedFilter
-      );
-
-      setSelectedType(
-        normalizedFilter
-      );
-    }, []);
+    setSelectedType(normalizedFilter);
+  }, []);
 
   useEffect(() => {
     const handleVoiceUIAction = (event) => {
-      const action =
-        event.detail?.action;
+      const action = event.detail?.action;
 
       console.log(
         "DRINK PAGE RECEIVED UI ACTION:",
@@ -84,19 +85,15 @@ function Drink() {
       if (action === "filter_cold") {
         handleFilterChange("cold");
       }
-
       else if (action === "filter_hot") {
         handleFilterChange("hot");
       }
-
       else if (action === "filter_both") {
         handleFilterChange("both");
       }
-
       else if (action === "view_more") {
         navigate("/drinkmenu");
       }
-
       else if (action === "go_back") {
         navigate(-1);
       }
@@ -122,7 +119,6 @@ function Drink() {
     <div className="drink-page">
 
       {/* SECTION ICONS */}
-
       <img
         src={fire}
         alt="fire"
@@ -136,13 +132,11 @@ function Drink() {
       />
 
       {/* HEADER */}
-
       <Header title="Choose Your Drink" />
 
       <BackButton />
 
       {/* FILTERS */}
-
       <div className="drink-filter-position">
         <Menufilters
           filters={[
@@ -158,7 +152,6 @@ function Drink() {
       </div>
 
       {/* PRIORITY */}
-
       {freshDrinks[0] && (
         <ProductCard
           product={freshDrinks[0]}
@@ -178,7 +171,6 @@ function Drink() {
       )}
 
       {/* PREMIUM */}
-
       {premiumDrinks[0] && (
         <ProductCard
           product={premiumDrinks[0]}
@@ -198,7 +190,6 @@ function Drink() {
       )}
 
       {/* ADDITIONAL */}
-
       {moreDrinks[0] && (
         <ProductCard
           product={moreDrinks[0]}
@@ -232,7 +223,6 @@ function Drink() {
       )}
 
       {/* TITLES */}
-
       <p className="fresh-text">
         Freshly Made Drinks
       </p>
@@ -250,7 +240,6 @@ function Drink() {
       </p>
 
       {/* MORE OPTIONS */}
-
       <div className="more-header">
         <p className="more-text">
           More Drink Options
@@ -267,11 +256,9 @@ function Drink() {
       </div>
 
       {/* CART */}
-
       <CartContainer />
 
       {/* FOOTER */}
-
       <FooterDecoration />
 
     </div>
