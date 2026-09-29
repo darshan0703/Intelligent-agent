@@ -22,7 +22,6 @@ def get_menu_item_details(item_name: str):
     including its description, price, category, food type,
     availability, meal availability, or other stored details.
     """
-
     return get_product(item_name)
 
 
@@ -36,10 +35,9 @@ def get_recommendations(
     food_type: Optional[str] = None,
 ):
     """
-    Get restaurant recommendations using the existing deterministic
+    Get restaurant recommendations using the deterministic
     recommendation system.
     """
-
     return get_agent_recommendations(
         category=category,
         food_type=food_type,
@@ -58,7 +56,10 @@ def create_open_category_tool(conversation_context):
         """
         Open a restaurant category on the kiosk.
 
-        Use this when the customer wants to browse a category.
+        Returns:
+        - Summary for the LLM (top 2 items only)
+        - Hidden navigation context (entire displayed list)
+        - Full KioskResponse is preserved for the frontend
         """
 
         response = handle_category(
@@ -66,40 +67,50 @@ def create_open_category_tool(conversation_context):
             conversation_context,
         )
 
-        # Keep the complete KioskResponse inside the application.
         if hasattr(response, "screen") and hasattr(response, "data"):
 
+            # Preserve the complete frontend response
             conversation_context["_last_kiosk_response"] = response
 
             data = response.data or {}
 
-            priority = data.get("priority", [])
-            premium = data.get("premium", [])
-            additional = data.get("additional", [])
+            selected = data.get("selected_type", "both")
+            section = data.get(selected, {})
+
+            priority = section.get("priority", [])
+            premium = section.get("premium", [])
+            additional = section.get("additional", [])
+
+            # Complete visual order shown on the kiosk
+            displayed_items = priority + premium + additional
 
             return {
                 "success": True,
-                "category": category,
+                "screen": response.screen,
 
-                "priority_recommendation": (
-                    {
-                        "name": priority[0].get("name"),
-                        "price": priority[0].get("price"),
-                    }
-                    if priority
-                    else None
-                ),
+                # Canonical backend identifier
+                "category": category.lower().strip(),
 
-                "premium_recommendation": (
-                    {
-                        "name": premium[0].get("name"),
-                        "price": premium[0].get("price"),
-                    }
-                    if premium
-                    else None
-                ),
+                # Customer-facing summary
+                "summary": {
+                    "top_choices": [
+                        item["name"] for item in priority[:2]
+                    ],
+                    "has_more_options": len(displayed_items) > 2,
+                },
 
-                "more_options_available": bool(additional),
+                # Internal reasoning only
+                "context": {
+                    "displayed_items": [
+                        {
+                            "position": index + 1,
+                            "name": item["name"],
+                            "id": item.get("id"),
+                        }
+                        for index, item in enumerate(displayed_items)
+                    ],
+                    "selected_type": selected,
+                },
             }
 
         return response
@@ -116,16 +127,7 @@ def select_product(product_query: str):
     """
     Resolve a customer's reference to a specific restaurant product.
 
-    Use this capability when the customer is referring to a particular
-    menu item they want, are asking about, or are checking whether it
-    is available.
-
-    The query should contain the product the customer is referring to.
-    The resolver checks the real restaurant menu and returns matching
-    products.
-
-    Do not determine whether the product exists yourself.
-    Do not invent product names or variants.
+    Use this when the customer mentions a particular menu item.
     """
 
     result = resolve_product(
@@ -141,13 +143,12 @@ def select_product(product_query: str):
 
         product = result["product"]
 
-        # Build the existing product-page KioskResponse.
         response = handle_product(
             product["name"],
             conversation_context,
         )
 
-        # Store the complete response for the API layer.
+        # Preserve the complete product page response
         conversation_context["_last_kiosk_response"] = response
 
         return {
@@ -162,7 +163,7 @@ def select_product(product_query: str):
         }
 
     # ==========================================================
-    # MULTIPLE PRODUCTS MATCH
+    # MULTIPLE MATCHES
     # ==========================================================
 
     if result["status"] == "ambiguous":
