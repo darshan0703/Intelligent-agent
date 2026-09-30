@@ -364,15 +364,23 @@ def handle_burger_selection(
     print("==============================\n")
 
     # -----------------------------------------------------
-    # DEFAULT VIEW = BOTH
+    # SELECT DATASET ACCORDING TO USER'S ACTIVE PREFERENCE
     # -----------------------------------------------------
 
-    both = recommendation_data["both"]
+    active_pref = conversation_context.get("food_preference")
+    if burger_type in ("veg", "non_veg", "both"):
+        chosen_type = burger_type
+    elif active_pref in ("veg", "non_veg"):
+        chosen_type = active_pref
+    else:
+        chosen_type = "both"
+
+    chosen = recommendation_data.get(chosen_type, recommendation_data["both"])
 
     selected = (
-        both["priority"]
-        + both["premium"]
-        + both["additional"]
+        chosen["priority"]
+        + chosen["premium"]
+        + chosen["additional"]
     )
 
     conversation_context["last_offer"] = [
@@ -386,22 +394,22 @@ def handle_burger_selection(
 
     message_parts = []
 
-    if both["priority"]:
+    if chosen["priority"]:
 
         message_parts.append(
             f"I'd recommend our "
-            f"{both['priority'][0]['name']}."
+            f"{chosen['priority'][0]['name']}."
         )
 
-    if both["premium"]:
+    if chosen["premium"]:
 
         message_parts.append(
             f"If you're looking for something premium, "
             f"we also have our "
-            f"{both['premium'][0]['name']}."
+            f"{chosen['premium'][0]['name']}."
         )
 
-    if both["additional"]:
+    if chosen["additional"]:
 
         message_parts.append(
             "We also have more options in burgers "
@@ -420,9 +428,15 @@ def handle_burger_selection(
         screen=ScreenTypes.RECOMMENDED_BURGERS,
         message=message,
         data={
-            "selected_type": "both",
+            "selected_type": chosen_type,
 
             "all_burgers": burgers,
+
+            "priority": chosen["priority"],
+
+            "premium": chosen["premium"],
+
+            "additional": chosen["additional"],
 
             "both": recommendation_data["both"],
 
@@ -621,34 +635,54 @@ def build_category_response(
             data={}
         )
 
-    priority, premium, additional = (
-        build_recommendations(items)
-    )
+    both_priority, both_premium, both_additional = build_recommendations(items, "both")
+
+    veg_items = [
+        item for item in items
+        if (item.get("foodType") or item.get("type") or "").lower().replace("_", " ").strip() == "veg"
+        or (not any(w in (item.get("name") or "").lower() for w in ["chicken", "wings", "nugget", "boneless"]))
+    ]
+    veg_priority, veg_premium, veg_additional = build_recommendations(veg_items if veg_items else items, "veg")
+
+    non_veg_items = [
+        item for item in items
+        if "non" in (item.get("foodType") or item.get("type") or "").lower()
+        or any(w in (item.get("name") or "").lower() for w in ["chicken", "wings", "nugget", "boneless"])
+    ]
+    nv_priority, nv_premium, nv_additional = build_recommendations(non_veg_items if non_veg_items else items, "non veg")
+
+    active_pref = conversation_context.get("food_preference")
+    if active_pref == "veg":
+        cur_priority, cur_premium, cur_additional = veg_priority, veg_premium, veg_additional
+    elif active_pref in ("non_veg", "non veg"):
+        cur_priority, cur_premium, cur_additional = nv_priority, nv_premium, nv_additional
+    else:
+        cur_priority, cur_premium, cur_additional = both_priority, both_premium, both_additional
 
     conversation_context["last_offer"] = [
         item["name"]
-        for item in priority
-        + premium
-        + additional
+        for item in cur_priority
+        + cur_premium
+        + cur_additional
     ]
 
     message_parts = []
 
-    if priority:
+    if cur_priority:
 
         message_parts.append(
             f"I'd recommend our "
-            f"{priority[0]['name']}."
+            f"{cur_priority[0]['name']}."
         )
 
-    if premium:
+    if cur_premium:
 
         message_parts.append(
             f"For something premium, we also have "
-            f"{premium[0]['name']}."
+            f"{cur_premium[0]['name']}."
         )
 
-    if additional:
+    if cur_additional:
 
         message_parts.append(
             f"We also have more {title.lower()} "
@@ -663,9 +697,25 @@ def build_category_response(
         screen=screen,
         message=message,
         data={
-            "priority": priority,
-            "premium": premium,
-            "additional": additional
+            "category": category,
+            "priority": cur_priority,
+            "premium": cur_premium,
+            "additional": cur_additional,
+            "both": {
+                "priority": both_priority,
+                "premium": both_premium,
+                "additional": both_additional,
+            },
+            "veg": {
+                "priority": veg_priority,
+                "premium": veg_premium,
+                "additional": veg_additional,
+            },
+            "non_veg": {
+                "priority": nv_priority,
+                "premium": nv_premium,
+                "additional": nv_additional,
+            },
         }
     )
 

@@ -33,15 +33,47 @@ function Sides() {
 
   const {
     recommendationData,
+    foodPreference,
+    setFoodPreference,
   } = useKiosk();
 
   const [
     selectedType,
     setSelectedType
-  ] = useState("both");
+  ] = useState(foodPreference || "both");
+
+  const [fallbackData, setFallbackData] = useState(null);
+
+  useEffect(() => {
+    if (foodPreference) {
+      setSelectedType(foodPreference);
+    }
+  }, [foodPreference]);
+
+  // Fallback to menu fetch if accessed directly or refreshed
+  useEffect(() => {
+    if (!recommendationData?.data?.both) {
+      fetch("/menu/sides")
+        .then((res) => res.json())
+        .then((sections) => {
+          const all = sections.flatMap((s) => s.products || []);
+          const veg = all.filter((p) => {
+            const t = (p.type || p.foodType || "").toLowerCase();
+            return t === "veg" || (!t.includes("non") && !["chicken", "wings", "nugget", "boneless"].some((w) => p.name.toLowerCase().includes(w)));
+          });
+          const nonVeg = all.filter((p) => !veg.includes(p));
+          setFallbackData({
+            both: { priority: all.slice(0, 2), premium: all.slice(2, 4), additional: all.slice(4, 8) },
+            veg: { priority: veg.slice(0, 2), premium: veg.slice(2, 4), additional: veg.slice(4, 8) },
+            non_veg: { priority: nonVeg.slice(0, 2), premium: nonVeg.slice(2, 4), additional: nonVeg.slice(4, 8) },
+          });
+        })
+        .catch((err) => console.warn("Fallback sides fetch failed:", err));
+    }
+  }, [recommendationData]);
 
   const data =
-    recommendationData?.data || {};
+    recommendationData?.data || fallbackData || {};
 
   // ==========================================
   // ALL BACKEND RECOMMENDATION DATA
@@ -115,7 +147,10 @@ function Sides() {
       setSelectedType(
         normalizedFilter
       );
-    }, []);
+      if (setFoodPreference) {
+        setFoodPreference(normalizedFilter);
+      }
+    }, [setFoodPreference]);
 
   // ==========================================
   // VOICE UI ACTION LISTENER
@@ -313,7 +348,9 @@ function Sides() {
         <button
           className="view-all-btn"
           onClick={() =>
-            navigate("/sidesmenu")
+            navigate("/sidesmenu", {
+              state: { activeFilter: selectedType },
+            })
           }
         >
           View All Sides →

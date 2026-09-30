@@ -24,15 +24,44 @@ function Burger() {
 
   const {
     recommendationData,
+    foodPreference,
+    setFoodPreference,
   } = useKiosk();
 
   const [
     selectedType,
     setSelectedType
-  ] = useState("both");
+  ] = useState(foodPreference || "both");
+
+  const [fallbackData, setFallbackData] = useState(null);
+
+  useEffect(() => {
+    if (foodPreference) {
+      setSelectedType(foodPreference);
+    }
+  }, [foodPreference]);
+
+  // Fallback to menu fetch if accessed directly or refreshed
+  useEffect(() => {
+    if (!recommendationData?.data?.both) {
+      fetch("/menu/burgers")
+        .then((res) => res.json())
+        .then((sections) => {
+          const all = sections.flatMap((s) => s.products || []);
+          const veg = all.filter((p) => (p.type || p.foodType || "").toLowerCase() === "veg");
+          const nonVeg = all.filter((p) => (p.type || p.foodType || "").toLowerCase() !== "veg");
+          setFallbackData({
+            both: { priority: all.slice(0, 2), premium: all.slice(2, 4), additional: all.slice(4, 8) },
+            veg: { priority: veg.slice(0, 2), premium: veg.slice(2, 4), additional: veg.slice(4, 8) },
+            non_veg: { priority: nonVeg.slice(0, 2), premium: nonVeg.slice(2, 4), additional: nonVeg.slice(4, 8) },
+          });
+        })
+        .catch((err) => console.warn("Fallback burger fetch failed:", err));
+    }
+  }, [recommendationData]);
 
   const data =
-    recommendationData?.data || {};
+    recommendationData?.data || fallbackData || {};
 
   // ==========================================
   // ALL BACKEND RECOMMENDATION DATA
@@ -106,7 +135,10 @@ function Burger() {
       setSelectedType(
         normalizedFilter
       );
-    }, []);
+      if (setFoodPreference) {
+        setFoodPreference(normalizedFilter);
+      }
+    }, [setFoodPreference]);
 
   // ==========================================
   // VOICE UI ACTION LISTENER
@@ -310,7 +342,9 @@ function Burger() {
         <button
           className="view-all-btn"
           onClick={() =>
-            navigate("/burgermenu")
+            navigate("/burgermenu", {
+              state: { activeFilter: selectedType },
+            })
           }
         >
           View All Burgers →
