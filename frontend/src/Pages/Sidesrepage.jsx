@@ -40,53 +40,59 @@ function Sides() {
     setSelectedType
   ] = useState("both");
 
+  // ==========================================
+  // MASTER BACKEND DATASET
+  // ==========================================
+
   const data =
     recommendationData?.data || {};
 
-  // ==========================================
-  // ALL BACKEND RECOMMENDATION DATA
-  // ==========================================
-
-  const bothRecommendations =
-    data.both || {
-      priority: [],
-      premium: [],
-      additional: []
-    };
-
-  const vegRecommendations =
-    data.veg || {
-      priority: [],
-      premium: [],
-      additional: []
-    };
-
-  const nonVegRecommendations =
-    data.non_veg || {
-      priority: [],
-      premium: [],
-      additional: []
-    };
+  const allSides = {
+    priority: data.priority || [],
+    premium: data.premium || [],
+    additional: data.additional || [],
+  };
 
   // ==========================================
-  // SELECT DATASET FOR CURRENT FILTER
+  // FILTER MASTER DATASET
   // ==========================================
 
-  const selectedRecommendations =
-    selectedType === "veg"
-      ? vegRecommendations
-      : selectedType === "non veg"
-        ? nonVegRecommendations
-        : bothRecommendations;
+  const filterProducts = useCallback(
+    (products) => {
+
+      if (selectedType === "both") {
+        return products;
+      }
+
+      return products.filter(
+        (product) =>
+          product.foodType
+            ?.toLowerCase()
+            .replace("_", " ")
+            .trim() === selectedType
+      );
+    },
+    [selectedType]
+  );
+
+  // ==========================================
+  // FILTERED SECTIONS
+  // ==========================================
 
   const priorityItems =
-    selectedRecommendations.priority || [];
+    filterProducts(
+      allSides.priority
+    );
 
   const premiumItems =
-    selectedRecommendations.premium || [];
+    filterProducts(
+      allSides.premium
+    );
 
   const additionalItems =
-    selectedRecommendations.additional || [];
+    filterProducts(
+      allSides.additional
+    );
 
   // ==========================================
   // SCREEN SYNC
@@ -102,10 +108,12 @@ function Sides() {
 
   const handleFilterChange =
     useCallback((filter) => {
+
       const normalizedFilter =
         filter
           .trim()
-          .toLowerCase();
+          .toLowerCase()
+          .replace("_", " ");
 
       console.log(
         "CHANGING SIDES FILTER:",
@@ -115,6 +123,7 @@ function Sides() {
       setSelectedType(
         normalizedFilter
       );
+
     }, []);
 
   // ==========================================
@@ -122,7 +131,9 @@ function Sides() {
   // ==========================================
 
   useEffect(() => {
+
     const handleVoiceUIAction = (event) => {
+
       const action =
         event.detail?.action;
 
@@ -132,28 +143,35 @@ function Sides() {
       );
 
       if (action === "filter_veg") {
+
         handleFilterChange("veg");
-      }
-      else if (
+
+      } else if (
         action === "filter_non_veg"
       ) {
+
         handleFilterChange("non veg");
-      }
-      else if (
+
+      } else if (
         action === "filter_both"
       ) {
+
         handleFilterChange("both");
-      }
-      else if (
+
+      } else if (
         action === "view_more"
       ) {
+
         navigate("/sidesmenu");
-      }
-      else if (
+
+      } else if (
         action === "go_back"
       ) {
+
         navigate(-1);
+
       }
+
     };
 
     window.addEventListener(
@@ -162,17 +180,21 @@ function Sides() {
     );
 
     return () => {
+
       window.removeEventListener(
         "kiosk-ui-action",
         handleVoiceUIAction
       );
+
     };
+
   }, [
     handleFilterChange,
     navigate
   ]);
 
   return (
+
     <div className="sides-page">
 
       {/* SECTION ICONS */}
@@ -191,98 +213,136 @@ function Sides() {
 
       {/* HEADER */}
 
-      <Header title="Choose Your Sides" />
+      <Header
+        title="Choose Your Sides"
+      />
 
       <BackButton />
 
       {/* FILTERS */}
 
       <div className="sides-filter-position">
+
         <Menufilters
           filters={[
             "both",
             "veg",
             "non veg",
           ]}
-          activeFilter={selectedType}
+          activeFilter={
+            selectedType
+          }
           onFilterChange={
             handleFilterChange
           }
         />
+
       </div>
 
       {/* PRIORITY */}
 
       {priorityItems[0] && (
+
         <ProductCard
-          product={priorityItems[0]}
+          product={
+            priorityItems[0]
+          }
           variant="large"
           className="card-1"
           badge="popular"
         />
+
       )}
 
       {priorityItems[1] && (
+
         <ProductCard
-          product={priorityItems[1]}
+          product={
+            priorityItems[1]
+          }
           variant="large"
           className="card-2"
           badge="popular"
         />
+
       )}
 
       {/* PREMIUM */}
 
       {premiumItems[0] && (
+
         <ProductCard
-          product={premiumItems[0]}
+          product={
+            premiumItems[0]
+          }
           variant="large"
           className="card-3"
           badge="premium"
         />
+
       )}
 
       {premiumItems[1] && (
+
         <ProductCard
-          product={premiumItems[1]}
+          product={
+            premiumItems[1]
+          }
           variant="large"
           className="card-4"
           badge="premium"
         />
+
       )}
 
       {/* ADDITIONAL */}
 
       {additionalItems[0] && (
+
         <ProductCard
-          product={additionalItems[0]}
+          product={
+            additionalItems[0]
+          }
           variant="small"
           className="card-5"
         />
+
       )}
 
       {additionalItems[1] && (
+
         <ProductCard
-          product={additionalItems[1]}
+          product={
+            additionalItems[1]
+          }
           variant="small"
           className="card-6"
         />
+
       )}
 
       {additionalItems[2] && (
+
         <ProductCard
-          product={additionalItems[2]}
+          product={
+            additionalItems[2]
+          }
           variant="small"
           className="card-7"
         />
+
       )}
 
       {additionalItems[3] && (
+
         <ProductCard
-          product={additionalItems[3]}
+          product={
+            additionalItems[3]
+          }
           variant="small"
           className="card-8"
         />
+
       )}
 
       {/* TITLES */}
@@ -306,6 +366,7 @@ function Sides() {
       {/* MORE OPTIONS */}
 
       <div className="more-header">
+
         <p className="more-text">
           More Side Options
         </p>
@@ -318,6 +379,7 @@ function Sides() {
         >
           View All Sides →
         </button>
+
       </div>
 
       {/* CART */}

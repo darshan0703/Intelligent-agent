@@ -7,7 +7,7 @@ function MealPopup({
   meals,
   onClose,
   onContinue,
-
+  
 }) {
 
   const [selectedMeal, setSelectedMeal] = useState(null);
