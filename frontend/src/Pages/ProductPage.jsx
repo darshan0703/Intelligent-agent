@@ -4,15 +4,11 @@ import { useState, useEffect } from "react";
 import { useKiosk } from "../context/KioskContext";
 import { useCart } from "../context/CartContext";
 import { useLocation, useNavigate } from "react-router-dom";
-
 import Header from "../components/Header";
 import PreviousButton from "../components/PreviousButton";
 import CartContainer from "../components/CartContainer";
 import MealPopup from "../components/MealPopup";
 import FooterDecoration from "../components/FooterDecoration";
-
-import { syncScreen } from "../services/screenService";   // NEW
-
 import vegIcon from "../assets/images/veg.png";
 import nonVegIcon from "../assets/images/nonveg.png";
 
@@ -30,35 +26,19 @@ function ProductPage() {
   } = useKiosk();
 
   const { syncCart } = useCart();
-
   const product = productData?.data?.product;
   const recommendations =
     productData?.data?.recommendations || [];
-
   const [quantity, setQuantity] = useState(1);
 
+  // Meal upgrades are available only for burger products.
   const isBurger =
     product?.category?.toLowerCase() === "burger" ||
     product?.category?.toLowerCase() === "burgers";
 
-  /* =========================================
-     PRODUCT SCREEN ACTIVE
-  ========================================= */
-
-  useEffect(() => {
-    if (product) {
-      syncScreen("product");
-    }
-  }, [product]);
-
-  /* =========================================
-     DISMISS MEMORY
-  ========================================= */
-
   const getDismissedKey = () => {
     const sessionId =
       localStorage.getItem("session_id") || "default";
-
     return `dismissed_meals_${sessionId}`;
   };
 
@@ -67,7 +47,6 @@ function ProductPage() {
       const dismissed = JSON.parse(
         sessionStorage.getItem(getDismissedKey()) || "[]"
       );
-
       return dismissed.includes(productId);
     } catch {
       return false;
@@ -86,12 +65,10 @@ function ProductPage() {
           JSON.stringify([...dismissed, productId])
         );
       }
-    } catch {}
+    } catch {
+      // Ignore sessionStorage errors.
+    }
   };
-
-  /* =========================================
-     MEAL OFFER
-  ========================================= */
 
   const checkMealOffer = async ({
     automatic = false,
@@ -116,38 +93,25 @@ function ProductPage() {
 
       const data = await response.json();
 
-      if (
-        signal?.aborted ||
-        product?.id !== requestedProductId
-      ) {
+      if (signal?.aborted || product?.id !== requestedProductId) {
         return;
       }
 
       if (data.success && data.is_meal_available) {
-
-        if (
-          automatic &&
-          isProductDismissed(requestedProductId)
-        ) {
+        if (automatic && isProductDismissed(requestedProductId)) {
           setMealPopupOpen(false);
           return;
         }
 
         setMealData(data);
         setMealPopupOpen(true);
-
-        // NEW
-        syncScreen("meal_popup");
-
       } else {
         setMealPopupOpen(false);
       }
-
     } catch (error) {
-
       if (error.name === "AbortError") return;
 
-      console.error(error);
+      console.error("Failed to load meal offer:", error);
 
       if (product?.id === requestedProductId) {
         setMealPopupOpen(false);
@@ -155,12 +119,7 @@ function ProductPage() {
     }
   };
 
-  /* =========================================
-     AUTO CHECK
-  ========================================= */
-
   useEffect(() => {
-
     if (!product) return;
 
     if (!isBurger) {
@@ -170,32 +129,25 @@ function ProductPage() {
     }
 
     const controller = new AbortController();
-
     const currentProductId = product.id;
 
     setMealPopupOpen(false);
     setMealData(null);
 
     if (!isProductDismissed(currentProductId)) {
-
       checkMealOffer({
         automatic: true,
         productId: currentProductId,
         signal: controller.signal,
       });
-
     }
 
-    return () => controller.abort();
-
+    return () => {
+      controller.abort();
+    };
   }, [product?.id, isBurger]);
 
-  /* =========================================
-     MANUAL MEAL BUTTON
-  ========================================= */
-
   const handleMealButtonClick = () => {
-
     if (!isBurger) return;
 
     if (
@@ -203,7 +155,6 @@ function ProductPage() {
       mealData?.is_meal_available
     ) {
       setMealPopupOpen(true);
-      syncScreen("meal_popup");          // NEW
       return;
     }
 
@@ -213,35 +164,20 @@ function ProductPage() {
     });
   };
 
-  /* =========================================
-     CONTINUE TO MEAL
-  ========================================= */
-
   const handleContinue = (mealSize) => {
-
-    setMealPopupOpen(false);
-
-    syncScreen("product");              // NEW
-
     navigate("/mealpage", {
       state: {
         meal: mealData.meals[mealSize],
-        origin,
+        origin: origin,
       },
     });
-
   };
-
-  /* =========================================
-     EMPTY STATE
-  ========================================= */
 
   if (!product) {
     return (
       <div className="product-page">
         <Header title="Product Details" />
         <PreviousButton />
-
         <h2
           style={{
             textAlign: "center",
@@ -250,19 +186,12 @@ function ProductPage() {
         >
           No product selected.
         </h2>
-
       </div>
     );
   }
 
-  /* =========================================
-     ADD TO CART
-  ========================================= */
-
   const handleAddToCart = async () => {
-
     try {
-
       const response = await fetch("/cart/add", {
         method: "POST",
         headers: {
@@ -270,7 +199,7 @@ function ProductPage() {
         },
         body: JSON.stringify({
           item_name: product.name,
-          quantity,
+          quantity: quantity,
         }),
       });
 
@@ -280,21 +209,14 @@ function ProductPage() {
         syncCart(data);
         navigate(origin);
       }
-
     } catch (error) {
       console.error(error);
     }
   };
 
-  /* =========================================
-     UI
-  ========================================= */
-
   return (
     <div className="product-page">
-
       <Header title="Product Details" />
-
       <PreviousButton />
 
       <img
@@ -304,13 +226,9 @@ function ProductPage() {
       />
 
       <div className="product-title-container">
-
         <h1 className="product-name">
-
           {(() => {
-
             const words = product.name.split(" ");
-
             const midpoint = Math.ceil(words.length / 2);
 
             return (
@@ -320,7 +238,6 @@ function ProductPage() {
                 {words.slice(midpoint).join(" ")}
               </>
             );
-
           })()}
 
           {product.foodType && (
@@ -334,9 +251,7 @@ function ProductPage() {
               className="product-type-icon"
             />
           )}
-
         </h1>
-
       </div>
 
       <p className="product-short-description">
@@ -344,7 +259,6 @@ function ProductPage() {
       </p>
 
       <div className="product-price-row">
-
         <p className="product-price">
           ₹ {product.price}
         </p>
@@ -357,7 +271,6 @@ function ProductPage() {
             Upgrade to a Meal
           </button>
         )}
-
       </div>
 
       <h2 className="section-title about-title">
@@ -373,7 +286,6 @@ function ProductPage() {
       </h2>
 
       <div className="recommendations">
-
         {recommendations.map((item) => (
           <div
             key={item.id}
@@ -382,11 +294,9 @@ function ProductPage() {
             {item.name}
           </div>
         ))}
-
       </div>
 
       <div className="quantity-selector">
-
         <button
           className="qty-btn"
           onClick={() =>
@@ -398,9 +308,7 @@ function ProductPage() {
           −
         </button>
 
-        <span className="qty-value">
-          {quantity}
-        </span>
+        <span className="qty-value">{quantity}</span>
 
         <button
           className="qty-btn"
@@ -410,7 +318,6 @@ function ProductPage() {
         >
           +
         </button>
-
       </div>
 
       <button
@@ -429,20 +336,14 @@ function ProductPage() {
           open={mealPopupOpen}
           meals={mealData}
           onClose={() => {
-
             dismissProduct(product.id);
-
             setMealPopupOpen(false);
-
-            syncScreen("product");      // NEW
-
           }}
           onContinue={handleContinue}
         />
       )}
 
       <FooterDecoration />
-
     </div>
   );
 }

@@ -35,56 +35,145 @@ function Burger() {
     recommendationData?.data || {};
 
   // ==========================================
-  // ALL BACKEND RECOMMENDATION DATA
+  // MASTER RECOMMENDATION DATA
+  // ==========================================
+  //
+  // Backend provides ONE combined dataset:
+  //
+  // priority
+  // premium
+  // additional
+  //
+  // Each item contains its foodType.
+  //
+  // Example:
+  //
+  // priority:
+  // [
+  //   veg1,
+  //   nonVeg1,
+  //   veg2,
+  //   nonVeg2
+  // ]
+  //
+  // The frontend filters these lists according
+  // to the selected food type.
   // ==========================================
 
-  const bothRecommendations =
-    data.both || {
-      priority: [],
-      premium: [],
-      additional: []
-    };
+  const priorityData =
+    data.priority || [];
 
-  const vegRecommendations =
-    data.veg || {
-      priority: [],
-      premium: [],
-      additional: []
-    };
+  const premiumData =
+    data.premium || [];
 
-  const nonVegRecommendations =
-    data.non_veg || {
-      priority: [],
-      premium: [],
-      additional: []
-    };
+  const additionalData =
+    data.additional || [];
 
   // ==========================================
-  // SELECT DATASET FOR CURRENT FILTER
+  // FOOD TYPE NORMALIZATION
   // ==========================================
 
-  const selectedRecommendations =
-    selectedType === "veg"
-      ? vegRecommendations
-      : selectedType === "non veg"
-        ? nonVegRecommendations
-        : bothRecommendations;
+  const normalizeFoodType = (
+    foodType
+  ) => {
+    return String(
+      foodType || ""
+    )
+      .toLowerCase()
+      .replace(/_/g, " ")
+      .trim();
+  };
+
+  // ==========================================
+  // FILTER MASTER LIST
+  // ==========================================
+
+  const filterItems = useCallback(
+    (items) => {
+
+      if (
+        selectedType === "both"
+      ) {
+        return items;
+      }
+
+      return items.filter(
+        (item) =>
+          normalizeFoodType(
+            item?.foodType
+          ) === selectedType
+      );
+
+    },
+    [selectedType]
+  );
+
+  // ==========================================
+  // SELECTED FILTER DATA
+  // ==========================================
 
   const priorityItems =
-    selectedRecommendations.priority || [];
+    filterItems(
+      priorityData
+    );
 
   const premiumItems =
-    selectedRecommendations.premium || [];
+    filterItems(
+      premiumData
+    );
 
   const additionalItems =
-    selectedRecommendations.additional || [];
+    filterItems(
+      additionalData
+    );
+
+  // ==========================================
+  // DEBUG
+  // ==========================================
+
+  console.log(
+    "SELECTED FILTER:",
+    selectedType
+  );
+
+  console.log(
+    "MASTER PRIORITY:",
+    priorityData
+  );
+
+  console.log(
+    "MASTER PREMIUM:",
+    premiumData
+  );
+
+  console.log(
+    "MASTER ADDITIONAL:",
+    additionalData
+  );
+
+  console.log(
+    "FILTERED PRIORITY:",
+    priorityItems
+  );
+
+  console.log(
+    "FILTERED PREMIUM:",
+    premiumItems
+  );
+
+  console.log(
+    "FILTERED ADDITIONAL:",
+    additionalItems
+  );
 
   // ==========================================
   // SCREEN SYNC
   // ==========================================
 
   useEffect(() => {
-    syncScreen("recommended_burgers");
+    syncScreen(
+      "recommended_burgers"
+    );
   }, []);
 
   // ==========================================
@@ -93,10 +182,12 @@ function Burger() {
 
   const handleFilterChange =
     useCallback((filter) => {
+
       const normalizedFilter =
         filter
           .trim()
-          .toLowerCase();
+          .toLowerCase()
+          .replace(/_/g, " ");
 
       console.log(
         "CHANGING BURGER FILTER:",
@@ -106,6 +197,7 @@ function Burger() {
       setSelectedType(
         normalizedFilter
       );
+
     }, []);
 
   // ==========================================
@@ -113,43 +205,68 @@ function Burger() {
   // ==========================================
 
   useEffect(() => {
-    const handleVoiceUIAction = (event) => {
-      const action =
-        event.detail?.action;
 
-      console.log(
-        "BURGER PAGE RECEIVED UI ACTION:",
-        action
-      );
+    const handleVoiceUIAction =
+      (event) => {
 
-      if (action === "filter_veg") {
-        handleFilterChange("veg");
-      }
+        const action =
+          event.detail?.action;
 
-      else if (
-        action === "filter_non_veg"
-      ) {
-        handleFilterChange("non veg");
-      }
+        console.log(
+          "BURGER PAGE RECEIVED UI ACTION:",
+          action
+        );
 
-      else if (
-        action === "filter_both"
-      ) {
-        handleFilterChange("both");
-      }
+        if (
+          action === "filter_veg"
+        ) {
 
-      else if (
-        action === "view_more"
-      ) {
-        navigate("/burgermenu");
-      }
+          handleFilterChange(
+            "veg"
+          );
 
-      else if (
-        action === "go_back"
-      ) {
-        navigate(-1);
-      }
-    };
+        }
+
+        else if (
+          action ===
+          "filter_non_veg"
+        ) {
+
+          handleFilterChange(
+            "non veg"
+          );
+
+        }
+
+        else if (
+          action === "filter_both"
+        ) {
+
+          handleFilterChange(
+            "both"
+          );
+
+        }
+
+        else if (
+          action === "view_more"
+        ) {
+
+          navigate(
+            "/burgermenu"
+          );
+
+        }
+
+        else if (
+          action === "go_back"
+        ) {
+
+          navigate(-1);
+
+        }
+
+      };
 
     window.addEventListener(
       "kiosk-ui-action",
@@ -157,11 +274,14 @@ function Burger() {
     );
 
     return () => {
+
       window.removeEventListener(
         "kiosk-ui-action",
         handleVoiceUIAction
       );
+
     };
+
   }, [
     handleFilterChange,
     navigate
@@ -186,101 +306,147 @@ function Burger() {
 
       {/* HEADER */}
 
-      <Header title="Choose Your Burger" />
+      <Header
+        title="Choose Your Burger"
+      />
 
       <BackButton />
 
       {/* FILTERS */}
 
       <div className="burger-filter-position">
+
         <Menufilters
           filters={[
             "both",
             "veg",
             "non veg",
           ]}
-          activeFilter={selectedType}
+          activeFilter={
+            selectedType
+          }
           onFilterChange={
             handleFilterChange
           }
         />
+
       </div>
 
-      {/* PRIORITY */}
+      {/* ==================================
+          PRIORITY
+          ================================== */}
 
-      {priorityItems[0] && (
-        <ProductCard
-          product={priorityItems[0]}
-          variant="large"
-          className="card-1"
-          badge="popular"
-        />
-      )}
+      {
+        priorityItems[0] && (
+          <ProductCard
+            product={
+              priorityItems[0]
+            }
+            variant="large"
+            className="card-1"
+            badge="popular"
+          />
+        )
+      }
 
-      {priorityItems[1] && (
-        <ProductCard
-          product={priorityItems[1]}
-          variant="large"
-          className="card-2"
-          badge="popular"
-        />
-      )}
+      {
+        priorityItems[1] && (
+          <ProductCard
+            product={
+              priorityItems[1]
+            }
+            variant="large"
+            className="card-2"
+            badge="popular"
+          />
+        )
+      }
 
-      {/* PREMIUM */}
+      {/* ==================================
+          PREMIUM
+          ================================== */}
 
-      {premiumItems[0] && (
-        <ProductCard
-          product={premiumItems[0]}
-          variant="large"
-          className="card-3"
-          badge="premium"
-        />
-      )}
+      {
+        premiumItems[0] && (
+          <ProductCard
+            product={
+              premiumItems[0]
+            }
+            variant="large"
+            className="card-3"
+            badge="premium"
+          />
+        )
+      }
 
-      {premiumItems[1] && (
-        <ProductCard
-          product={premiumItems[1]}
-          variant="large"
-          className="card-4"
-          badge="premium"
-        />
-      )}
+      {
+        premiumItems[1] && (
+          <ProductCard
+            product={
+              premiumItems[1]
+            }
+            variant="large"
+            className="card-4"
+            badge="premium"
+          />
+        )
+      }
 
-      {/* ADDITIONAL */}
+      {/* ==================================
+          ADDITIONAL
+          ================================== */}
 
-      {additionalItems[0] && (
-        <ProductCard
-          product={additionalItems[0]}
-          variant="small"
-          className="card-5"
-        />
-      )}
+      {
+        additionalItems[0] && (
+          <ProductCard
+            product={
+              additionalItems[0]
+            }
+            variant="small"
+            className="card-5"
+          />
+        )
+      }
 
-      {additionalItems[1] && (
-        <ProductCard
-          product={additionalItems[1]}
-          variant="small"
-          className="card-6"
-        />
-      )}
+      {
+        additionalItems[1] && (
+          <ProductCard
+            product={
+              additionalItems[1]
+            }
+            variant="small"
+            className="card-6"
+          />
+        )
+      }
 
-      {additionalItems[2] && (
-        <ProductCard
-          product={additionalItems[2]}
-          variant="small"
-          className="card-7"
-        />
-      )}
+      {
+        additionalItems[2] && (
+          <ProductCard
+            product={
+              additionalItems[2]
+            }
+            variant="small"
+            className="card-7"
+          />
+        )
+      }
 
-      {additionalItems[3] && (
-        <ProductCard
-          product={additionalItems[3]}
-          variant="small"
-          className="card-8"
-        />
-      )}
+      {
+        additionalItems[3] && (
+          <ProductCard
+            product={
+              additionalItems[3]
+            }
+            variant="small"
+            className="card-8"
+          />
+        )
+      }
 
-      {/* RECOMMENDED SECTION */}
+      {/* ==================================
+          RECOMMENDED SECTION
+          ================================== */}
 
       <p className="Recommendation-text">
         Fresh Picks For You
@@ -290,7 +456,9 @@ function Burger() {
         Recommended based on availability
       </p>
 
-      {/* PREMIUM SECTION */}
+      {/* ==================================
+          PREMIUM SECTION
+          ================================== */}
 
       <p className="Premium-text">
         Premium Collection
@@ -300,9 +468,12 @@ function Burger() {
         Handpicked just for you
       </p>
 
-      {/* MORE OPTIONS */}
+      {/* ==================================
+          MORE OPTIONS
+          ================================== */}
 
       <div className="more-header">
+
         <p className="more-text">
           More Burger Options
         </p>
@@ -310,11 +481,14 @@ function Burger() {
         <button
           className="view-all-btn"
           onClick={() =>
-            navigate("/burgermenu")
+            navigate(
+              "/burgermenu"
+            )
           }
         >
           View All Burgers →
         </button>
+
       </div>
 
       {/* CART */}
