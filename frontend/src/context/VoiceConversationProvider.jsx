@@ -1,294 +1,552 @@
 import {
   createContext,
-  useCallback,
   useContext,
   useEffect,
   useRef,
   useState,
 } from "react";
 
-import { useNavigate } from "react-router-dom";
-
-import { useKiosk } from "./KioskContext";
-import { useUIAction } from "./UIActionContext";
-
 import {
   startListening,
   stopListening,
+  stopVoiceSession,
   speak,
   setInterruptionHandler,
 } from "../services/voice/voiceService";
 
-import { processCustomerMessage } from "../services/conversationService";
-import { handleKioskResponse } from "../services/responseHandler";
+import {
+  sendMessage,
+} from "../services/conversationService";
 
-const VoiceConversationContext = createContext(null);
+import {
+  handleKioskResponse,
+} from "../services/responseHandler";
 
-export function VoiceConversationProvider({ children }) {
-  const navigate = useNavigate();
 
-  const {
-    setRecommendationData,
-    setProductData,
-  } = useKiosk();
+const VoiceConversationContext =
+  createContext(null);
 
-  const {
-    executeUIAction,
-  } = useUIAction();
 
-  const [voiceEnabled, setVoiceEnabled] = useState(false);
+export function VoiceConversationProvider({
+  children,
+}) {
 
-  const voiceEnabledRef = useRef(false);
+  const [isVoiceActive, setIsVoiceActive] =
+    useState(false);
 
-  const processingRef = useRef(false);
+  const [isProcessing, setIsProcessing] =
+    useState(false);
 
-  // Prevent multiple listening sessions
-  const listeningRef = useRef(false);
+  const [recommendationData, setRecommendationData] =
+    useState(null);
+
+  const [productData, setProductData] =
+    useState(null);
+
+
+  const navigateRef =
+    useRef(null);
+
+  const processingRef =
+    useRef(false);
+
+  const activeRef =
+    useRef(false);
+
 
   /*
-   * Start listening for the customer.
+   * =======================================================
+   * HANDLE CUSTOMER TRANSCRIPT
+   * =======================================================
    */
-  const listenForCustomer = useCallback(() => {
-    if (!voiceEnabledRef.current) {
+
+  const handleTranscript = async (
+    transcript
+  ) => {
+
+    if (!transcript) {
       return;
     }
+
+
+    if (!activeRef.current) {
+      return;
+    }
+
 
     if (processingRef.current) {
+
+      console.log(
+        "VOICE PROCESSING ALREADY IN PROGRESS"
+      );
+
       return;
     }
 
-    if (listeningRef.current) {
-      return;
-    }
 
-    console.log("STARTING CUSTOMER LISTENING");
+    console.log(
+      "================================="
+    );
 
-    listeningRef.current = true;
+    console.log(
+      "VOICE TRANSCRIPT:",
+      transcript
+    );
 
-    startListening(async (transcript) => {
-      listeningRef.current = false;
+    console.log(
+      "================================="
+    );
 
-      if (
-        !voiceEnabledRef.current ||
-        processingRef.current
-      ) {
-        return;
-      }
 
-      processingRef.current = true;
+    processingRef.current = true;
 
-      try {
-        console.log(
-          "VOICE TRANSCRIPT:",
-          transcript
-        );
+    setIsProcessing(true);
 
-        /*
-         * Stop microphone listening for this turn.
-         */
-        stopListening();
 
-        /*
-         * Send customer message to backend.
-         */
-        const data =
-          await processCustomerMessage(
-            transcript
-          );
-
-        console.log(
-          "VOICE BACKEND RESPONSE:",
-          data
-        );
-
-        /*
-         * Update kiosk UI immediately.
-         *
-         * This happens before TTS playback.
-         */
-        handleKioskResponse(
-          data,
-          {
-            navigate,
-            setRecommendationData,
-            setProductData,
-            executeUIAction,
-          }
-        );
-
-        /*
-         * Speak backend response.
-         */
-        if (data?.message) {
-          speak(
-            data.message,
-            () => {
-              processingRef.current = false;
-
-              /*
-               * Start listening again after
-               * the cashier finishes speaking.
-               */
-              if (voiceEnabledRef.current) {
-                listenForCustomer();
-              }
-            }
-          );
-        } else {
-          processingRef.current = false;
-
-          if (voiceEnabledRef.current) {
-            listenForCustomer();
-          }
-        }
-
-      } catch (error) {
-        console.error(
-          "VOICE MESSAGE ERROR:",
-          error
-        );
-
-        processingRef.current = false;
-
-        if (voiceEnabledRef.current) {
-          listenForCustomer();
-        }
-      }
-    });
-  }, [
-    navigate,
-    setRecommendationData,
-    setProductData,
-    executeUIAction,
-  ]);
-
-  /*
-   * BARGE-IN
-   *
-   * If the customer speaks while TTS is playing,
-   * voiceService stops the TTS and calls this handler.
-   */
-  useEffect(() => {
-    setInterruptionHandler(() => {
-      if (!voiceEnabledRef.current) {
-        return;
-      }
-
-      console.log(
-        "CUSTOMER TOOK THE TURN"
-      );
+    try {
 
       /*
-       * The previous cashier response
-       * is no longer relevant.
+       * Stop current customer listening.
        */
-      processingRef.current = false;
-
-      listeningRef.current = false;
-
-      /*
-       * Start listening immediately.
-       */
-      listenForCustomer();
-    });
-
-    return () => {
-      setInterruptionHandler(null);
-    };
-  }, [listenForCustomer]);
-
-  /*
-   * START VOICE CONVERSATION
-   */
-  const startVoiceConversation =
-    useCallback(() => {
-
-      /*
-       * Prevent duplicate initialization.
-       */
-      if (voiceEnabledRef.current) {
-        console.log(
-          "VOICE INTERFACE ALREADY ENABLED"
-        );
-
-        return;
-      }
-
-      voiceEnabledRef.current = true;
-      processingRef.current = false;
-      listeningRef.current = false;
-
-      setVoiceEnabled(true);
-
-      console.log(
-        "VOICE INTERFACE ENABLED"
-      );
-
-      /*
-       * IMPORTANT:
-       *
-       * Start listening BEFORE the welcome TTS finishes.
-       *
-       * This allows barge-in.
-       */
-      listenForCustomer();
-
-      /*
-       * Welcome message.
-       *
-       * We do NOT wait for this to finish
-       * before starting the microphone.
-       */
-      speak(
-        "Hi! Welcome to Burger King. What can I get for you today?"
-      );
-
-    }, [listenForCustomer]);
-
-  /*
-   * STOP VOICE CONVERSATION
-   */
-  const stopVoiceConversation =
-    useCallback(() => {
-
-      voiceEnabledRef.current = false;
-      processingRef.current = false;
-      listeningRef.current = false;
 
       stopListening();
 
-      setVoiceEnabled(false);
 
       console.log(
-        "VOICE INTERFACE DISABLED"
+        "SENDING CUSTOMER MESSAGE..."
       );
 
-    }, []);
+
+      /*
+       * Send transcript to backend.
+       */
+
+      const response =
+        await sendMessage(
+          transcript
+        );
+
+
+      console.log(
+        "VOICE BACKEND RESPONSE:",
+        response
+      );
+
+
+      /*
+       * Handle:
+       * - screen navigation
+       * - recommendations
+       * - product data
+       * - UI actions
+       */
+
+      handleKioskResponse(
+        response,
+        {
+          navigate:
+            navigateRef.current,
+
+          setRecommendationData,
+
+          setProductData,
+
+          executeUIAction:
+            undefined,
+        }
+      );
+
+
+      /*
+       * Speak backend response.
+       */
+
+      if (
+        response?.message &&
+        activeRef.current
+      ) {
+
+        speak(
+          response.message,
+          async () => {
+
+            /*
+             * Kokoro finished.
+             *
+             * Start listening for
+             * the next customer request.
+             */
+
+            if (
+              activeRef.current
+            ) {
+
+              console.log(
+                "TTS FINISHED - STARTING CUSTOMER LISTENING"
+              );
+
+
+              await startListening(
+                handleTranscript
+              );
+
+            }
+
+          }
+        );
+
+      } else {
+
+        /*
+         * If backend has no message,
+         * immediately start listening again.
+         */
+
+        if (activeRef.current) {
+
+          await startListening(
+            handleTranscript
+          );
+
+        }
+
+      }
+
+
+    } catch (error) {
+
+      console.error(
+        "VOICE CONVERSATION ERROR:",
+        error
+      );
+
+
+      /*
+       * Error response.
+       */
+
+      if (activeRef.current) {
+
+        speak(
+          "Sorry, I could not process that. Please try again.",
+          async () => {
+
+            if (activeRef.current) {
+
+              await startListening(
+                handleTranscript
+              );
+
+            }
+
+          }
+        );
+
+      }
+
+    } finally {
+
+      processingRef.current = false;
+
+      setIsProcessing(false);
+
+    }
+
+  };
+
+
+  /*
+   * =======================================================
+   * START VOICE CONVERSATION
+   * =======================================================
+   */
+
+  const startVoiceConversation =
+    async () => {
+
+      if (activeRef.current) {
+
+        console.log(
+          "VOICE CONVERSATION ALREADY ACTIVE"
+        );
+
+        return;
+      }
+
+
+      console.log(
+        "================================="
+      );
+
+      console.log(
+        "STARTING VOICE CONVERSATION"
+      );
+
+      console.log(
+        "================================="
+      );
+
+
+      activeRef.current = true;
+
+      setIsVoiceActive(true);
+
+
+      /*
+       * Start microphone + Silero
+       * BEFORE Kokoro greeting.
+       *
+       * This allows barge-in.
+       */
+
+      console.log(
+        "STARTING CUSTOMER LISTENER BEFORE GREETING"
+      );
+
+
+      try {
+
+        await startListening(
+          handleTranscript
+        );
+
+
+        console.log(
+          "CUSTOMER LISTENER READY"
+        );
+
+
+        /*
+         * Start initial greeting.
+         */
+
+        console.log(
+          "STARTING INITIAL GREETING"
+        );
+
+
+        speak(
+          "Welcome to Burger King. How can I help you today?",
+          async () => {
+
+            /*
+             * When greeting finishes,
+             * make sure customer listening
+             * is active.
+             */
+
+            if (
+              activeRef.current
+            ) {
+
+              console.log(
+                "GREETING FINISHED - CUSTOMER LISTENING"
+              );
+
+
+              await startListening(
+                handleTranscript
+              );
+
+            }
+
+          }
+        );
+
+
+      } catch (error) {
+
+        console.error(
+          "VOICE START ERROR:",
+          error
+        );
+
+
+        activeRef.current = false;
+
+        setIsVoiceActive(false);
+
+      }
+
+    };
+
+
+  /*
+   * =======================================================
+   * STOP VOICE CONVERSATION
+   * =======================================================
+   */
+
+  const stopVoiceConversation =
+    () => {
+
+      console.log(
+        "STOPPING VOICE CONVERSATION"
+      );
+
+
+      activeRef.current = false;
+
+      processingRef.current = false;
+
+
+      setIsVoiceActive(false);
+
+      setIsProcessing(false);
+
+
+      stopVoiceSession();
+
+    };
+
+
+  /*
+   * =======================================================
+   * BARGE-IN HANDLER
+   * =======================================================
+   *
+   * Called when customer speaks while
+   * Kokoro is speaking.
+   * =======================================================
+   */
+
+  useEffect(() => {
+
+    setInterruptionHandler(
+      async () => {
+
+        if (!activeRef.current) {
+          return;
+        }
+
+
+        console.log(
+          "================================="
+        );
+
+        console.log(
+          "CUSTOMER INTERRUPTED GREETING / TTS"
+        );
+
+        console.log(
+          "STOPPING TTS AND LISTENING TO CUSTOMER"
+        );
+
+        console.log(
+          "================================="
+        );
+
+
+        /*
+         * voiceService stops Kokoro
+         * before calling this handler.
+         *
+         * Now start customer listening.
+         */
+
+        if (
+          !processingRef.current
+        ) {
+
+          await startListening(
+            handleTranscript
+          );
+
+        }
+
+      }
+    );
+
+  }, []);
+
+
+  /*
+   * =======================================================
+   * CLEANUP
+   * =======================================================
+   */
+
+  useEffect(() => {
+
+    return () => {
+
+      activeRef.current = false;
+
+      processingRef.current = false;
+
+      stopVoiceSession();
+
+    };
+
+  }, []);
+
+
+  /*
+   * =======================================================
+   * CONTEXT VALUE
+   * =======================================================
+   */
+
+  const value = {
+
+    isVoiceActive,
+
+    isProcessing,
+
+    recommendationData,
+
+    setRecommendationData,
+
+    productData,
+
+    setProductData,
+
+    startVoiceConversation,
+
+    stopVoiceConversation,
+
+    navigateRef,
+
+  };
+
 
   return (
     <VoiceConversationContext.Provider
-      value={{
-        voiceActive: voiceEnabled,
-        startVoiceConversation,
-        stopVoiceConversation,
-      }}
+      value={value}
     >
       {children}
     </VoiceConversationContext.Provider>
   );
+
 }
 
+
+/*
+ * =======================================================
+ * HOOK
+ * =======================================================
+ */
+
 export function useVoiceConversation() {
+
   const context =
     useContext(
       VoiceConversationContext
     );
 
+
   if (!context) {
+
     throw new Error(
       "useVoiceConversation must be used inside VoiceConversationProvider"
     );
+
   }
 
+
   return context;
+
 }
+
+
+export default VoiceConversationProvider;

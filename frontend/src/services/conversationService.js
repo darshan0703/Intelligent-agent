@@ -1,5 +1,7 @@
 import { sendMessage } from "./api";
 
+export { sendMessage };
+
 export async function processCustomerMessage(message) {
   try {
     console.log("CUSTOMER MESSAGE:", message);
@@ -9,13 +11,8 @@ export async function processCustomerMessage(message) {
     console.log("BACKEND RESPONSE:", data);
 
     return data;
-
   } catch (error) {
-    console.error(
-      "Failed to process customer message:",
-      error
-    );
-
+    console.error("Failed to process customer message:", error);
     throw error;
   }
 }
