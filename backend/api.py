@@ -200,6 +200,36 @@ def message(request: MessageRequest):
         None,
     )
 
+    # Fast-path for direct category navigation to eliminate 15-30s cloud LLM round trips on simple category requests
+    msg_clean = request.message.strip().lower()
+    cat_map = {
+        "i want a burger": "burger",
+        "i want burger": "burger",
+        "burger": "burger",
+        "burgers": "burger",
+        "i want a drink": "drink",
+        "i want drink": "drink",
+        "drink": "drink",
+        "drinks": "drink",
+        "i want a side": "side",
+        "i want side": "side",
+        "i want sides": "side",
+        "side": "side",
+        "sides": "side",
+        "i want a dessert": "dessert",
+        "i want dessert": "dessert",
+        "dessert": "dessert",
+        "desserts": "dessert",
+    }
+    if msg_clean in cat_map:
+        from services.menuservice import handle_category
+        target_cat = cat_map[msg_clean]
+        kiosk_response = handle_category(target_cat, conversation_context)
+        if kiosk_response is not None:
+            conversation_context["current_screen"] = kiosk_response.screen
+            kiosk_response.message = f"Sure! Here are our {target_cat}s."
+            return kiosk_response.model_dump()
+
     # ==========================================================
     # CASHIER AGENT (with resilient error handling)
     # ==========================================================

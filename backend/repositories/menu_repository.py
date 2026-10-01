@@ -1,6 +1,11 @@
+import time
 from database import supabase
 
 BRANCH_ID = 1
+
+_MENU_CACHE = None
+_MENU_CACHE_TIME = 0
+MENU_CACHE_TTL_SECONDS = 60
 
 # ==========================================================
 # COMMON SERIALIZER
@@ -39,7 +44,12 @@ def serialize_menu_item(row):
 # BASE QUERY
 # ==========================================================
 
-def fetch_menu_rows():
+def fetch_menu_rows(force_refresh=False):
+    global _MENU_CACHE, _MENU_CACHE_TIME
+    now = time.time()
+    if not force_refresh and _MENU_CACHE is not None and (now - _MENU_CACHE_TIME) < MENU_CACHE_TTL_SECONDS:
+        return _MENU_CACHE
+
     response = (
         supabase.table("inventory")
         .select(
@@ -84,6 +94,8 @@ def fetch_menu_rows():
 
         rows.append(merged)
 
+    _MENU_CACHE = rows
+    _MENU_CACHE_TIME = now
     return rows
 
 

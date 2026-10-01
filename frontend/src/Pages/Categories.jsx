@@ -79,6 +79,16 @@ function Categories() {
         `${category} API Error:`,
         error
       );
+      // Fallback navigation so the user is never stuck
+      const fallbackRoutes = {
+        burger: "/burgers",
+        side: "/sides",
+        drink: "/drinks",
+        dessert: "/desserts",
+      };
+      if (fallbackRoutes[category]) {
+        navigate(fallbackRoutes[category]);
+      }
     }
   };
 
