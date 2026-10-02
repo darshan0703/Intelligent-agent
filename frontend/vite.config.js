@@ -24,5 +24,47 @@ export default defineConfig({
     allowedHosts: [
       "plunging-marital-unsafe.ngrok-free.dev",
     ],
+
+    proxy: {
+      "/session": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
+
+      "/message": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
+
+      "/menu": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
+
+      "/cart": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
+
+      "/order": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
+
+      "/meal": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
+
+      "/stt": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
+
+      "/tts": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
+    },
   },
 });

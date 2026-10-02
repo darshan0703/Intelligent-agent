@@ -1,7 +1,12 @@
 import "./Drinkrepage.css";
 
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect, useCallback } from "react";
+
+import {
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 
 import Header from "../components/Header";
 import ProductCard from "../components/ProductCard";
@@ -15,51 +20,129 @@ import crown from "../assets/images/crown.png";
 
 import { useKiosk } from "../context/KioskContext";
 
+import { syncScreen } from "../services/screenService";
+
 function Drink() {
   const navigate = useNavigate();
 
-  const { recommendationData } = useKiosk();
+  const {
+    recommendationData,
+  } = useKiosk();
 
-  const [selectedType, setSelectedType] =
-    useState("both");
+  const [
+    selectedType,
+    setSelectedType
+  ] = useState("both");
+
+  // ==========================================
+  // MASTER BACKEND DATASET
+  // ==========================================
 
   const data =
     recommendationData?.data || {};
 
   const allDrinks = {
-    priority: data.priority || [],
-    premium: data.premium || [],
-    additional: data.additional || [],
+    priority:
+      data.priority || [],
+
+    premium:
+      data.premium || [],
+
+    additional:
+      data.additional || [],
   };
+
+  // ==========================================
+  // FILTER MASTER DATASET
+  // ==========================================
 
   const filterProducts = useCallback(
     (products) => {
-      if (selectedType === "both") {
-        return products;
+
+      const drinkProducts =
+        products.filter(
+          (product) => {
+
+            const category =
+              product?.category
+                ?.toLowerCase()
+                .trim();
+
+            return (
+              !category ||
+              category === "drink"
+            );
+          }
+        );
+
+      if (
+        selectedType === "both"
+      ) {
+        return drinkProducts;
       }
 
-      return products.filter(
-        (product) =>
-          product.type?.toLowerCase() ===
-          selectedType
+      return drinkProducts.filter(
+        (product) => {
+
+          const type =
+            product?.type
+              ?.toLowerCase()
+              .trim();
+
+          return (
+            type === selectedType
+          );
+
+        }
       );
+
     },
     [selectedType]
   );
 
+  // ==========================================
+  // FILTERED RECOMMENDATION SECTIONS
+  // ==========================================
+
   const freshDrinks =
-    filterProducts(allDrinks.priority);
+    filterProducts(
+      allDrinks.priority
+    );
 
   const premiumDrinks =
-    filterProducts(allDrinks.premium);
+    filterProducts(
+      allDrinks.premium
+    );
 
   const moreDrinks =
-    filterProducts(allDrinks.additional);
+    filterProducts(
+      allDrinks.additional
+    );
+
+  // ==========================================
+  // SCREEN SYNC
+  // ==========================================
+
+  useEffect(() => {
+
+    syncScreen(
+      "recommended_drinks"
+    );
+
+  }, []);
+
+  // ==========================================
+  // FILTER CHANGES
+  // ==========================================
 
   const handleFilterChange =
     useCallback((filter) => {
+
       const normalizedFilter =
-        filter.trim().toLowerCase();
+        filter
+          .trim()
+          .toLowerCase()
+          .replace("_", " ");
 
       console.log(
         "CHANGING DRINK FILTER:",
@@ -69,38 +152,75 @@ function Drink() {
       setSelectedType(
         normalizedFilter
       );
+
     }, []);
 
+  // ==========================================
+  // VOICE UI ACTION LISTENER
+  // ==========================================
+
   useEffect(() => {
-    const handleVoiceUIAction = (event) => {
-      const action =
-        event.detail?.action;
 
-      console.log(
-        "DRINK PAGE RECEIVED UI ACTION:",
-        action
-      );
+    const handleVoiceUIAction =
+      (event) => {
 
-      if (action === "filter_cold") {
-        handleFilterChange("cold");
-      }
+        const action =
+          event.detail?.action;
 
-      else if (action === "filter_hot") {
-        handleFilterChange("hot");
-      }
+        console.log(
+          "DRINK PAGE RECEIVED UI ACTION:",
+          action
+        );
 
-      else if (action === "filter_both") {
-        handleFilterChange("both");
-      }
+        if (
+          action === "filter_cold"
+        ) {
 
-      else if (action === "view_more") {
-        navigate("/drinkmenu");
-      }
+          handleFilterChange(
+            "cold"
+          );
 
-      else if (action === "go_back") {
-        navigate(-1);
-      }
-    };
+        }
+
+        else if (
+          action === "filter_hot"
+        ) {
+
+          handleFilterChange(
+            "hot"
+          );
+
+        }
+
+        else if (
+          action === "filter_both"
+        ) {
+
+          handleFilterChange(
+            "both"
+          );
+
+        }
+
+        else if (
+          action === "view_more"
+        ) {
+
+          navigate(
+            "/drinkmenu"
+          );
+
+        }
+
+        else if (
+          action === "go_back"
+        ) {
+
+          navigate(-1);
+
+        }
+
+      };
 
     window.addEventListener(
       "kiosk-ui-action",
@@ -108,20 +228,26 @@ function Drink() {
     );
 
     return () => {
+
       window.removeEventListener(
         "kiosk-ui-action",
         handleVoiceUIAction
       );
+
     };
+
   }, [
     handleFilterChange,
     navigate
   ]);
 
   return (
+
     <div className="drink-page">
 
+      {/* ===================================== */}
       {/* SECTION ICONS */}
+      {/* ===================================== */}
 
       <img
         src={fire}
@@ -135,103 +261,153 @@ function Drink() {
         className="crown-image"
       />
 
+      {/* ===================================== */}
       {/* HEADER */}
+      {/* ===================================== */}
 
-      <Header title="Choose Your Drink" />
+      <Header
+        title="Choose Your Drink"
+      />
 
       <BackButton />
 
+      {/* ===================================== */}
       {/* FILTERS */}
+      {/* ===================================== */}
 
       <div className="drink-filter-position">
+
         <Menufilters
           filters={[
             "both",
             "cold",
             "hot"
           ]}
-          activeFilter={selectedType}
+          activeFilter={
+            selectedType
+          }
           onFilterChange={
             handleFilterChange
           }
         />
+
       </div>
 
+      {/* ===================================== */}
       {/* PRIORITY */}
+      {/* ===================================== */}
 
       {freshDrinks[0] && (
+
         <ProductCard
-          product={freshDrinks[0]}
+          product={
+            freshDrinks[0]
+          }
           variant="large"
           className="card-1"
           badge="popular"
         />
+
       )}
 
       {freshDrinks[1] && (
+
         <ProductCard
-          product={freshDrinks[1]}
+          product={
+            freshDrinks[1]
+          }
           variant="large"
           className="card-2"
           badge="popular"
         />
+
       )}
 
+      {/* ===================================== */}
       {/* PREMIUM */}
+      {/* ===================================== */}
 
       {premiumDrinks[0] && (
+
         <ProductCard
-          product={premiumDrinks[0]}
+          product={
+            premiumDrinks[0]
+          }
           variant="large"
           className="card-3"
           badge="premium"
         />
+
       )}
 
       {premiumDrinks[1] && (
+
         <ProductCard
-          product={premiumDrinks[1]}
+          product={
+            premiumDrinks[1]
+          }
           variant="large"
           className="card-4"
           badge="premium"
         />
+
       )}
 
+      {/* ===================================== */}
       {/* ADDITIONAL */}
+      {/* ===================================== */}
 
       {moreDrinks[0] && (
+
         <ProductCard
-          product={moreDrinks[0]}
+          product={
+            moreDrinks[0]
+          }
           variant="small"
           className="card-5"
         />
+
       )}
 
       {moreDrinks[1] && (
+
         <ProductCard
-          product={moreDrinks[1]}
+          product={
+            moreDrinks[1]
+          }
           variant="small"
           className="card-6"
         />
+
       )}
 
       {moreDrinks[2] && (
+
         <ProductCard
-          product={moreDrinks[2]}
+          product={
+            moreDrinks[2]
+          }
           variant="small"
           className="card-7"
         />
+
       )}
 
       {moreDrinks[3] && (
+
         <ProductCard
-          product={moreDrinks[3]}
+          product={
+            moreDrinks[3]
+          }
           variant="small"
           className="card-8"
         />
+
       )}
 
+      {/* ===================================== */}
       {/* TITLES */}
+      {/* ===================================== */}
 
       <p className="fresh-text">
         Freshly Made Drinks
@@ -249,9 +425,12 @@ function Drink() {
         Indulge in our most loved shakes & drinks
       </p>
 
+      {/* ===================================== */}
       {/* MORE OPTIONS */}
+      {/* ===================================== */}
 
       <div className="more-header">
+
         <p className="more-text">
           More Drink Options
         </p>
@@ -259,18 +438,25 @@ function Drink() {
         <button
           className="view-all-btn"
           onClick={() =>
-            navigate("/drinkmenu")
+            navigate(
+              "/drinkmenu"
+            )
           }
         >
           View All Drinks →
         </button>
+
       </div>
 
+      {/* ===================================== */}
       {/* CART */}
+      {/* ===================================== */}
 
       <CartContainer />
 
+      {/* ===================================== */}
       {/* FOOTER */}
+      {/* ===================================== */}
 
       <FooterDecoration />
 

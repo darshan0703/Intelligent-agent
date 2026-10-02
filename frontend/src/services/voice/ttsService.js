@@ -59,7 +59,7 @@ export async function speakText(
     );
 
     const response = await fetch(
-      "https://bug-free-lamp-7v4694q7pvjj29j4-8000.app.github.dev/tts",
+      "/tts",
       {
         method: "POST",
         headers: {

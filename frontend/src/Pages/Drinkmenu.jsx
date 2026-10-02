@@ -19,7 +19,7 @@ function Drinkmenu() {
   const [drinkSections, setDrinkSections] = useState([]);
 
  useEffect(() => {
-    fetch("https://bug-free-lamp-7v4694q7pvjj29j4-8000.app.github.dev/menu/drinks")
+    fetch("/menu/drinks")
         .then((res) => res.json())
         .then(setDrinkSections);
 }, []);

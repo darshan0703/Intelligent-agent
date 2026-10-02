@@ -1,33 +1,200 @@
 import "./Sidesrepage.css";
 
+import { useNavigate } from "react-router-dom";
+
+import {
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
+
+import { syncScreen } from "../services/screenService";
+
+import Menufilters from "../components/Menufilters";
+
 import Header from "../components/Header";
+
 import ProductCard from "../components/ProductCard";
+
 import CartContainer from "../components/CartContainer";
+
 import BackButton from "../components/BackButton";
+
 import FooterDecoration from "../components/FooterDecoration";
 
 import fire from "../assets/images/fire.png";
+
 import crown from "../assets/images/crown.png";
 
-import { useNavigate } from "react-router-dom";
 import { useKiosk } from "../context/KioskContext";
 
 function Sides() {
   const navigate = useNavigate();
 
-  const { recommendationData } =
-    useKiosk();
+  const {
+    recommendationData,
+  } = useKiosk();
 
-  const hotSides =
-    recommendationData?.data?.priority || [];
+  const [
+    selectedType,
+    setSelectedType
+  ] = useState("both");
 
-  const premiumSides =
-    recommendationData?.data?.premium || [];
+  // ==========================================
+  // MASTER BACKEND DATASET
+  // ==========================================
 
-  const moreSides =
-    recommendationData?.data?.additional || [];
+  const data =
+    recommendationData?.data || {};
+
+  const allSides = {
+    priority: data.priority || [],
+    premium: data.premium || [],
+    additional: data.additional || [],
+  };
+
+  // ==========================================
+  // FILTER MASTER DATASET
+  // ==========================================
+
+  const filterProducts = useCallback(
+    (products) => {
+
+      if (selectedType === "both") {
+        return products;
+      }
+
+      return products.filter(
+        (product) =>
+          product.foodType
+            ?.toLowerCase()
+            .replace("_", " ")
+            .trim() === selectedType
+      );
+    },
+    [selectedType]
+  );
+
+  // ==========================================
+  // FILTERED SECTIONS
+  // ==========================================
+
+  const priorityItems =
+    filterProducts(
+      allSides.priority
+    );
+
+  const premiumItems =
+    filterProducts(
+      allSides.premium
+    );
+
+  const additionalItems =
+    filterProducts(
+      allSides.additional
+    );
+
+  // ==========================================
+  // SCREEN SYNC
+  // ==========================================
+
+  useEffect(() => {
+    syncScreen("recommended_sides");
+  }, []);
+
+  // ==========================================
+  // FILTER CHANGES
+  // ==========================================
+
+  const handleFilterChange =
+    useCallback((filter) => {
+
+      const normalizedFilter =
+        filter
+          .trim()
+          .toLowerCase()
+          .replace("_", " ");
+
+      console.log(
+        "CHANGING SIDES FILTER:",
+        normalizedFilter
+      );
+
+      setSelectedType(
+        normalizedFilter
+      );
+
+    }, []);
+
+  // ==========================================
+  // VOICE UI ACTION LISTENER
+  // ==========================================
+
+  useEffect(() => {
+
+    const handleVoiceUIAction = (event) => {
+
+      const action =
+        event.detail?.action;
+
+      console.log(
+        "SIDES PAGE RECEIVED UI ACTION:",
+        action
+      );
+
+      if (action === "filter_veg") {
+
+        handleFilterChange("veg");
+
+      } else if (
+        action === "filter_non_veg"
+      ) {
+
+        handleFilterChange("non veg");
+
+      } else if (
+        action === "filter_both"
+      ) {
+
+        handleFilterChange("both");
+
+      } else if (
+        action === "view_more"
+      ) {
+
+        navigate("/sidesmenu");
+
+      } else if (
+        action === "go_back"
+      ) {
+
+        navigate(-1);
+
+      }
+
+    };
+
+    window.addEventListener(
+      "kiosk-ui-action",
+      handleVoiceUIAction
+    );
+
+    return () => {
+
+      window.removeEventListener(
+        "kiosk-ui-action",
+        handleVoiceUIAction
+      );
+
+    };
+
+  }, [
+    handleFilterChange,
+    navigate
+  ]);
 
   return (
+
     <div className="sides-page">
 
       {/* SECTION ICONS */}
@@ -46,82 +213,136 @@ function Sides() {
 
       {/* HEADER */}
 
-      <Header title="Choose Your Sides" />
+      <Header
+        title="Choose Your Sides"
+      />
 
       <BackButton />
 
+      {/* FILTERS */}
+
+      <div className="sides-filter-position">
+
+        <Menufilters
+          filters={[
+            "both",
+            "veg",
+            "non veg",
+          ]}
+          activeFilter={
+            selectedType
+          }
+          onFilterChange={
+            handleFilterChange
+          }
+        />
+
+      </div>
+
       {/* PRIORITY */}
 
-      {hotSides[0] && (
+      {priorityItems[0] && (
+
         <ProductCard
-          product={hotSides[0]}
+          product={
+            priorityItems[0]
+          }
           variant="large"
           className="card-1"
           badge="popular"
         />
+
       )}
 
-      {hotSides[1] && (
+      {priorityItems[1] && (
+
         <ProductCard
-          product={hotSides[1]}
+          product={
+            priorityItems[1]
+          }
           variant="large"
           className="card-2"
           badge="popular"
         />
+
       )}
 
       {/* PREMIUM */}
 
-      {premiumSides[0] && (
+      {premiumItems[0] && (
+
         <ProductCard
-          product={premiumSides[0]}
+          product={
+            premiumItems[0]
+          }
           variant="large"
           className="card-3"
           badge="premium"
         />
+
       )}
 
-      {premiumSides[1] && (
+      {premiumItems[1] && (
+
         <ProductCard
-          product={premiumSides[1]}
+          product={
+            premiumItems[1]
+          }
           variant="large"
           className="card-4"
           badge="premium"
         />
+
       )}
 
       {/* ADDITIONAL */}
 
-      {moreSides[0] && (
+      {additionalItems[0] && (
+
         <ProductCard
-          product={moreSides[0]}
+          product={
+            additionalItems[0]
+          }
           variant="small"
           className="card-5"
         />
+
       )}
 
-      {moreSides[1] && (
+      {additionalItems[1] && (
+
         <ProductCard
-          product={moreSides[1]}
+          product={
+            additionalItems[1]
+          }
           variant="small"
           className="card-6"
         />
+
       )}
 
-      {moreSides[2] && (
+      {additionalItems[2] && (
+
         <ProductCard
-          product={moreSides[2]}
+          product={
+            additionalItems[2]
+          }
           variant="small"
           className="card-7"
         />
+
       )}
 
-      {moreSides[3] && (
+      {additionalItems[3] && (
+
         <ProductCard
-          product={moreSides[3]}
+          product={
+            additionalItems[3]
+          }
           variant="small"
           className="card-8"
         />
+
       )}
 
       {/* TITLES */}
@@ -145,6 +366,7 @@ function Sides() {
       {/* MORE OPTIONS */}
 
       <div className="more-header">
+
         <p className="more-text">
           More Side Options
         </p>
@@ -157,6 +379,7 @@ function Sides() {
         >
           View All Sides →
         </button>
+
       </div>
 
       {/* CART */}

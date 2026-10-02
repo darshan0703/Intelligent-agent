@@ -36,8 +36,7 @@ def handle_product(item_name, conversation_context):
             break
 
     return KioskResponse(
-        screen=ScreenTypes.PRODUCT_DETAILS,
-        message=f"Here's {product['name']}.",
+        screen=ScreenTypes.PRODUCT,
         data={
             "product": product,
             "recommendations": recommendations

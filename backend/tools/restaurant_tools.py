@@ -1,13 +1,41 @@
-from langchain_core.tools import tool
-
-from services.menu_service import (
-    get_available,
-    get_category,
-    get_product,
-)
 from typing import Optional
 
+from langchain_core.tools import tool
+
+from services.menu_service import get_product
 from services.recommendation import get_agent_recommendations
+from services.product_selector import resolve_product
+from services.productservice import handle_product
+from screen_controls import get_screen_controls
+from state import conversation_context
+
+def _sync_screen_state(response):
+    """
+    Synchronize the active kiosk screen and its available controls
+    whenever a tool creates a new KioskResponse.
+
+    This keeps the agent's screen_action tool aligned with the screen
+    currently being displayed by the frontend.
+    """
+
+    if hasattr(response, "screen"):
+
+        conversation_context["current_screen"] = response.screen
+
+        conversation_context["available_controls"] = (
+            get_screen_controls(response.screen)
+        )
+
+        print(
+            "SCREEN STATE SYNC:",
+            conversation_context["current_screen"]
+        )
+
+        print(
+            "AVAILABLE CONTROLS:",
+            conversation_context["available_controls"]
+        )
+
 
 # ==========================================================
 # ITEM DETAILS
@@ -21,15 +49,7 @@ def get_menu_item_details(item_name: str):
     Use this when you need information about a particular item,
     including its description, price, category, food type,
     availability, meal availability, or other stored details.
-
-    Args:
-        item_name:
-            The name of the menu item.
-
-    Returns:
-        The matching menu item details, or None if no item is found.
     """
-
     return get_product(item_name)
 
 
@@ -40,27 +60,12 @@ def get_menu_item_details(item_name: str):
 @tool
 def get_recommendations(
     category: Optional[str] = None,
-    food_type: str | None = None,
+    food_type: Optional[str] = None,
 ):
     """
-    Get restaurant recommendations using the existing deterministic
+    Get restaurant recommendations using the deterministic
     recommendation system.
-
-    Use this when you need to recommend items to a customer rather
-    than simply search for available menu items.
-
-    Args:
-        category:
-            Optional category such as burger, drink, side, or dessert.
-
-        food_type:
-            Optional food preference such as veg or non veg.
-
-    Returns:
-        Recommendation candidates selected by the restaurant's
-        deterministic recommendation logic.
     """
-
     return get_agent_recommendations(
         category=category,
         food_type=food_type,
@@ -79,15 +84,10 @@ def create_open_category_tool(conversation_context):
         """
         Open a restaurant category on the kiosk.
 
-        Use this when the customer wants to browse a category.
-
-        Args:
-            category:
-                The restaurant category to open.
-
         Returns:
-            Only the information needed by the agent after
-            the category has been opened.
+        - Summary for the LLM (top 2 items only)
+        - Hidden navigation context (entire displayed list)
+        - Full KioskResponse is preserved for the frontend
         """
 
         response = handle_category(
@@ -95,52 +95,201 @@ def create_open_category_tool(conversation_context):
             conversation_context,
         )
 
-        # Keep the complete KioskResponse inside the application.
-        # The frontend needs the full menu data.
         if hasattr(response, "screen") and hasattr(response, "data"):
+
+            # --------------------------------------------------
+            # PRESERVE COMPLETE FRONTEND RESPONSE
+            # --------------------------------------------------
 
             conversation_context["_last_kiosk_response"] = response
 
+            # --------------------------------------------------
+            # SYNCHRONIZE ACTIVE SCREEN
+            # --------------------------------------------------
+
+            _sync_screen_state(response)
+
             data = response.data or {}
 
-            priority = data.get("priority", [])
-            premium = data.get("premium", [])
-            additional = data.get("additional", [])
+            selected = data.get(
+                "selected_type",
+                "both",
+            )
+
+            section = data.get(
+                selected,
+                {},
+            )
+
+            priority = section.get(
+                "priority",
+                [],
+            )
+
+            premium = section.get(
+                "premium",
+                [],
+            )
+
+            additional = section.get(
+                "additional",
+                [],
+            )
+
+            # --------------------------------------------------
+            # COMPLETE VISUAL ORDER SHOWN ON KIOSK
+            # --------------------------------------------------
+
+            displayed_items = (
+                priority
+                + premium
+                + additional
+            )
+
+            # --------------------------------------------------
+            # TOOL RESULT
+            # --------------------------------------------------
 
             return {
                 "success": True,
-                "category": category,
+                "screen": response.screen,
 
-                # Only one of each is exposed to the agent.
-                "priority_recommendation": (
-                    {
-                        "name": priority[0].get("name"),
-                        "price": priority[0].get("price"),
-                    }
-                    if priority
-                    else None
-                ),
+                # Canonical backend identifier
+                "category": category.lower().strip(),
 
-                "premium_recommendation": (
-                    {
-                        "name": premium[0].get("name"),
-                        "price": premium[0].get("price"),
-                    }
-                    if premium
-                    else None
-                ),
+                # --------------------------------------------------
+                # CUSTOMER-FACING SUMMARY
+                # --------------------------------------------------
 
-                "more_options_available": bool(additional),
+                "summary": {
+                    "top_choices": [
+                        item["name"]
+                        for item in priority[:2]
+                    ],
+                    "has_more_options": (
+                        len(displayed_items) > 2
+                    ),
+                },
+
+                # --------------------------------------------------
+                # INTERNAL REASONING / NAVIGATION CONTEXT
+                # --------------------------------------------------
+
+                "context": {
+                    "displayed_items": [
+                        {
+                            "position": index + 1,
+                            "name": item["name"],
+                            "id": item.get("id"),
+                        }
+                        for index, item in enumerate(
+                            displayed_items
+                        )
+                    ],
+                    "selected_type": selected,
+                },
             }
 
         return response
+
     return open_category
-    
+
+
 # ==========================================================
-# ALL STATIC RESTAURANT TOOLS
+# PRODUCT SELECTION
+# ==========================================================
+
+@tool
+def select_product(product_query: str):
+    """
+    Resolve a customer's reference to a specific restaurant product.
+
+    Use this when the customer mentions a particular menu item.
+    """
+
+    result = resolve_product(
+        product_query,
+        conversation_context,
+    )
+
+    # ==========================================================
+    # PRODUCT FOUND
+    # ==========================================================
+
+    if result["status"] == "selected":
+
+        product = result["product"]
+
+        # --------------------------------------------------
+        # BUILD PRODUCT PAGE RESPONSE
+        # --------------------------------------------------
+
+        response = handle_product(
+            product["name"],
+            conversation_context,
+        )
+
+        # --------------------------------------------------
+        # PRESERVE COMPLETE PRODUCT RESPONSE
+        # --------------------------------------------------
+
+        conversation_context["_last_kiosk_response"] = response
+
+        # --------------------------------------------------
+        # SYNCHRONIZE ACTIVE SCREEN
+        # --------------------------------------------------
+
+        _sync_screen_state(response)
+
+        return {
+            "success": True,
+            "status": "selected",
+
+            "product": {
+                "id": product.get("id"),
+                "name": product.get("name"),
+                "price": product.get("price"),
+            },
+
+            "screen": response.screen,
+        }
+
+    # ==========================================================
+    # MULTIPLE MATCHES
+    # ==========================================================
+
+    if result["status"] == "ambiguous":
+
+        return {
+            "success": True,
+            "status": "ambiguous",
+            "matches": [
+                {
+                    "id": product.get("id"),
+                    "name": product.get("name"),
+                    "price": product.get("price"),
+                }
+                for product in result["matches"]
+            ],
+        }
+
+    # ==========================================================
+    # PRODUCT NOT FOUND
+    # ==========================================================
+
+    return {
+        "success": False,
+        "status": "not_found",
+        "product_query": product_query,
+    }
+
+
+# ==========================================================
+# STATIC RESTAURANT TOOLS
 # ==========================================================
 
 restaurant_tools = [
     get_menu_item_details,
     get_recommendations,
+    select_product,
 ]

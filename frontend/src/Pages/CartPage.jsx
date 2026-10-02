@@ -17,7 +17,7 @@ function CartPage() {
   const updateItem = async (itemIndex, action) => {
     try {
       const response = await fetch(
-        "https://bug-free-lamp-7v4694q7pvjj29j4-8000.app.github.dev/cart/item",
+        "/cart/item",
         {
           method: "PATCH",
           headers: {
@@ -47,7 +47,7 @@ function CartPage() {
 
   try {
     const response = await fetch(
-      "https://bug-free-lamp-7v4694q7pvjj29j4-8000.app.github.dev/order/complete",
+      "/order/complete",
       {
         method: "POST",
         headers: {

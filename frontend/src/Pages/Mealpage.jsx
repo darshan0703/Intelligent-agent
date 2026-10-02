@@ -75,7 +75,7 @@ function MealPage() {
         try {
 
             const response = await fetch(
-                "http://localhost:8000/cart/add-meal",
+                "/cart/add-meal",
                 {
                     method: "POST",
 
@@ -114,7 +114,7 @@ function MealPage() {
     const handleDeclineMeal = async () => {
         try {
             const response = await fetch(
-                "https://bug-free-lamp-7v4694q7pvjj29j4-8000.app.github.dev/meal/decline",
+                "/meal/decline",
                 {
                     method: "POST",
                 }
