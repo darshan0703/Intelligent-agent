@@ -6,15 +6,22 @@ import tempfile
 import uuid
 from pathlib import Path
 from services.cashier_agent import run_cashier_agent
+import json
 
 import numpy as np
 import soundfile as sf
-import whisper
+try:
+    import whisper
+except Exception:
+    whisper = None
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
-from kokoro import KPipeline
+try:
+    from kokoro import KPipeline
+except Exception:
+    KPipeline = None
 from langchain_groq import ChatGroq
 from pydantic import BaseModel
 
@@ -44,11 +51,18 @@ load_dotenv()
 
 print("INITIALIZING KOKORO TTS...")
 
-tts_pipeline = KPipeline(
-    lang_code="a"
-)
-
-print("KOKORO TTS READY")
+try:
+    if KPipeline is not None:
+        tts_pipeline = KPipeline(
+            lang_code="a"
+        )
+        print("KOKORO TTS READY")
+    else:
+        tts_pipeline = None
+        print("KOKORO TTS NOT LOADED")
+except Exception as e:
+    tts_pipeline = None
+    print("KOKORO TTS INIT FAILED:", repr(e))
 
 
 app = FastAPI()
@@ -136,24 +150,40 @@ def update_screen(request: dict):
     }
 
 
+@app.post("/session/preference")
+def set_preference(request: dict):
+    preference = request.get("preference")
+    if preference:
+        normalized = preference.lower().replace("-", " ").replace("_", " ").strip()
+        conversation_context["food_preference"] = normalized
+    return {
+        "success": True,
+        "food_preference": conversation_context.get("food_preference")
+    }
+
+
 @app.get("/menu/burgers")
-def burgers():
-    return get_menu("burger")
+def burgers(preference: str | None = None):
+    pref = preference or conversation_context.get("food_preference")
+    return get_menu("burger", preference=pref)
 
 
 @app.get("/menu/drinks")
-def drinks():
-    return get_menu("drink")
+def drinks(preference: str | None = None):
+    pref = preference or conversation_context.get("food_preference")
+    return get_menu("drink", preference=pref)
 
 
 @app.get("/menu/sides")
-def sides():
-    return get_menu("side")
+def sides(preference: str | None = None):
+    pref = preference or conversation_context.get("food_preference")
+    return get_menu("side", preference=pref)
 
 
 @app.get("/menu/desserts")
-def desserts():
-    return get_menu("dessert")
+def desserts(preference: str | None = None):
+    pref = preference or conversation_context.get("food_preference")
+    return get_menu("dessert", preference=pref)
 
 
 @app.get("/cart")
@@ -172,13 +202,17 @@ def message(request: MessageRequest):
     )
 
     # ==========================================================
-    # CASHIER AGENT
+    # CASHIER AGENT (with resilient error handling)
     # ==========================================================
 
-    agent_response = run_cashier_agent(
-        request.message,
-        conversation_context,
-    )
+    try:
+        agent_response = run_cashier_agent(
+            request.message,
+            conversation_context,
+        )
+    except Exception as e:
+        print(f"Agent execution error (falling back to processor): {e}")
+        agent_response = None
 
     # ==========================================================
     # CHECK WHETHER THE AGENT PERFORMED A KIOSK ACTION
@@ -191,12 +225,11 @@ def message(request: MessageRequest):
 
     if kiosk_response is not None:
 
-        # The KioskResponse belongs to the application.
-        #
-        # The LLM only generated the natural-language message.
         kiosk_response.message = agent_response
 
-        return kiosk_response.model_dump()
+        frontend_response = kiosk_response.model_dump()
+
+        return frontend_response
 
     # ==========================================================
     # AGENT-ONLY CONVERSATION
@@ -432,8 +465,12 @@ print("INITIALIZING WHISPER STT...")
 WHISPER_MODEL_NAME = os.getenv("WHISPER_MODEL", "small.en")
 
 try:
-    whisper_model = whisper.load_model(WHISPER_MODEL_NAME)
-    print(f"WHISPER STT READY: {WHISPER_MODEL_NAME}")
+    if whisper is not None:
+        whisper_model = whisper.load_model(WHISPER_MODEL_NAME)
+        print(f"WHISPER STT READY: {WHISPER_MODEL_NAME}")
+    else:
+        whisper_model = None
+        print("WHISPER STT NOT INSTALLED")
 except Exception as e:
     whisper_model = None
     print("WHISPER INITIALIZATION ERROR:", repr(e))

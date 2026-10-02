@@ -7,8 +7,8 @@ from repositories.menu_repository import (
 )
 from services.meal_service import get_meal_options
 
-def get_menu(category):
-    return get_menu_sections(category)
+def get_menu(category, preference=None):
+    return get_menu_sections(category, preference=preference)
 
 def get_available():
     return repo_get_available()

@@ -28,79 +28,211 @@ import crown from "../assets/images/crown.png";
 
 import { useKiosk } from "../context/KioskContext";
 
+import { sendMessage } from "../services/api";
+
+
 function Sides() {
+
   const navigate = useNavigate();
+
 
   const {
     recommendationData,
+    foodPreference,
+    setFoodPreference,
   } = useKiosk();
+
 
   const [
     selectedType,
     setSelectedType
-  ] = useState("both");
+  ] = useState(
+    foodPreference || "both"
+  );
+
+
+  const [
+    fallbackData,
+    setFallbackData
+  ] = useState(null);
+
 
   // ==========================================
-  // MASTER BACKEND DATASET
+  // KEEP LOCAL FILTER IN SYNC
+  // WITH GLOBAL FOOD PREFERENCE
+  // ==========================================
+
+  useEffect(() => {
+
+    if (foodPreference) {
+
+      setSelectedType(foodPreference);
+
+    }
+
+  }, [foodPreference]);
+
+
+  // ==========================================
+  // FALLBACK
+  //
+  // Restore recommendation data from backend
+  // when page is opened directly or refreshed.
+  //
+  // IMPORTANT:
+  //
+  // The frontend does NOT create
+  // recommendation tiers here.
+  //
+  // The backend remains responsible for:
+  //
+  // - priority
+  // - premium
+  // - additional
+  // - veg
+  // - non veg
+  // ==========================================
+
+  useEffect(() => {
+
+    if (
+      recommendationData?.data?.both ||
+      fallbackData
+    ) {
+      return;
+    }
+
+
+    let cancelled = false;
+
+
+    const restoreSideRecommendations =
+      async () => {
+
+        try {
+
+          console.log(
+            "Side recommendation data missing. Restoring..."
+          );
+
+
+          const data = await sendMessage(
+            "I want some sides"
+          );
+
+
+          if (cancelled) {
+            return;
+          }
+
+
+          console.log(
+            "RESTORED SIDE RESPONSE:",
+            data
+          );
+
+
+          setFallbackData(data);
+
+        } catch (error) {
+
+          if (!cancelled) {
+
+            console.error(
+              "Failed to restore side recommendations:",
+              error
+            );
+
+          }
+
+        }
+
+      };
+
+
+    restoreSideRecommendations();
+
+
+    return () => {
+
+      cancelled = true;
+
+    };
+
+  }, [
+    recommendationData,
+    fallbackData
+  ]);
+
+
+  // ==========================================
+  // MASTER BACKEND RESPONSE
   // ==========================================
 
   const data =
-    recommendationData?.data || {};
+    recommendationData?.data ||
+    fallbackData?.data ||
+    fallbackData ||
+    {};
 
-  const allSides = {
-    priority: data.priority || [],
-    premium: data.premium || [],
-    additional: data.additional || [],
-  };
 
   // ==========================================
-  // FILTER MASTER DATASET
+  // SELECT BACKEND DATASET
+  //
+  // Backend already creates:
+  //
+  // data.both
+  // data.veg
+  // data.non_veg
+  //
+  // The frontend ONLY selects which dataset
+  // should be displayed.
+  //
+  // No filtering.
+  // No slicing.
+  // No recommendation generation.
   // ==========================================
 
-  const filterProducts = useCallback(
-    (products) => {
+  const preferenceKey =
+    selectedType === "veg"
+      ? "veg"
+      : selectedType === "non veg"
+        ? "non_veg"
+        : "both";
 
-      if (selectedType === "both") {
-        return products;
-      }
 
-      return products.filter(
-        (product) =>
-          product.foodType
-            ?.toLowerCase()
-            .replace("_", " ")
-            .trim() === selectedType
-      );
-    },
-    [selectedType]
-  );
+  const selectedData =
+    data[preferenceKey] ||
+    data.both ||
+    {};
+
 
   // ==========================================
-  // FILTERED SECTIONS
+  // SELECTED DATASET
   // ==========================================
 
   const priorityItems =
-    filterProducts(
-      allSides.priority
-    );
+    selectedData.priority || [];
+
 
   const premiumItems =
-    filterProducts(
-      allSides.premium
-    );
+    selectedData.premium || [];
+
 
   const additionalItems =
-    filterProducts(
-      allSides.additional
-    );
+    selectedData.additional || [];
+
 
   // ==========================================
   // SCREEN SYNC
   // ==========================================
 
   useEffect(() => {
+
     syncScreen("recommended_sides");
+
   }, []);
+
 
   // ==========================================
   // FILTER CHANGES
@@ -113,18 +245,32 @@ function Sides() {
         filter
           .trim()
           .toLowerCase()
-          .replace("_", " ");
+          .replace(/_/g, " ");
+
 
       console.log(
         "CHANGING SIDES FILTER:",
         normalizedFilter
       );
 
+
       setSelectedType(
         normalizedFilter
       );
 
-    }, []);
+
+      if (setFoodPreference) {
+
+        setFoodPreference(
+          normalizedFilter
+        );
+
+      }
+
+    }, [
+      setFoodPreference
+    ]);
+
 
   // ==========================================
   // VOICE UI ACTION LISTENER
@@ -137,12 +283,16 @@ function Sides() {
       const action =
         event.detail?.action;
 
+
       console.log(
         "SIDES PAGE RECEIVED UI ACTION:",
         action
       );
 
-      if (action === "filter_veg") {
+
+      if (
+        action === "filter_veg"
+      ) {
 
         handleFilterChange("veg");
 
@@ -174,10 +324,12 @@ function Sides() {
 
     };
 
+
     window.addEventListener(
       "kiosk-ui-action",
       handleVoiceUIAction
     );
+
 
     return () => {
 
@@ -193,6 +345,7 @@ function Sides() {
     navigate
   ]);
 
+
   return (
 
     <div className="sides-page">
@@ -205,11 +358,13 @@ function Sides() {
         className="fire-image"
       />
 
+
       <img
         src={crown}
         alt="crown"
         className="crown-image"
       />
+
 
       {/* HEADER */}
 
@@ -217,181 +372,265 @@ function Sides() {
         title="Choose Your Sides"
       />
 
+
       <BackButton />
+
 
       {/* FILTERS */}
 
       <div className="sides-filter-position">
 
         <Menufilters
+
           filters={[
             "both",
             "veg",
             "non veg",
           ]}
+
           activeFilter={
             selectedType
           }
+
           onFilterChange={
             handleFilterChange
           }
+
         />
 
       </div>
+
 
       {/* PRIORITY */}
 
       {priorityItems[0] && (
 
         <ProductCard
+
           product={
             priorityItems[0]
           }
+
           variant="large"
+
           className="card-1"
+
           badge="popular"
+
         />
 
       )}
+
 
       {priorityItems[1] && (
 
         <ProductCard
+
           product={
             priorityItems[1]
           }
+
           variant="large"
+
           className="card-2"
+
           badge="popular"
+
         />
 
       )}
+
 
       {/* PREMIUM */}
 
       {premiumItems[0] && (
 
         <ProductCard
+
           product={
             premiumItems[0]
           }
+
           variant="large"
+
           className="card-3"
+
           badge="premium"
+
         />
 
       )}
+
 
       {premiumItems[1] && (
 
         <ProductCard
+
           product={
             premiumItems[1]
           }
+
           variant="large"
+
           className="card-4"
+
           badge="premium"
+
         />
 
       )}
+
 
       {/* ADDITIONAL */}
 
       {additionalItems[0] && (
 
         <ProductCard
+
           product={
             additionalItems[0]
           }
+
           variant="small"
+
           className="card-5"
+
         />
 
       )}
+
 
       {additionalItems[1] && (
 
         <ProductCard
+
           product={
             additionalItems[1]
           }
+
           variant="small"
+
           className="card-6"
+
         />
 
       )}
+
 
       {additionalItems[2] && (
 
         <ProductCard
+
           product={
             additionalItems[2]
           }
+
           variant="small"
+
           className="card-7"
+
         />
 
       )}
+
 
       {additionalItems[3] && (
 
         <ProductCard
+
           product={
             additionalItems[3]
           }
+
           variant="small"
+
           className="card-8"
+
         />
 
       )}
 
+
       {/* TITLES */}
 
       <p className="fresh-text">
+
         Hot & Crispy Picks
+
       </p>
+
 
       <p className="fresh-text2">
+
         Freshly prepared favorites
+
       </p>
+
 
       <p className="premium-text">
+
         Premium Sides
+
       </p>
 
+
       <p className="premium-text2">
+
         Perfect add-ons for every meal
+
       </p>
+
 
       {/* MORE OPTIONS */}
 
       <div className="more-header">
 
         <p className="more-text">
+
           More Side Options
+
         </p>
 
+
         <button
+
           className="view-all-btn"
+
           onClick={() =>
-            navigate("/sidesmenu")
+            navigate(
+              "/sidesmenu",
+              {
+                state: {
+                  activeFilter:
+                    selectedType,
+                },
+              }
+            )
           }
+
         >
+
           View All Sides →
+
         </button>
 
       </div>
 
+
       {/* CART */}
 
       <CartContainer />
+
 
       {/* FOOTER */}
 
       <FooterDecoration />
 
     </div>
+
   );
+
 }
+
 
 export default Sides;

@@ -13,37 +13,60 @@ import {
   useState,
   useEffect
 } from "react";
+import { useLocation } from "react-router-dom";
+import { useKiosk } from "../context/KioskContext";
 
 function Sidesmenu() {
+  const location = useLocation();
+  const { foodPreference, setFoodPreference } = useKiosk();
 
   const [sidesSections, setSidesSections] = useState([]);
+  const [activeFilter, setActiveFilter] = useState(
+    location.state?.activeFilter || foodPreference || "both"
+  );
 
   useEffect(() => {
-    fetch("/menu/sides")
+    if (location.state?.activeFilter) {
+      setActiveFilter(location.state.activeFilter);
+    } else if (foodPreference) {
+      setActiveFilter(foodPreference);
+    }
+  }, [location.state?.activeFilter, foodPreference]);
+
+  useEffect(() => {
+    const prefParam = activeFilter !== "both" ? `?preference=${activeFilter}` : "";
+    fetch(`/menu/sides${prefParam}`)
       .then((res) => res.json())
-      .then(setSidesSections);
-  }, []);
+      .then(setSidesSections)
+      .catch((err) => console.warn("Failed to fetch sides:", err));
+  }, [activeFilter]);
 
   const menuContentRef = useRef(null);
-
   const sectionRefs = useRef({});
 
-  const [activeCategory, setActiveCategory] =
-    useState("");
+  const [activeCategory, setActiveCategory] = useState("");
 
-  const [activeFilter, setActiveFilter] =
-    useState("both");
+  const handleFilterChange = (filter) => {
+    setActiveFilter(filter);
+    if (setFoodPreference) {
+      setFoodPreference(filter);
+    }
+  };
 
   const filterProducts = (products) => {
-
     if (activeFilter === "both") {
       return products;
     }
-
-    return products.filter(
-      product => product.type === activeFilter
-    );
-
+    return products.filter((product) => {
+      const typeStr = (product.type || product.foodType || "").toLowerCase();
+      if (activeFilter === "veg") {
+        return typeStr === "veg" || (!typeStr.includes("non") && !["chicken", "wings", "nugget", "boneless"].some((w) => product.name.toLowerCase().includes(w)));
+      }
+      if (activeFilter === "non veg" || activeFilter === "non_veg") {
+        return typeStr.includes("non") || ["chicken", "wings", "nugget", "boneless"].some((w) => product.name.toLowerCase().includes(w));
+      }
+      return true;
+    });
   };
 
   const visibleSections = sidesSections
@@ -196,7 +219,7 @@ function Sidesmenu() {
           "non veg"
         ]}
         activeFilter={activeFilter}
-        onFilterChange={setActiveFilter}
+        onFilterChange={handleFilterChange}
       />
 
       <div
