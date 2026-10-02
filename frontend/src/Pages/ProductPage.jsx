@@ -159,7 +159,7 @@ function ProductPage() {
   const handleAddToCart = async () => {
     try {
       const response = await fetch(
-        "http://127.0.0.1:8000/cart/add",
+        "https://bug-free-lamp-7v4694q7pvjj29j4-8000.app.github.dev/cart/add",
         {
           method: "POST",
           headers: {

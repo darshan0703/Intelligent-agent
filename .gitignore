@@ -26,4 +26,6 @@ backend/test.txt
 backend/test.vtt
 
 # Python tooling
-.python-version
+.python-versionwhisper.cpp/models/*.bin
+whisper.cpp/ whisper.cpp/
+whisper.cpp/

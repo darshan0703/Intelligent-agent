@@ -56,7 +56,9 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173"
+         "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://bug-free-lamp-7v4694q7pvjj29j4-5173.app.github.dev",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -430,14 +432,14 @@ async def speech_to_text(
     file: UploadFile = File(...)
 ):
     whisper_cli = os.path.expanduser(
-        "~/whisper.cpp/build/bin/whisper-cli"
+        "/workspaces/Intelligent-agent/whisper.cpp/build/bin/whisper-cli"
     )
 
     whisper_model = os.path.expanduser(
-        "~/whisper.cpp/models/ggml-small.en.bin"
+        "/workspaces/Intelligent-agent/whisper.cpp/models/ggml-small.en.bin"
     )
 
-    ffmpeg = "/opt/homebrew/bin/ffmpeg"
+    ffmpeg = "/usr/bin/ffmpeg"
 
     print("\n" + "=" * 80)
     print("STT REQUEST")

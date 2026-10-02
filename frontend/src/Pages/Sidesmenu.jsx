@@ -19,7 +19,7 @@ function Sidesmenu() {
   const [sidesSections, setSidesSections] = useState([]);
 
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/menu/sides")
+    fetch("https://bug-free-lamp-7v4694q7pvjj29j4-8000.app.github.dev/menu/sides")
       .then((res) => res.json())
       .then(setSidesSections);
   }, []);

@@ -1,4 +1,4 @@
-const BASE_URL = "http://127.0.0.1:8000";
+const BASE_URL = "https://bug-free-lamp-7v4694q7pvjj29j4-8000.app.github.dev";
 
 // ---------- Session ----------
 
