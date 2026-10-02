@@ -14,42 +14,58 @@ import {
   useState,
   useEffect
 } from "react";
+import { useLocation } from "react-router-dom";
+import { useKiosk } from "../context/KioskContext";
 import { syncScreen } from "../services/screenService";
 
 function Burgermenu() {
+  const location = useLocation();
+  const { foodPreference, setFoodPreference } = useKiosk();
 
   const [burgerSections, setBurgerSections] = useState([]);
+  const [activeFilter, setActiveFilter] = useState(
+    location.state?.activeFilter || foodPreference || "both"
+  );
 
- useEffect(() => {
-    fetch("/menu/burgers")
-        .then(res => res.json())
-        .then(setBurgerSections);
- }, []);
- useEffect(() => {
+  useEffect(() => {
+    if (location.state?.activeFilter) {
+      setActiveFilter(location.state.activeFilter);
+    } else if (foodPreference) {
+      setActiveFilter(foodPreference);
+    }
+  }, [location.state?.activeFilter, foodPreference]);
 
-  syncScreen("burger_menu");
+  useEffect(() => {
+    const prefParam = activeFilter !== "both" ? `?preference=${activeFilter}` : "";
+    fetch(`/menu/burgers${prefParam}`)
+      .then((res) => res.json())
+      .then(setBurgerSections)
+      .catch((err) => console.warn("Failed to fetch burgers:", err));
+  }, [activeFilter]);
 
+  useEffect(() => {
+    syncScreen("burger_menu");
   }, []);
-  const menuContentRef = useRef(null);
 
+  const menuContentRef = useRef(null);
   const sectionRefs = useRef({});
 
-  const [activeCategory, setActiveCategory] =
-    useState("");
+  const [activeCategory, setActiveCategory] = useState("");
 
-  const [activeFilter, setActiveFilter] =
-    useState("both");
+  const handleFilterChange = (filter) => {
+    setActiveFilter(filter);
+    if (setFoodPreference) {
+      setFoodPreference(filter);
+    }
+  };
 
   const filterProducts = (products) => {
-
     if (activeFilter === "both") {
       return products;
     }
-
     return products.filter(
-      product => product.type === activeFilter
+      (product) => (product.type || product.foodType || "").toLowerCase() === activeFilter.toLowerCase()
     );
-
   };
 
   const visibleSections = burgerSections
@@ -201,7 +217,7 @@ function Burgermenu() {
           "non veg"
         ]}
         activeFilter={activeFilter}
-        onFilterChange={setActiveFilter}
+        onFilterChange={handleFilterChange}
       />
 
       <div

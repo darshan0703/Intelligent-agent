@@ -41,6 +41,14 @@ function ProductCard({
     });
   };
 
+  const resolveImageUrl = (img) => {
+    if (!img) return "";
+    if (img.startsWith("http://") || img.startsWith("https://") || img.startsWith("/")) {
+      return img;
+    }
+    return `/${img}`;
+  };
+
   return (
     <div
       className={`burger-card ${variant} ${className || ""}`}
@@ -56,9 +64,12 @@ function ProductCard({
 
       {/* PRODUCT IMAGE */}
       <img
-        src={product.image}
+        src={resolveImageUrl(product.image)}
         alt={product.name}
         className={`burger-card-image ${variant}-image`}
+        onError={(e) => {
+          e.currentTarget.style.opacity = "0.3";
+        }}
       />
 
       {/* PRODUCT NAME */}

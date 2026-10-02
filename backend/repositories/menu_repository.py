@@ -7,14 +7,22 @@ BRANCH_ID = 1
 # ==========================================================
 
 def serialize_menu_item(row):
+    img = row.get("image")
+    if img and not img.startswith("http") and not img.startswith("/"):
+        img = "/" + img
+
+    meal_img = row.get("meal_image")
+    if meal_img and not meal_img.startswith("http") and not meal_img.startswith("/"):
+        meal_img = "/" + meal_img
+
     return {
         "id": row["id"],
         "name": row["name"],
         "shortDescription": row["short_description"],
         "longDescription": row["long_description"],
         "price": float(row["price"]),
-        "image": row["image"],
-        "meal_image": row["meal_image"],
+        "image": img,
+        "meal_image": meal_img,
         "type": row["serving_type"] if row["category"] == "drink" else row["food_type"],
         "foodType": row["food_type"],
         "is_meal_available": row["is_meal_available"],
@@ -83,12 +91,26 @@ def fetch_menu_rows():
 # MENU SECTIONS
 # ==========================================================
 
-def get_menu_sections(category):
+def get_menu_sections(category, preference=None):
 
     rows = [
         r for r in fetch_menu_rows()
         if r["category"].lower() == category.lower()
     ]
+
+    if preference:
+        pref = str(preference).lower().replace("-", " ").replace("_", " ").strip()
+        if pref == "veg":
+            rows = [
+                r for r in rows
+                if "veg" in str(r.get("food_type", "")).lower()
+                and "non" not in str(r.get("food_type", "")).lower()
+            ]
+        elif "non" in pref:
+            rows = [
+                r for r in rows
+                if "non" in str(r.get("food_type", "")).lower()
+            ]
 
     rows.sort(key=lambda x: (x["section_order"], x["display_order"]))
 
