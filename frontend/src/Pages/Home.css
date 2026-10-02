@@ -1,115 +1,180 @@
+@font-face {
+  font-family: "Flame";
+  src: local("Flame");
+}
+
+/* =========================================================
+   HOME
+   ========================================================= */
+
 .home {
   position: relative;
 
   width: 1080px;
   height: 1920px;
 
-  background-color: #E7E1D0;
-
   overflow: hidden;
+
+  background: #E7E1D0;
 }
 
-.home-title {
+/* =========================================================
+   COMPLETE HOMEPAGE IMAGE
+   ========================================================= */
+
+.meal-home-image {
   position: absolute;
 
-  color: #5B2B11;
-  font-family: 'Flame';
+  inset: 0;
 
-  left: 210px;
-  top: 567px;
+  width: 100%;
+  height: 1650px;
 
-  font-size: 128px;
-  font-weight: 700;
+  display: block;
 
-  line-height: 100%;
+  object-fit: fill;
 
-  letter-spacing: 0px;
+  z-index: 1;
 
-  margin-bottom: 20px;
+  pointer-events: none;
+  user-select: none;
 }
 
-.burger-image {
-  position: absolute;
+/* =========================================================
+   TOUCH TO START
+   =========================================================
 
-  left: 368px;
-  top: 826px;
+   Only the background color has been changed here.
 
-  width: 275px;
-  height: 267px;
-}
+   The red is matched to the red already present at the
+   bottom of mealhome5.png: #C62E0A.
 
-.rc {
-  position: absolute;
-
-  left: 439px;
-  top: 156px;
-
-  width: 702.93px;
-  height: 156px;
-}
-
-.oc {
-  position: absolute;
-
-  left: -93.64px;
-  top: -2px;
-
-  width: 1197.84px;
-  height: 426.84px;
-}
+   No animation or light/opacity effect is applied, so the
+   button stays a fixed static red.
+   ========================================================= */
 
 .touch-bar {
   position: absolute;
 
+  left: 0;
   bottom: 0;
 
   width: 100%;
-  height: 140px;
-
-  background-color: #FF7A00;
+  height: 300px;
 
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
+
+  box-sizing: border-box;
+
+  padding-top: 35px;
+
+  /* Exact sampled red from mealhome5.png */
+  background: #C62E0A;
 
   color: #E7E1D0;
 
-  font-family: 'Flame';
-
+  font-family: "Flame", sans-serif;
   font-size: 100px;
   font-weight: 700;
+  
+  line-height: 1;
+  letter-spacing: 2px;
+  text-align: center;
 
-  letter-spacing: 0px;
+  cursor: pointer;
+  user-select: none;
+
+  z-index: 10;
+
+  /*
+    Natural torn-paper silhouette.
+    The red itself follows the paper-cut edge.
+  */
+  clip-path: polygon(
+    0% 8%,
+    1.5% 7%,
+    3% 5.5%,
+    4.5% 6.8%,
+    6% 5.2%,
+    7.5% 6.4%,
+    9% 4.8%,
+    10.5% 6.2%,
+    12% 5.4%,
+    13.5% 7.1%,
+    15% 5.8%,
+    16.5% 6.6%,
+    18% 4.9%,
+    19.5% 6.1%,
+    21% 5.1%,
+    22.5% 7.4%,
+    24% 5.9%,
+    25.5% 6.8%,
+    27% 4.7%,
+    28.5% 5.9%,
+    30% 5.2%,
+    31.5% 7%,
+    33% 6%,
+    34.5% 6.9%,
+    36% 4.8%,
+    37.5% 6.1%,
+    39% 5.4%,
+    40.5% 7.2%,
+    42% 5.8%,
+    43.5% 6.6%,
+    45% 4.9%,
+    46.5% 6.2%,
+    48% 5.3%,
+    49.5% 7.1%,
+    51% 5.7%,
+    52.5% 6.5%,
+    54% 4.8%,
+    55.5% 6%,
+    57% 5.2%,
+    58.5% 7.3%,
+    60% 5.9%,
+    61.5% 6.7%,
+    63% 4.9%,
+    64.5% 6.2%,
+    66% 5.3%,
+    67.5% 7%,
+    69% 5.8%,
+    70.5% 6.5%,
+    72% 4.8%,
+    73.5% 6.1%,
+    75% 5.2%,
+    76.5% 7.2%,
+    78% 5.8%,
+    79.5% 6.6%,
+    81% 4.9%,
+    82.5% 6.2%,
+    84% 5.4%,
+    85.5% 7%,
+    87% 5.7%,
+    88.5% 6.5%,
+    90% 4.8%,
+    91.5% 6%,
+    93% 5.2%,
+    94.5% 7.1%,
+    96% 5.8%,
+    97.5% 6.6%,
+    100% 5%,
+
+    100% 100%,
+    0% 100%
+  );
 }
 
-.touch-bar {
-  animation: pulse 2s infinite;
+/* =========================================================
+   INTERACTION
+   ========================================================= */
+
+.touch-bar:active {
+  transform: none;
 }
 
-@keyframes pulse {
-  0% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.75;
-  }
-
-  100% {
-    opacity: 1;
-  }
-}
-
-.touch-bar p {
-  color: white;
-  font-family: 'Flame';
-
-  font-size: 48px;
-
-  left: 103px;
-  top: 1739px;
-
-  font-weight: 700;
-
-  letter-spacing: 4px;
+.touch-bar:focus-visible {
+  outline: 4px solid #5B2B11;
+  outline-offset: -8px;
 }

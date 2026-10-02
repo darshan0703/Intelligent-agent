@@ -5,9 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useVoiceConversation } from "../context/VoiceConversationProvider";
 import { startSession } from "../services/api";
 
-import burger from "../assets/images/burgerking.png";
-import rc from "../assets/images/red curve.png";
-import oc from "../assets/images/orange curve.png";
+import mealHome from "../assets/images/Meals/mealhome5.png";
 
 function Home() {
   const navigate = useNavigate();
@@ -39,31 +37,22 @@ function Home() {
 
   return (
     <div className="home">
-      <h1 className="home-title">
-        Welcome to
-      </h1>
-
       <img
-        src={rc}
-        alt="red curve"
-        className="rc"
-      />
-
-      <img
-        src={oc}
-        alt="orange curve"
-        className="oc"
-      />
-
-      <img
-        src={burger}
-        alt="burger"
-        className="burger-image"
+        src={mealHome}
+        alt="Burger King welcome"
+        className="meal-home-image"
       />
 
       <div
         className="touch-bar"
         onClick={handleStart}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            handleStart();
+          }
+        }}
       >
         {starting ? "STARTING..." : "TOUCH TO START"}
       </div>
