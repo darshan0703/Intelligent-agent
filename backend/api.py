@@ -6,6 +6,7 @@ import tempfile
 import uuid
 from pathlib import Path
 from services.cashier_agent import run_cashier_agent
+import json
 
 import numpy as np
 import soundfile as sf
@@ -254,12 +255,11 @@ def message(request: MessageRequest):
 
     if kiosk_response is not None:
 
-        # The KioskResponse belongs to the application.
-        #
-        # The LLM only generated the natural-language message.
         kiosk_response.message = agent_response
 
-        return kiosk_response.model_dump()
+        frontend_response = kiosk_response.model_dump()
+
+        return frontend_response
 
     # ==========================================================
     # AGENT-ONLY CONVERSATION

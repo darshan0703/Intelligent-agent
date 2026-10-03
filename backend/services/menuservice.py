@@ -5,7 +5,7 @@ from services.menu_service import (
     add_item
 )
 
-from services.recommendation import get_priority_items
+from services.recommendation import get_priority_items,build_recommendations
 
 from state import conversation_context
 
@@ -95,196 +95,90 @@ Rules:
 # BURGER RECOMMENDATION ENGINE
 # =========================================================
 
-def build_recommendations(
-    items,
-    food_type="both"
-):
-
-    normalized_type = (
-        food_type
-        .lower()
-        .replace("_", " ")
-        .strip()
-    )
-
-    # =====================================================
-    # SINGLE FOOD TYPE
-    # =====================================================
-
-    if normalized_type in ("veg", "non veg"):
-
-        priority_all = get_priority_items(items)
-        priority = priority_all[:2]
-
-        used_names = {item["name"] for item in priority}
-
-        premium = []
-        for item in sorted(items, key=lambda x: x["price"], reverse=True):
-            if item["name"] not in used_names:
-                premium.append(item)
-                used_names.add(item["name"])
-            if len(premium) == 2:
-                break
-
-        additional = []
-        for item in items:
-            if item["name"] not in used_names:
-                additional.append(item)
-                used_names.add(item["name"])
-            if len(additional) == 4:
-                break
-
-        return (priority, premium, additional)
-
-    # =====================================================
-    # BOTH
-    # =====================================================
-
-    veg_items = [
-        item
-        for item in items
-        if item.get("foodType", "")
-        .lower()
-        .replace("_", " ")
-        .strip()
-        == "veg"
-    ]
-
-    non_veg_items = [
-        item
-        for item in items
-        if item.get("foodType", "")
-        .lower()
-        .replace("_", " ")
-        .strip()
-        == "non veg"
-    ]
-
-    # -----------------------------------------------------
-    # PRIORITY
-    # -----------------------------------------------------
-
-    veg_priority = (
-        get_priority_items(veg_items)
-        if veg_items
-        else []
-    )
-
-    non_veg_priority = (
-        get_priority_items(non_veg_items)
-        if non_veg_items
-        else []
-    )
-
-    priority = []
-
-    if veg_priority:
-        priority.append(veg_priority[0])
-    if non_veg_priority:
-        priority.append(non_veg_priority[0])
-
-    used_names = {item["name"] for item in priority}
-
-    premium_candidates = sorted(
-        [item for item in items if item["name"] not in used_names],
-        key=lambda x: x["price"],
-        reverse=True
-    )
-    premium = premium_candidates[:2]
-    used_names.update(item["name"] for item in premium)
-
-    remaining = [item for item in items if item["name"] not in used_names]
-    additional = remaining[:4]
-
-    return (priority[:2], premium[:2], additional[:4])
-
-
-# =========================================================
+#=========================================================
 # BUILD COMPLETE BURGER DATASET
 # =========================================================
 
-def build_burger_recommendation_data(burgers):
+def build_burger_recommendation_data(burgers, cart=None):
+    """
+    Build the complete burger recommendation dataset.
+
+    The recommendation engine is owned by services.recommendation.
+    This function only prepares the response structure expected by
+    the existing kiosk/frontend.
+
+    Each recommendation set contains:
+        priority   -> max 2
+        premium    -> max 2
+        additional -> max 4
+    """
+
+    if cart is None:
+        cart = []
 
     # -----------------------------------------------------
-    # BOTH
+    # BUILD RECOMMENDATIONS THROUGH THE CENTRAL ENGINE
     # -----------------------------------------------------
 
-    (
-        both_priority,
-        both_premium,
-        both_additional
-    ) = build_recommendations(
+    both_priority, both_premium, both_additional = build_recommendations(
         burgers,
-        "both"
+        food_type="both",
+        cart=cart,
+    )
+
+    veg_priority, veg_premium, veg_additional = build_recommendations(
+        burgers,
+        food_type="veg",
+        cart=cart,
+    )
+
+    non_veg_priority, non_veg_premium, non_veg_additional = build_recommendations(
+        burgers,
+        food_type="non veg",
+        cart=cart,
     )
 
     # -----------------------------------------------------
-    # VEG
+    # THE DEFAULT / BOTH DATASET
     # -----------------------------------------------------
 
-    veg_burgers = [
-        item
-        for item in burgers
-        if item.get("foodType", "")
-        .lower()
-        .replace("_", " ")
-        .strip()
-        == "veg"
-    ]
-
-    (
-        veg_priority,
-        veg_premium,
-        veg_additional
-    ) = build_recommendations(
-        veg_burgers,
-        "veg"
-    )
+    priority = both_priority
+    premium = both_premium
+    additional = both_additional
 
     # -----------------------------------------------------
-    # NON VEG
+    # RETURN EXISTING RESPONSE CONTRACT
+    #
+    # We keep both / veg / non_veg because the current
+    # frontend already consumes this structure.
+    #
+    # The important change is that ALL THREE datasets are
+    # now generated by the central recommendation engine.
     # -----------------------------------------------------
-
-    non_veg_burgers = [
-        item
-        for item in burgers
-        if item.get("foodType", "")
-        .lower()
-        .replace("_", " ")
-        .strip()
-        == "non veg"
-    ]
-
-    (
-        non_veg_priority,
-        non_veg_premium,
-        non_veg_additional
-    ) = build_recommendations(
-        non_veg_burgers,
-        "non veg"
-    )
 
     return {
+        "priority": priority,
+        "premium": premium,
+        "additional": additional,
+
         "both": {
             "priority": both_priority,
             "premium": both_premium,
-            "additional": both_additional
+            "additional": both_additional,
         },
 
         "veg": {
             "priority": veg_priority,
             "premium": veg_premium,
-            "additional": veg_additional
+            "additional": veg_additional,
         },
 
         "non_veg": {
             "priority": non_veg_priority,
             "premium": non_veg_premium,
-            "additional": non_veg_additional
-        }
+            "additional": non_veg_additional,
+        },
     }
-
-
 # =========================================================
 # BURGER SELECTION
 # =========================================================
@@ -308,7 +202,9 @@ def handle_burger_selection(
         )
 
     # -----------------------------------------------------
-    # BUILD ALL THREE DATASETS
+    # BUILD ONE COMBINED MASTER DATASET
+    #
+    # The frontend owns the Veg / Non-Veg filter.
     # -----------------------------------------------------
 
     recommendation_data = (
@@ -317,49 +213,41 @@ def handle_burger_selection(
         )
     )
 
-    # -----------------------------------------------------
-    # DEBUG
-    # -----------------------------------------------------
+ 
+    print("BURGER MASTER RECOMMENDATION DATA")
+   
 
-    print("\n==============================")
-    print("BURGER RECOMMENDATION DATA")
-    print("==============================")
+    total = (
+        len(recommendation_data["priority"])
+        + len(recommendation_data["premium"])
+        + len(recommendation_data["additional"])
+    )
 
-    for food_type, groups in recommendation_data.items():
+    print(
+        "PRIORITY:",
+        [
+            item["name"]
+            for item in recommendation_data["priority"]
+        ]
+    )
 
-        total = (
-            len(groups["priority"])
-            + len(groups["premium"])
-            + len(groups["additional"])
-        )
+    print(
+        "PREMIUM:",
+        [
+            item["name"]
+            for item in recommendation_data["premium"]
+        ]
+    )
 
-        print(f"\nTYPE: {food_type}")
+    print(
+        "ADDITIONAL:",
+        [
+            item["name"]
+            for item in recommendation_data["additional"]
+        ]
+    )
 
-        print(
-            "PRIORITY:",
-            [
-                item["name"]
-                for item in groups["priority"]
-            ]
-        )
-
-        print(
-            "PREMIUM:",
-            [
-                item["name"]
-                for item in groups["premium"]
-            ]
-        )
-
-        print(
-            "ADDITIONAL:",
-            [
-                item["name"]
-                for item in groups["additional"]
-            ]
-        )
-
-        print("TOTAL:", total)
+    print("TOTAL:", total)
 
     print("==============================\n")
 
@@ -421,7 +309,7 @@ def handle_burger_selection(
     )
 
     # -----------------------------------------------------
-    # RETURN COMPLETE DATASET
+    # RETURN ONE MASTER DATASET
     # -----------------------------------------------------
 
     return KioskResponse(
@@ -433,15 +321,10 @@ def handle_burger_selection(
             "all_burgers": burgers,
 
             "priority": chosen["priority"],
-
             "premium": chosen["premium"],
-
             "additional": chosen["additional"],
-
             "both": recommendation_data["both"],
-
             "veg": recommendation_data["veg"],
-
             "non_veg": recommendation_data["non_veg"]
         }
     )
@@ -615,11 +498,85 @@ def handle_more_options():
 # OTHER CATEGORY RECOMMENDATIONS
 # =========================================================
 
+def build_filtered_master_recommendation_data(
+    items,
+    filter_field,
+    filter_values
+):
+
+    grouped = {}
+
+    for filter_value in filter_values:
+
+        filtered_items = [
+            item
+            for item in items
+            if item.get(filter_field, "")
+            .lower()
+            .replace("_", " ")
+            .strip()
+            == filter_value
+        ]
+
+        grouped[filter_value] = build_recommendations(
+            filtered_items,
+            filter_value
+        )
+
+    priority = []
+    premium = []
+    additional = []
+
+    # 2 priority + 2 premium from every filter value,
+    # interleaved into one master list.
+    for index in range(2):
+
+        for filter_value in filter_values:
+
+            recommendations = grouped[filter_value]
+
+            if index < len(recommendations[0]):
+                priority.append(
+                    recommendations[0][index]
+                )
+
+            if index < len(recommendations[1]):
+                premium.append(
+                    recommendations[1][index]
+                )
+
+    # 4 additional items from every filter value,
+    # interleaved into one master list.
+    for index in range(4):
+
+        for filter_value in filter_values:
+
+            recommendations = grouped[filter_value]
+
+            if index < len(recommendations[2]):
+                additional.append(
+                    recommendations[2][index]
+                )
+
+    return {
+        "priority": priority,
+        "premium": premium,
+        "additional": additional
+    }
+
+
+# =========================================================
+# CATEGORY RECOMMENDATION RESPONSE
+# =========================================================
+
 def build_category_response(
     category,
     title,
     screen,
-    conversation_context
+    conversation_context,
+    filter_field=None,
+    filter_values=None,
+    all_items_key=None
 ):
 
     items = get_category(category)
@@ -635,54 +592,61 @@ def build_category_response(
             data={}
         )
 
-    both_priority, both_premium, both_additional = build_recommendations(items, "both")
+    # Build the normal category dataset first.
+    if filter_field and filter_values:
+        recommendation_data = build_filtered_master_recommendation_data(
+            items, filter_field, filter_values
+        )
+    else:
+        priority, premium, additional = build_recommendations(items)
+        recommendation_data = {
+            "priority": priority,
+            "premium": premium,
+            "additional": additional
+        }
 
-    veg_items = [
-        item for item in items
-        if (item.get("foodType") or item.get("type") or "").lower().replace("_", " ").strip() == "veg"
-        or (not any(w in (item.get("name") or "").lower() for w in ["chicken", "wings", "nugget", "boneless"]))
-    ]
-    veg_priority, veg_premium, veg_additional = build_recommendations(veg_items if veg_items else items, "veg")
-
-    non_veg_items = [
-        item for item in items
-        if "non" in (item.get("foodType") or item.get("type") or "").lower()
-        or any(w in (item.get("name") or "").lower() for w in ["chicken", "wings", "nugget", "boneless"])
-    ]
-    nv_priority, nv_premium, nv_additional = build_recommendations(non_veg_items if non_veg_items else items, "non veg")
+    # Build dietary datasets from the database foodType field.
+    food_type_items = [item for item in items if item.get("foodType") is not None]
+    if food_type_items:
+        veg_items = [item for item in food_type_items if str(item.get("foodType", "")).lower().replace("_", " ").strip() == "veg"]
+        non_veg_items = [item for item in food_type_items if str(item.get("foodType", "")).lower().replace("_", " ").strip() in ("non veg", "non_veg")]
+        dietary_data = {
+            "both": {"priority": recommendation_data["priority"], "premium": recommendation_data["premium"], "additional": recommendation_data["additional"]},
+            "veg": dict(zip(("priority", "premium", "additional"), build_recommendations(veg_items, "veg"))),
+            "non_veg": dict(zip(("priority", "premium", "additional"), build_recommendations(non_veg_items, "non veg"))),
+        }
+        dietary_data["veg"]["priority"] = dietary_data["veg"]["priority"][:2]
+        dietary_data["veg"]["premium"] = dietary_data["veg"]["premium"][:2]
+        dietary_data["veg"]["additional"] = dietary_data["veg"]["additional"][:4]
+        dietary_data["non_veg"]["priority"] = dietary_data["non_veg"]["priority"][:2]
+        dietary_data["non_veg"]["premium"] = dietary_data["non_veg"]["premium"][:2]
+        dietary_data["non_veg"]["additional"] = dietary_data["non_veg"]["additional"][:4]
+    else:
+        dietary_data = {"both": {"priority": recommendation_data["priority"], "premium": recommendation_data["premium"], "additional": recommendation_data["additional"]}}
 
     active_pref = conversation_context.get("food_preference")
-    if active_pref == "veg":
-        cur_priority, cur_premium, cur_additional = veg_priority, veg_premium, veg_additional
-    elif active_pref in ("non_veg", "non veg"):
-        cur_priority, cur_premium, cur_additional = nv_priority, nv_premium, nv_additional
-    else:
-        cur_priority, cur_premium, cur_additional = both_priority, both_premium, both_additional
-
-    conversation_context["last_offer"] = [
-        item["name"]
-        for item in cur_priority
-        + cur_premium
-        + cur_additional
-    ]
+    chosen = dietary_data.get(active_pref, dietary_data["both"]) if active_pref in ("veg", "non_veg") else dietary_data["both"]
+    priority, premium, additional = chosen["priority"], chosen["premium"], chosen["additional"]
+    selected = priority + premium + additional
+    conversation_context["last_offer"] = [item["name"] for item in selected]
 
     message_parts = []
 
-    if cur_priority:
+    if priority:
 
         message_parts.append(
             f"I'd recommend our "
-            f"{cur_priority[0]['name']}."
+            f"{priority[0]['name']}."
         )
 
-    if cur_premium:
+    if premium:
 
         message_parts.append(
             f"For something premium, we also have "
-            f"{cur_premium[0]['name']}."
+            f"{premium[0]['name']}."
         )
 
-    if cur_additional:
+    if additional:
 
         message_parts.append(
             f"We also have more {title.lower()} "
@@ -693,29 +657,28 @@ def build_category_response(
         message_parts
     )
 
+    response_data = {
+        "priority": priority,
+        "premium": premium,
+        "additional": additional
+    }
+
+    if filter_values:
+        response_data["selected_type"] = "both"
+
+    if all_items_key:
+        response_data[all_items_key] = items
+
     return KioskResponse(
         screen=screen,
         message=message,
         data={
+            **response_data,
             "category": category,
-            "priority": cur_priority,
-            "premium": cur_premium,
-            "additional": cur_additional,
-            "both": {
-                "priority": both_priority,
-                "premium": both_premium,
-                "additional": both_additional,
-            },
-            "veg": {
-                "priority": veg_priority,
-                "premium": veg_premium,
-                "additional": veg_additional,
-            },
-            "non_veg": {
-                "priority": nv_priority,
-                "premium": nv_premium,
-                "additional": nv_additional,
-            },
+            "priority": priority,
+            "premium": premium,
+            "additional": additional,
+            **dietary_data,
         }
     )
 
@@ -732,75 +695,29 @@ def handle_drink_selection(
         category="drink",
         title="Drinks",
         screen=ScreenTypes.RECOMMENDED_DRINKS,
-        conversation_context=conversation_context
+        conversation_context=conversation_context,
+        filter_field="type",
+        filter_values=["hot", "cold"],
+        all_items_key="all_drinks"
     )
-
 
 # =========================================================
 # SIDES
 # =========================================================
 
-def build_category_recommendation_data(items):
-    veg_items = [
-        item for item in items
-        if item.get("foodType", "").lower().replace("_", " ").strip() == "veg"
-    ]
-    non_veg_items = [
-        item for item in items
-        if item.get("foodType", "").lower().replace("_", " ").strip() == "non veg"
-    ]
-
-    both = build_recommendations(items, "both")
-    veg = build_recommendations(veg_items, "veg")
-    non_veg = build_recommendations(non_veg_items, "non veg")
-
-    return {
-        "both": {"priority": both[0], "premium": both[1], "additional": both[2]},
-        "veg": {"priority": veg[0], "premium": veg[1], "additional": veg[2]},
-        "non_veg": {"priority": non_veg[0], "premium": non_veg[1], "additional": non_veg[2]},
-    }
-
-
 def handle_side_selection(
     conversation_context
 ):
-    sides = get_category("side")
 
-    if not sides:
-        return KioskResponse(
-            screen=ScreenTypes.RECOMMENDED_SIDES,
-            message="Sorry, no sides are available right now.",
-            data={}
-        )
-
-    recommendation_data = build_category_recommendation_data(sides)
-    both = recommendation_data["both"]
-
-    conversation_context["last_offer"] = [
-        item["name"]
-        for item in both["priority"] + both["premium"] + both["additional"]
-    ]
-
-    message_parts = []
-    if both["priority"]:
-        message_parts.append(f"I'd recommend our {both['priority'][0]['name']}.")
-    if both["premium"]:
-        message_parts.append(f"For something premium, we also have {both['premium'][0]['name']}.")
-    if both["additional"]:
-        message_parts.append("We also have more side options if you'd like to explore them.")
-
-    return KioskResponse(
+    return build_category_response(
+        category="side",
+        title="Sides",
         screen=ScreenTypes.RECOMMENDED_SIDES,
-        message=" ".join(message_parts),
-        data={
-            "selected_type": "both",
-            "all_sides": sides,
-            "both": recommendation_data["both"],
-            "veg": recommendation_data["veg"],
-            "non_veg": recommendation_data["non_veg"]
-        }
+        conversation_context=conversation_context,
+        filter_field="foodType",
+        filter_values=["veg", "non veg"],
+        all_items_key="all_sides"
     )
-
 
 # =========================================================
 # DESSERTS
@@ -814,5 +731,6 @@ def handle_dessert_selection(
         category="dessert",
         title="Desserts",
         screen=ScreenTypes.RECOMMENDED_DESSERTS,
-        conversation_context=conversation_context
+        conversation_context=conversation_context,
+        all_items_key="all_desserts"
     )

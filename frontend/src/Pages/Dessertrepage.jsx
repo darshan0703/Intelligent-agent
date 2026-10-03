@@ -15,8 +15,7 @@ import { useKiosk } from "../context/KioskContext";
 function Dessert() {
   const navigate = useNavigate();
 
-  const { recommendationData } =
-    useKiosk();
+  const { recommendationData } = useKiosk();
 
   const freshDesserts =
     recommendationData?.data?.priority || [];
@@ -50,81 +49,50 @@ function Dessert() {
 
       <BackButton />
 
-      {/* PRIORITY */}
+      {/* =========================
+          PRIORITY DESSERTS
+          ========================= */}
 
-      {freshDesserts[0] && (
+      {freshDesserts.slice(0, 2).map((dessert, index) => (
         <ProductCard
-          product={freshDesserts[0]}
+          key={dessert.id || `priority-${index}`}
+          product={dessert}
           variant="large"
-          className="card-1"
+          className={`card-${index + 1}`}
           badge="popular"
         />
-      )}
+      ))}
 
-      {freshDesserts[1] && (
+      {/* =========================
+          PREMIUM DESSERTS
+          ========================= */}
+
+      {premiumDesserts.slice(0, 2).map((dessert, index) => (
         <ProductCard
-          product={freshDesserts[1]}
+          key={dessert.id || `premium-${index}`}
+          product={dessert}
           variant="large"
-          className="card-2"
-          badge="popular"
-        />
-      )}
-
-      {/* PREMIUM */}
-
-      {premiumDesserts[0] && (
-        <ProductCard
-          product={premiumDesserts[0]}
-          variant="large"
-          className="card-3"
+          className={`card-${index + 3}`}
           badge="premium"
         />
-      )}
+      ))}
 
-      {premiumDesserts[1] && (
+      {/* =========================
+          ADDITIONAL DESSERTS
+          ========================= */}
+
+      {moreDesserts.slice(0, 4).map((dessert, index) => (
         <ProductCard
-          product={premiumDesserts[1]}
-          variant="large"
-          className="card-4"
-          badge="premium"
-        />
-      )}
-
-      {/* ADDITIONAL */}
-
-      {moreDesserts[0] && (
-        <ProductCard
-          product={moreDesserts[0]}
+          key={dessert.id || `additional-${index}`}
+          product={dessert}
           variant="small"
-          className="card-5"
+          className={`card-${index + 5}`}
         />
-      )}
+      ))}
 
-      {moreDesserts[1] && (
-        <ProductCard
-          product={moreDesserts[1]}
-          variant="small"
-          className="card-6"
-        />
-      )}
-
-      {moreDesserts[2] && (
-        <ProductCard
-          product={moreDesserts[2]}
-          variant="small"
-          className="card-7"
-        />
-      )}
-
-      {moreDesserts[3] && (
-        <ProductCard
-          product={moreDesserts[3]}
-          variant="small"
-          className="card-8"
-        />
-      )}
-
-      {/* TITLES */}
+      {/* =========================
+          TITLES
+          ========================= */}
 
       <p className="fresh-text">
         Sweet Picks For You
@@ -146,14 +114,14 @@ function Dessert() {
         More Dessert Options
       </p>
 
-      {/* MORE OPTIONS */}
+      {/* =========================
+          MORE OPTIONS
+          ========================= */}
 
       <div className="more-header">
         <button
           className="view-all-btn"
-          onClick={() =>
-            navigate("/dessertmenu")
-          }
+          onClick={() => navigate("/dessertmenu")}
         >
           View All Desserts →
         </button>

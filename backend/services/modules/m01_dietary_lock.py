@@ -1,40 +1,88 @@
 """
 Module 1: Strict Dietary Lock (Phase 1 Hard Gate)
-Eradicates non-veg items from candidate pool if customer has active veg preference
-or if all items in cart are vegetarian.
-"""
-from typing import List, Dict, Any
 
-def apply_dietary_lock(
-    candidates: List[Dict[str, Any]],
-    preference: str | None,
-    cart: List[Dict[str, Any]]
-) -> List[Dict[str, Any]]:
-    # Determine effective dietary preference
-    eff_pref = (preference or "").lower().strip()
-    
-    # If no explicit preference, inspect cart: if all cart items are veg, lock to veg
+Eradicates non-veg items from candidate pool if customer has active
+veg preference, or if all items in cart are vegetarian.
+"""
+
+
+def normalize_food_type(value):
+    """
+    Normalize all food-type representations to one canonical value.
+
+    Examples:
+        "Veg"      -> "veg"
+        "Non Veg"  -> "non_veg"
+        "non veg"  -> "non_veg"
+        "non_veg"  -> "non_veg"
+        "Non-Veg"  -> "non_veg"
+    """
+
+    return (
+        str(value or "")
+        .lower()
+        .replace("-", "_")
+        .replace(" ", "_")
+        .strip()
+    )
+
+
+def get_item_food_type(item):
+    """
+    Read food type from either supported database field name.
+    """
+
+    return normalize_food_type(
+        item.get("foodType")
+        or item.get("food_type")
+        or ""
+    )
+
+
+def apply_dietary_lock(candidates, preference, cart):
+    """
+    Apply the strict dietary gate before recommendation scoring.
+    """
+
+    eff_pref = normalize_food_type(preference)
+
+    # ---------------------------------------------------------
+    # CART-BASED DIETARY LOCK
+    # ---------------------------------------------------------
+
     if not eff_pref and cart:
-        has_items = len(cart) > 0
-        all_veg = all("veg" in str(item.get("foodType") or item.get("food_type", "")).lower() and "non" not in str(item.get("foodType") or item.get("food_type", "")).lower() for item in cart)
-        if has_items and all_veg:
+        all_veg = all(
+            get_item_food_type(item) == "veg"
+            for item in cart
+        )
+
+        if all_veg:
             eff_pref = "veg"
 
+    # ---------------------------------------------------------
+    # VEG LOCK
+    # ---------------------------------------------------------
+
     if eff_pref == "veg":
-        survivors = []
-        for item in candidates:
-            ft = str(item.get("foodType") or item.get("food_type", "")).lower()
-            # Must contain veg and NOT contain non
-            if "veg" in ft and "non" not in ft:
-                survivors.append(item)
-        return survivors
-    
-    elif "non" in eff_pref:
-        survivors = []
-        for item in candidates:
-            ft = str(item.get("foodType") or item.get("food_type", "")).lower()
-            if "non" in ft:
-                survivors.append(item)
-        return survivors
+        return [
+            item
+            for item in candidates
+            if get_item_food_type(item) == "veg"
+        ]
+
+    # ---------------------------------------------------------
+    # NON-VEG LOCK
+    # ---------------------------------------------------------
+
+    if eff_pref == "non_veg":
+        return [
+            item
+            for item in candidates
+            if get_item_food_type(item) == "non_veg"
+        ]
+
+    # ---------------------------------------------------------
+    # NO ACTIVE LOCK
+    # ---------------------------------------------------------
 
     return candidates

@@ -6,7 +6,35 @@ from services.menu_service import get_product
 from services.recommendation import get_agent_recommendations
 from services.product_selector import resolve_product
 from services.productservice import handle_product
+from screen_controls import get_screen_controls
 from state import conversation_context
+
+def _sync_screen_state(response):
+    """
+    Synchronize the active kiosk screen and its available controls
+    whenever a tool creates a new KioskResponse.
+
+    This keeps the agent's screen_action tool aligned with the screen
+    currently being displayed by the frontend.
+    """
+
+    if hasattr(response, "screen"):
+
+        conversation_context["current_screen"] = response.screen
+
+        conversation_context["available_controls"] = (
+            get_screen_controls(response.screen)
+        )
+
+        print(
+            "SCREEN STATE SYNC:",
+            conversation_context["current_screen"]
+        )
+
+        print(
+            "AVAILABLE CONTROLS:",
+            conversation_context["available_controls"]
+        )
 
 
 # ==========================================================
@@ -69,20 +97,58 @@ def create_open_category_tool(conversation_context):
 
         if hasattr(response, "screen") and hasattr(response, "data"):
 
-            # Preserve the complete frontend response
+            # --------------------------------------------------
+            # PRESERVE COMPLETE FRONTEND RESPONSE
+            # --------------------------------------------------
+
             conversation_context["_last_kiosk_response"] = response
+
+            # --------------------------------------------------
+            # SYNCHRONIZE ACTIVE SCREEN
+            # --------------------------------------------------
+
+            _sync_screen_state(response)
 
             data = response.data or {}
 
-            selected = data.get("selected_type", "both")
-            section = data.get(selected, {})
+            selected = data.get(
+                "selected_type",
+                "both",
+            )
 
-            priority = section.get("priority", [])
-            premium = section.get("premium", [])
-            additional = section.get("additional", [])
+            section = data.get(
+                selected,
+                {},
+            )
 
-            # Complete visual order shown on the kiosk
-            displayed_items = priority + premium + additional
+            priority = section.get(
+                "priority",
+                [],
+            )
+
+            premium = section.get(
+                "premium",
+                [],
+            )
+
+            additional = section.get(
+                "additional",
+                [],
+            )
+
+            # --------------------------------------------------
+            # COMPLETE VISUAL ORDER SHOWN ON KIOSK
+            # --------------------------------------------------
+
+            displayed_items = (
+                priority
+                + premium
+                + additional
+            )
+
+            # --------------------------------------------------
+            # TOOL RESULT
+            # --------------------------------------------------
 
             return {
                 "success": True,
@@ -91,15 +157,24 @@ def create_open_category_tool(conversation_context):
                 # Canonical backend identifier
                 "category": category.lower().strip(),
 
-                # Customer-facing summary
+                # --------------------------------------------------
+                # CUSTOMER-FACING SUMMARY
+                # --------------------------------------------------
+
                 "summary": {
                     "top_choices": [
-                        item["name"] for item in priority[:2]
+                        item["name"]
+                        for item in priority[:2]
                     ],
-                    "has_more_options": len(displayed_items) > 2,
+                    "has_more_options": (
+                        len(displayed_items) > 2
+                    ),
                 },
 
-                # Internal reasoning only
+                # --------------------------------------------------
+                # INTERNAL REASONING / NAVIGATION CONTEXT
+                # --------------------------------------------------
+
                 "context": {
                     "displayed_items": [
                         {
@@ -107,7 +182,9 @@ def create_open_category_tool(conversation_context):
                             "name": item["name"],
                             "id": item.get("id"),
                         }
-                        for index, item in enumerate(displayed_items)
+                        for index, item in enumerate(
+                            displayed_items
+                        )
                     ],
                     "selected_type": selected,
                 },
@@ -143,22 +220,37 @@ def select_product(product_query: str):
 
         product = result["product"]
 
+        # --------------------------------------------------
+        # BUILD PRODUCT PAGE RESPONSE
+        # --------------------------------------------------
+
         response = handle_product(
             product["name"],
             conversation_context,
         )
 
-        # Preserve the complete product page response
+        # --------------------------------------------------
+        # PRESERVE COMPLETE PRODUCT RESPONSE
+        # --------------------------------------------------
+
         conversation_context["_last_kiosk_response"] = response
+
+        # --------------------------------------------------
+        # SYNCHRONIZE ACTIVE SCREEN
+        # --------------------------------------------------
+
+        _sync_screen_state(response)
 
         return {
             "success": True,
             "status": "selected",
+
             "product": {
                 "id": product.get("id"),
                 "name": product.get("name"),
                 "price": product.get("price"),
             },
+
             "screen": response.screen,
         }
 
