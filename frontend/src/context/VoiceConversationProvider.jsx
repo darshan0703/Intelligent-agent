@@ -36,48 +36,65 @@ export function VoiceConversationProvider({ children }) {
     executeUIAction,
   } = useUIAction();
 
+  /*
+   * Voice interface enabled.
+   */
   const [voiceEnabled, setVoiceEnabled] = useState(false);
 
-  // True for the entire voice interaction.
-  // It represents the voice interface being enabled,
-  // NOT an individual browser recognition session.
+  /*
+   * Current voice state:
+   *
+   * idle
+   * listening
+   * speaking
+   * processing
+   */
+  const [voiceStatus, setVoiceStatus] = useState("idle");
+
+  /*
+   * Keep voice state accessible outside React renders.
+   */
   const voiceEnabledRef = useRef(false);
 
-  // Prevent multiple customer messages from being
-  // processed at the same time.
+  /*
+   * Prevent multiple customer requests.
+   */
   const processingRef = useRef(false);
 
-  const listenForCustomer = useCallback(() => {
-    if (
-      !voiceEnabledRef.current ||
-      processingRef.current
-    ) {
-      return;
-    }
-
-    console.log("STARTING CUSTOMER LISTENING");
-
-    startListening(async (transcript) => {
-      if (
-        !voiceEnabledRef.current ||
-        processingRef.current
-      ) {
+  /*
+   * --------------------------------------------------
+   * HANDLE CUSTOMER TRANSCRIPT
+   * --------------------------------------------------
+   */
+  const handleCustomerTranscript = useCallback(
+    async (transcript) => {
+      if (!voiceEnabledRef.current) {
         return;
       }
 
+      if (processingRef.current) {
+        return;
+      }
+
+      console.log(
+        "CUSTOMER TRANSCRIPT RECEIVED:",
+        transcript
+      );
+
+      /*
+       * Customer has finished speaking.
+       *
+       * Now we are processing the question.
+       */
       processingRef.current = true;
 
+      setVoiceStatus("processing");
+
       try {
-        console.log(
-          "VOICE TRANSCRIPT:",
-          transcript
-        );
-
-        // Stop the current recording/listening cycle.
-        stopListening();
-
-        // Send the same customer message through
-        // the normal TheAtom conversation pipeline.
+        /*
+         * Send transcript to your existing
+         * conversation backend.
+         */
         const data =
           await processCustomerMessage(
             transcript
@@ -88,8 +105,9 @@ export function VoiceConversationProvider({ children }) {
           data
         );
 
-        // Apply exactly the same screen/UI response
-        // used by the rest of the kiosk.
+        /*
+         * Apply kiosk UI response.
+         */
         handleKioskResponse(
           data,
           {
@@ -100,28 +118,66 @@ export function VoiceConversationProvider({ children }) {
           }
         );
 
-        // Speak the backend's response.
+        /*
+         * If backend returned a message,
+         * speak it using Kokoro.
+         */
         if (data?.message) {
+
+          console.log(
+            "KOKORO ANSWER:",
+            data.message
+          );
+
+          setVoiceStatus("speaking");
+
           speak(
             data.message,
             () => {
+
+              /*
+               * Kokoro finished.
+               *
+               * Now show Listening.
+               */
               processingRef.current = false;
 
-              // Continue the same voice interaction.
-              // This does NOT create a new transaction.
-              if (voiceEnabledRef.current) {
-                listenForCustomer();
+              if (
+                voiceEnabledRef.current
+              ) {
+                setVoiceStatus(
+                  "listening"
+                );
+
+                startListening(
+                  handleCustomerTranscript
+                );
               }
             }
           );
+
         } else {
+
+          /*
+           * No response message.
+           */
           processingRef.current = false;
 
-          if (voiceEnabledRef.current) {
-            listenForCustomer();
+          if (
+            voiceEnabledRef.current
+          ) {
+            setVoiceStatus(
+              "listening"
+            );
+
+            startListening(
+              handleCustomerTranscript
+            );
           }
         }
+
       } catch (error) {
+
         console.error(
           "VOICE MESSAGE ERROR:",
           error
@@ -129,91 +185,216 @@ export function VoiceConversationProvider({ children }) {
 
         processingRef.current = false;
 
-        if (voiceEnabledRef.current) {
-          listenForCustomer();
+        if (
+          voiceEnabledRef.current
+        ) {
+          setVoiceStatus(
+            "listening"
+          );
+
+          startListening(
+            handleCustomerTranscript
+          );
         }
       }
-    });
-  }, [
-    navigate,
-    setRecommendationData,
-    setProductData,
-    executeUIAction,
-  ]);
+    },
+    [
+      navigate,
+      setRecommendationData,
+      setProductData,
+      executeUIAction,
+    ]
+  );
 
   /*
-   * Barge-in:
+   * --------------------------------------------------
+   * BARGE-IN HANDLER
+   * --------------------------------------------------
    *
-   * voiceService detects the customer speaking while
-   * the kiosk is talking. It stops TTS and calls this.
+   * This is called when the customer speaks while
+   * Kokoro is speaking.
    */
   useEffect(() => {
+
     setInterruptionHandler(() => {
+
       if (!voiceEnabledRef.current) {
         return;
       }
 
       console.log(
-        "CUSTOMER TOOK THE TURN"
+        "CUSTOMER INTERRUPTED KOKORO"
       );
 
-      // The previous cashier response is no longer
-      // relevant once the customer interrupts.
-      processingRef.current = false;
+      /*
+       * IMPORTANT:
+       *
+       * voiceService has already stopped Kokoro.
+       *
+       * The microphone and recorder are still active.
+       *
+       * We only change the UI here.
+       */
+      setVoiceStatus("listening");
 
-      listenForCustomer();
     });
 
     return () => {
       setInterruptionHandler(null);
     };
-  }, [listenForCustomer]);
 
+  }, []);
+
+  /*
+   * --------------------------------------------------
+   * START VOICE CONVERSATION
+   * --------------------------------------------------
+   *
+   * IMPORTANT:
+   *
+   * 1. Start microphone + recorder + VAD.
+   * 2. Start Kokoro greeting.
+   *
+   * Both are active at the same time.
+   */
   const startVoiceConversation =
-    useCallback(() => {
-      if (voiceEnabledRef.current) {
-        return;
-      }
+    useCallback(
+      async () => {
 
-      voiceEnabledRef.current = true;
-      processingRef.current = false;
-
-      setVoiceEnabled(true);
-
-      console.log(
-        "VOICE INTERFACE ENABLED"
-      );
-
-      // Initial cashier greeting.
-      speak(
-        "Hi! Welcome to Burger King. What can I get for you today?",
-        () => {
-          if (voiceEnabledRef.current) {
-            listenForCustomer();
-          }
+        if (voiceEnabledRef.current) {
+          return;
         }
-      );
-    }, [listenForCustomer]);
 
+        /*
+         * Enable voice interface.
+         */
+        voiceEnabledRef.current = true;
+
+        processingRef.current = false;
+
+        setVoiceEnabled(true);
+
+        console.log(
+          "VOICE INTERFACE ENABLED"
+        );
+
+        try {
+
+          /*
+           * ---------------------------------------
+           * STEP 1
+           * Start microphone + VAD + recorder.
+           * ---------------------------------------
+           */
+          console.log(
+            "STARTING MICROPHONE AND VAD"
+          );
+
+          await startListening(
+            handleCustomerTranscript
+          );
+
+          if (
+            !voiceEnabledRef.current
+          ) {
+            return;
+          }
+
+          /*
+           * ---------------------------------------
+           * STEP 2
+           * Start initial Kokoro greeting.
+           * ---------------------------------------
+           */
+          console.log(
+            "STARTING INITIAL KOKORO GREETING"
+          );
+
+          setVoiceStatus("speaking");
+
+          speak(
+            "Hi! Welcome to Burger King. What can I get for you today?",
+            () => {
+
+              /*
+               * Greeting finished normally.
+               */
+              if (
+                voiceEnabledRef.current
+              ) {
+
+                console.log(
+                  "INITIAL GREETING FINISHED"
+                );
+
+                setVoiceStatus(
+                  "listening"
+                );
+              }
+            }
+          );
+
+        } catch (error) {
+
+          console.error(
+            "VOICE START ERROR:",
+            error
+          );
+
+          voiceEnabledRef.current = false;
+
+          processingRef.current = false;
+
+          setVoiceEnabled(false);
+
+          setVoiceStatus("idle");
+        }
+      },
+      [handleCustomerTranscript]
+    );
+
+  /*
+   * --------------------------------------------------
+   * STOP VOICE CONVERSATION
+   * --------------------------------------------------
+   */
   const stopVoiceConversation =
     useCallback(() => {
+
+      console.log(
+        "STOPPING VOICE INTERFACE"
+      );
+
       voiceEnabledRef.current = false;
+
       processingRef.current = false;
 
       stopListening();
 
       setVoiceEnabled(false);
 
+      setVoiceStatus("idle");
+
       console.log(
         "VOICE INTERFACE DISABLED"
       );
+
     }, []);
 
+  /*
+   * --------------------------------------------------
+   * CONTEXT
+   * --------------------------------------------------
+   */
   return (
     <VoiceConversationContext.Provider
       value={{
         voiceActive: voiceEnabled,
+
+        voiceStatus,
+
         startVoiceConversation,
+
         stopVoiceConversation,
       }}
     >
@@ -223,6 +404,7 @@ export function VoiceConversationProvider({ children }) {
 }
 
 export function useVoiceConversation() {
+
   const context =
     useContext(
       VoiceConversationContext

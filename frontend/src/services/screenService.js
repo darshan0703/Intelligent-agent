@@ -1,7 +1,7 @@
-const API_URL = "";
+const API_URL = "https://bug-free-lamp-7v4694q7pvjj29j4-8000.app.github.dev";
 
 
-export async function syncScreen(screen) {
+export async function syncSccdxreen(screen) {
 
   try {
 

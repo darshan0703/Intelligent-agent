@@ -1,26 +1,13 @@
-import {
-  getVolume,
-} from "./audioAnalyser";
-
-import {
-  getInterruptionThreshold,
-} from "./vadService";
-
-import {
-  isSpeaking,
-} from "./ttsService";
+import { getVolume } from "./audioAnalyser";
+import { getInterruptionThreshold } from "./vadService";
+import { isSpeaking } from "./ttsService";
 
 const SPEECH_CONFIRMATION_MS = 220;
 
-let interruptionAnimationFrame =
-  null;
+let interruptionAnimationFrame = null;
+let interruptionHandler = null;
 
-let interruptionHandler =
-  null;
-
-export function setInterruptionHandler(
-  handler
-) {
+export function setInterruptionHandler(handler) {
   interruptionHandler = handler;
 }
 
@@ -35,24 +22,17 @@ export function startInterruptionDetection() {
     }
 
     const volume = getVolume();
-
-    const threshold =
-      getInterruptionThreshold();
+    const threshold = getInterruptionThreshold();
 
     if (volume > threshold) {
       if (speechStartTime === null) {
-        speechStartTime =
-          performance.now();
+        speechStartTime = performance.now();
       }
 
       const duration =
-        performance.now() -
-        speechStartTime;
+        performance.now() - speechStartTime;
 
-      if (
-        duration >=
-        SPEECH_CONFIRMATION_MS
-      ) {
+      if (duration >= SPEECH_CONFIRMATION_MS) {
         console.log(
           "CUSTOMER INTERRUPTED CASHIER"
         );
@@ -63,6 +43,7 @@ export function startInterruptionDetection() {
 
         return;
       }
+
     } else {
       speechStartTime = null;
     }
