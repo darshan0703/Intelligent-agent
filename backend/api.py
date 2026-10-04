@@ -42,7 +42,9 @@ from services.menu_service import (
     get_available,
     get_category,
     get_menu,
+    get_product,
 )
+from services.productservice import get_product_recommendations
 from state import conversation_context, reset_conversation
 
 
@@ -189,6 +191,33 @@ def desserts(preference: str | None = None):
 @app.get("/cart")
 def cart():
     return get_cart()
+
+
+@app.get("/product/{item_name}/recommendations")
+@app.get("/menu/product/{item_name}/recommendations")
+def product_recommendations(item_name: str, preference: str | None = None):
+    product = get_product(item_name)
+    if not product:
+        return {"recommendations": []}
+    cart = conversation_context.get("cart", [])
+    pref = preference or conversation_context.get("food_preference")
+    recs = get_product_recommendations(product, cart=cart, preference=pref)
+    return {"recommendations": recs}
+
+
+@app.post("/product/recommendations")
+@app.post("/menu/product/recommendations")
+def product_recommendations_post(request: dict):
+    item_name = request.get("item_name")
+    if not item_name:
+        return {"recommendations": []}
+    product = get_product(item_name)
+    if not product:
+        return {"recommendations": []}
+    cart = request.get("cart") if request.get("cart") is not None else conversation_context.get("cart", [])
+    pref = request.get("preference") or conversation_context.get("food_preference")
+    recs = get_product_recommendations(product, cart=cart, preference=pref)
+    return {"recommendations": recs}
 
 
 @app.post("/message")

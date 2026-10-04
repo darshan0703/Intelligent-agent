@@ -2,6 +2,7 @@ from datetime import date, datetime
 
 from services.menu_service import get_available, get_category
 from services.modules.m01_dietary_lock import apply_dietary_lock
+from services.modules.m07_cart_exclusion import exclude_cart_items
 
 
 # =========================================================
@@ -142,6 +143,14 @@ def build_recommendations(
     filtered = apply_dietary_lock(
         items,
         preference=preference,
+        cart=cart or []
+    )
+
+    # -----------------------------------------------------
+    # CART EXCLUSION (MODULE 7)
+    # -----------------------------------------------------
+    filtered = exclude_cart_items(
+        filtered,
         cart=cart or []
     )
 
