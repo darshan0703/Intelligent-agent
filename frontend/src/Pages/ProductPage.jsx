@@ -1,6 +1,6 @@
 import "./ProductPage.css";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useKiosk } from "../context/KioskContext";
 import { useCart } from "../context/CartContext";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -19,16 +19,19 @@ function ProductPage() {
 
   const {
     productData,
+    setProductData,
     mealData,
     setMealData,
     mealPopupOpen,
     setMealPopupOpen,
   } = useKiosk();
 
-  const { syncCart } = useCart();
+  const { cart, syncCart } = useCart();
   const product = productData?.data?.product;
-  const recommendations =
-    productData?.data?.recommendations || [];
+  const [recommendations, setRecommendations] = useState(
+    productData?.data?.recommendations || []
+  );
+  const refreshTimersRef = useRef({});
   const [quantity, setQuantity] = useState(1);
 
   // Meal upgrades are available only for burger products.
@@ -146,6 +149,102 @@ function ProductPage() {
       controller.abort();
     };
   }, [product?.id, isBurger]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(refreshTimersRef.current).forEach((timer) => clearTimeout(timer));
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!product?.name) return;
+
+    const controller = new AbortController();
+
+    fetch(`/menu/product/${encodeURIComponent(product.name)}/recommendations`, {
+      signal: controller.signal,
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        if (data && data.recommendations) {
+          setRecommendations(data.recommendations);
+        }
+      })
+      .catch((error) => {
+        if (error.name !== "AbortError") {
+          console.error("Failed to load recommendations:", error);
+        }
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [product?.name]);
+
+  const handleRecommendClick = (item) => {
+    setProductData({
+      screen: "product",
+      data: {
+        product: item,
+        recommendations: [],
+      },
+    });
+    navigate("/product", {
+      state: {
+        origin: location.pathname,
+      },
+    });
+  };
+
+  const handleDirectAddRecommend = async (e, item) => {
+    e.stopPropagation();
+
+    try {
+      const response = await fetch("/cart/add", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          item_name: item.name,
+          quantity: 1,
+        }),
+      });
+
+      const data = await response.json();
+      if (data && data.cart) {
+        syncCart(data);
+      }
+    } catch (error) {
+      console.error("Failed to add recommended item directly to cart:", error);
+    }
+
+    // Reset/start the 10-second silent refresh timer for this card
+    if (refreshTimersRef.current[item.id]) {
+      clearTimeout(refreshTimersRef.current[item.id]);
+    }
+
+    refreshTimersRef.current[item.id] = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `/menu/product/${encodeURIComponent(product.name)}/recommendations`
+        );
+        if (res.ok) {
+          const freshData = await res.json();
+          if (freshData && freshData.recommendations) {
+            setRecommendations(freshData.recommendations);
+          }
+        }
+      } catch (err) {
+        console.error("Silent refresh error:", err);
+      } finally {
+        delete refreshTimersRef.current[item.id];
+      }
+    }, 10000);
+  };
 
   const handleMealButtonClick = () => {
     if (!isBurger) return;
@@ -290,8 +389,33 @@ function ProductPage() {
           <div
             key={item.id}
             className="recommend-card"
+            onClick={() => handleRecommendClick(item)}
+            title={`View ${item.name}`}
           >
-            {item.name}
+            {item.image && (
+              <img
+                src={item.image.startsWith("/") || item.image.startsWith("http") ? item.image : `/${item.image}`}
+                alt={item.name}
+                className="recommend-card-img"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
+              />
+            )}
+            <div className="recommend-card-info">
+              <span className="recommend-card-name" title={item.name}>
+                {item.name}
+              </span>
+              <span className="recommend-card-price">₹ {item.price}</span>
+            </div>
+            <button
+              type="button"
+              className="recommend-card-add-btn"
+              onClick={(e) => handleDirectAddRecommend(e, item)}
+              title={`Add ${item.name} to Cart`}
+            >
+              +
+            </button>
           </div>
         ))}
       </div>

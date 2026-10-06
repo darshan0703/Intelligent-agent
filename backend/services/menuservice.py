@@ -114,7 +114,11 @@ def build_burger_recommendation_data(burgers, cart=None):
     """
 
     if cart is None:
-        cart = []
+        try:
+            from state import conversation_context
+            cart = conversation_context.get("cart", [])
+        except Exception:
+            cart = []
 
     # -----------------------------------------------------
     # BUILD RECOMMENDATIONS THROUGH THE CENTRAL ENGINE

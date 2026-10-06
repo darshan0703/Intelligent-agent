@@ -424,39 +424,90 @@
 }
 
 .recommend-card {
-  min-width: 180px;
-
-  height: 100px;
-
+  min-width: 240px;
+  height: 96px;
+  padding: 8px 14px;
   border-radius: 20px;
-
-  background: rgba(
-    255,
-    122,
-    0,
-    0.08
-  );
-
-  border: 2px solid rgba(
-    255,
-    122,
-    0,
-    0.15
-  );
-
+  background: #ffffff;
+  border: 2px solid rgba(255, 122, 0, 0.2);
   display: flex;
-
-  justify-content: center;
-
   align-items: center;
-
-  font-family: "Flame";
-
-  font-size: 22px;
-
+  gap: 12px;
   color: var(--bk-brown);
-
   flex-shrink: 0;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.recommend-card:hover {
+  transform: translateY(-2px);
+  border-color: #ff7a00;
+  box-shadow: 0 6px 18px rgba(255, 122, 0, 0.15);
+}
+
+.recommend-card-img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.recommend-card-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1;
+  min-width: 0;
+  gap: 3px;
+}
+
+.recommend-card-name {
+  font-family: "Flame";
+  font-size: 15px;
+  line-height: 1.2;
+  color: var(--bk-brown);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 110px;
+}
+
+.recommend-card-price {
+  font-family: "Flame";
+  font-size: 15px;
+  font-weight: 700;
+  color: #d62300;
+}
+
+.recommend-card-add-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ff7a00, #d62300);
+  border: none;
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 3px 8px rgba(214, 35, 0, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  line-height: 1;
+}
+
+.recommend-card-add-btn:hover {
+  transform: scale(1.18);
+  box-shadow: 0 5px 12px rgba(214, 35, 0, 0.5);
+}
+
+.recommend-card-add-btn:active {
+  transform: scale(0.92);
 }
 
 
