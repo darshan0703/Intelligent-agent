@@ -2,297 +2,543 @@
    PRODUCT PAGE
 ========================================= */
 
+
+
 .product-page {
+
   position: relative;
+
   width: 1080px;
+
   height: 1920px;
+
   overflow: hidden;
+
   background: var(--bg);
+
 }
+
+
+
 
 
 /* =========================================
    PRODUCT IMAGE
 ========================================= */
 
+
+
 .product-image {
+
   position: absolute;
+
   top: 300px;
+
   right: 40px;
+
   width: 500px;
+
   object-fit: contain;
+
 }
+
+
+
 
 
 /* =========================================
    PRODUCT TITLE
 ========================================= */
 
+
+
 .product-title-container {
+
   position: absolute;
+
   left: 40px;
+
   top: 310px;
+
   width: 500px;
 
+
+
   display: inline-flex;
+
   align-items: flex-end;
+
   gap: 12px;
 
+
+
   z-index: 100;
+
 }
 
+
+
 .product-name {
+
   margin: 0;
+
+
 
   color: var(--bk-brown);
 
+
+
   font-family: "Flame";
 
+
+
   font-size: 56px;
+
   line-height: 1.1;
 
+
+
   width: 500px;
+
 }
 
+
+
 .product-type-icon {
+
   display: inline-block;
 
+
+
   width: 70px;
+
   height: 50px;
+
+
 
   margin-left: 10px;
 
+
+
   vertical-align: middle;
+
 }
+
+
+
 
 
 /* =========================================
    SHORT DESCRIPTION
 ========================================= */
 
+
+
+
+
 .product-short-description {
+
   position: absolute;
 
+
+
   top: 470px;
+
   left: 40px;
+
+
 
   width: 500px;
 
+
+
   color: #666;
+
+
 
   font-family: "Flame";
 
+
+
   font-size: 24px;
+
   line-height: 1.4;
 
+
+
   margin: 0;
+
 }
+
+
+
 
 
 /* =========================================
    PRICE + MEAL BUTTON
 ========================================= */
 
+
+
 .product-price-row {
+
   position: absolute;
+
+
 
   /*
      MANUALLY MOVE WHOLE ROW
      LEFT / RIGHT
   */
+
   left: 40px;
+
+
 
   top: 550px;
 
+
+
   width: 650px;
+
   height: 75px;
+
+
 
   display: flex;
 
+
+
   align-items: center;
+
+
 
   /*
      SPACE BETWEEN PRICE
      AND MEAL BUTTON
   */
+
   gap: 45px;
+
 }
+
+
+
 
 
 /* =========================================
    PRICE
 ========================================= */
 
+
+
 .product-price {
+
   position: static;
+
+
 
   margin: 0;
 
+
+
   color: var(--bk-black);
+
+
 
   font-family: "Flame";
 
+
+
   font-size: 64px;
+
+
 
   font-weight: 700;
 
+
+
   white-space: nowrap;
+
 }
+
+
+
 
 
 /* =========================================
    UPGRADE TO A MEAL BUTTON
 ========================================= */
 
+
+
 .meal-upgrade-btn {
+
   height: 52px;
+
+
 
   /*
      MANUALLY CONTROL BUTTON WIDTH
   */
+
   min-width: 170px;
+
+
 
   /*
      MANUALLY MOVE BUTTON
      LEFT / RIGHT
   */
+
   position: absolute;
 
+
+
   top: 10px;
+
   left: 300px;
+
+
 
   padding: 0 22px;
 
+
+
   border: none;
 
+
+
   border-radius: 999px;
+
+
 
   /*
      KEEP CAPSULE RED
   */
+
   background: var(--bk-red);
+
+
 
   /*
      BASE TEXT
      The ::after animation
      appears over this text.
   */
+
   color: white;
+
+
 
   font-family: "Flame";
 
+
+
   font-size: 20px;
+
+
 
   font-weight: 700;
 
+
+
   white-space: nowrap;
+
+
 
   cursor: pointer;
 
+
+
   display: flex;
+
+
 
   align-items: center;
 
+
+
   justify-content: center;
 
+
+
   transition: transform 0.2s ease;
+
+
 
   /*
      Keep animation inside
      the capsule.
   */
+
   overflow: hidden;
+
 }
+
+
+
 
 
 /* =========================================
    ANIMATED TEXT
 ========================================= */
 
+
+
 .meal-upgrade-btn::after {
+
   content: "Upgrade to a Meal";
+
+
 
   position: absolute;
 
+
+
   left: 0;
+
   top: 0;
 
+
+
   width: 100%;
+
   height: 100%;
+
+
 
   display: flex;
 
+
+
   align-items: center;
+
   justify-content: center;
+
+
 
   font-family: "Flame";
 
+
+
   font-size: 20px;
+
+
 
   font-weight: 700;
 
+
+
   white-space: nowrap;
 
+
+
   pointer-events: none;
+
+
 
   /*
      Make the overlay text transparent
      so the gradient can appear
      inside the letters.
   */
+
   color: transparent;
+
+
 
   /*
      WHITE + LIGHT ORANGE
      The light orange travels
      from bottom to top.
   */
+
   background-image: linear-gradient(
+
     to top,
+
     #f79114 0%,
+
     #dfa828 50%,
+
     #ffffff 50%,
+
     #ffffff 100%
+
   );
+
+
 
   background-size: 100% 200%;
 
+
+
   background-position: 0% 0%;
 
+
+
   background-repeat: no-repeat;
+
+
 
   /*
      SHOW GRADIENT ONLY
      INSIDE THE TEXT.
   */
+
   -webkit-background-clip: text;
+
   background-clip: text;
 
+
+
   -webkit-text-fill-color: transparent;
+
+
 
   /*
      CONTINUOUS TEXT FILL
   */
+
   animation: mealTextFill 2.5s ease-in-out infinite;
+
 }
+
+
+
 
 
 /* =========================================
    MEAL BUTTON HOVER
 ========================================= */
 
+
+
 .meal-upgrade-btn:hover {
+
   transform: scale(1.05);
+
 }
+
+
+
 
 
 /* =========================================
    MEAL BUTTON CLICK
 ========================================= */
 
+
+
 .meal-upgrade-btn:active {
+
   transform: scale(0.97);
+
 }
+
+
+
 
 
 /* =========================================
@@ -301,122 +547,192 @@
    BOTTOM → TOP
 ========================================= */
 
+
+
 @keyframes mealTextFill {
+
+
 
   /*
      START
      TEXT IS WHITE
   */
+
   0% {
+
     background-position: 0% 0%;
+
   }
+
+
 
   /*
      ORANGE STARTS MOVING UP
   */
+
   25% {
+
     background-position: 0% 25%;
+
   }
+
+
 
   /*
      HALF WAY
   */
+
   50% {
+
     background-position: 0% 50%;
+
   }
+
+
 
   /*
      MOSTLY FILLED
   */
+
   75% {
+
     background-position: 0% 75%;
+
   }
+
+
 
   /*
      FULL LIGHT ORANGE
   */
+
   100% {
+
     background-position: 0% 100%;
+
   }
+
 }
+
+
+
 
 
 /* =========================================
    SECTION TITLES
 ========================================= */
 
+
+
 .section-title {
+
   color: var(--bk-orange);
+
+
 
   font-family: "Flame";
 
+
+
   font-size: 34px;
+
+
 
   font-weight: 700;
 
+
+
   text-transform: uppercase;
 
+
+
   margin: 0;
+
 }
+
+
 
 .about-title {
+
   position: absolute;
 
+
+
   top: 680px;
+
   left: 40px;
+
 }
+
+
 
 .recommended-title {
   position: absolute;
-
-  top: 980px;
+  top: 915px;
   left: 40px;
 }
-
 
 /* =========================================
    PRODUCT DESCRIPTION
 ========================================= */
 
 .product-description {
+
   position: absolute;
 
+
+
   top: 740px;
+
   left: 40px;
+
+
 
   width: 900px;
 
+
+
   color: var(--bk-black);
+
+
 
   font-family: "Flame";
 
+
+
   font-size: 24px;
+
+
 
   line-height: 1.6;
 
+
+
   margin: 0;
+
 }
+
+
+
 
 
 /* =========================================
    RECOMMENDATIONS
 ========================================= */
 
+
+
 .recommendations {
   position: absolute;
-
-  top: 1050px;
+  top: 965px;
   left: 40px;
-
-  width: 900px;
-
+  width: 980px;
   display: flex;
-
   gap: 20px;
-
   overflow-x: auto;
-
   scrollbar-width: none;
+  padding: 16px 12px 24px;
+  margin: -16px -12px 0;
 }
 
 .recommendations::-webkit-scrollbar {
@@ -424,6 +740,7 @@
 }
 
 .recommend-card {
+<<<<<<< HEAD
   min-width: 180px;
 
   height: 100px;
@@ -457,140 +774,365 @@
   color: var(--bk-brown);
 
   flex-shrink: 0;
+=======
+  width: 235px;
+  min-width: 235px;
+  height: 325px;
+  padding: 16px 14px;
+  border-radius: 24px;
+  background: #ffffff;
+  border: 2px solid rgba(91, 43, 17, 0.15);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--bk-brown);
+  flex-shrink: 0;
+  cursor: pointer;
+  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  position: relative;
+  box-sizing: border-box;
 }
 
+.recommend-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--bk-orange);
+  box-shadow: 0 6px 20px rgba(255, 122, 0, 0.3);
+  z-index: 2;
+}
 
-/* =========================================
-   QUANTITY SELECTOR
-========================================= */
+.recommend-card-img {
+  width: 140px;
+  height: 140px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.recommend-card-info {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  gap: 4px;
+  text-align: center;
+}
+
+.recommend-card-name {
+  width: 100%;
+  font-family: "Flame";
+  font-size: 20px;
+  line-height: 1.2;
+  color: var(--bk-brown);
+  text-align: center;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: 44px;
+  word-break: break-word;
+}
+
+.recommend-card-price {
+  font-family: "Flame";
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--bk-brown);
+}
+
+.recommend-card-add-btn {
+  width: 100%;
+  height: 40px;
+  border-radius: 14px;
+  background: var(--bk-orange);
+  border: none;
+  color: #ffffff;
+  font-family: "Flame";
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: none;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+  line-height: 1;
+}
+
+.recommend-card-add-btn::before {
+  content: "Add To Cart";
+  white-space: nowrap;
+}
+
+.recommend-card-add-btn:hover {
+  transform: translateY(-1px);
+  opacity: 0.92;
+}
+
+.recommend-card-add-btn:active {
+  transform: scale(0.97);
+>>>>>>> 0806265f (Improve recommendation cards and fix clipping)
+}
 
 .quantity-selector {
+
   position: absolute;
+
+
 
   left: 340px;
 
+
+
   bottom: 500px;
+
+
 
   display: flex;
 
+
+
   align-items: center;
 
+
+
   gap: 30px;
+
 }
 
+
+
 .qty-btn {
+
   width: 70px;
+
+
 
   height: 70px;
 
+
+
   border-radius: 20px;
 
+
+
   border: 2px solid rgba(
+
     91,
+
     43,
+
     17,
+
     0.15
+
   );
+
+
 
   background: white;
 
+
+
   font-size: 36px;
+
+
 
   font-weight: 700;
 
+
+
   cursor: pointer;
+
 }
 
+
+
 .qty-value {
+
   font-size: 42px;
+
+
 
   font-family: "Flame";
 
+
+
   color: var(--bk-brown);
+
 }
+
+
+
 
 
 /* =========================================
    ADD TO CART
 ========================================= */
 
+
+
 .add-cart-btn {
+
   position: absolute;
+
+
 
   left: 570px;
 
+
+
   bottom: 500px;
+
+
 
   width: 500px;
 
+
+
   height: 95px;
+
+
 
   border: none;
 
+
+
   border-radius: 24px;
+
+
 
   background: var(--bk-orange);
 
+
+
   color: white;
+
+
 
   font-family: "Flame";
 
+
+
   font-size: 34px;
+
+
 
   font-weight: 700;
 
+
+
   cursor: pointer;
 
+
+
   transition: all 0.2s ease;
+
 }
+
+
 
 .add-cart-btn:hover {
+
   opacity: 0.95;
+
 }
 
+
+
 .add-cart-btn:active {
+
   transform: scale(0.98);
+
 }
+
+
+
 
 
 /* =========================================
    NUTRITION PANEL
 ========================================= */
 
+
+
 .nutrition-panel {
+
   position: absolute;
+
+
 
   top: 700px;
 
+
+
   right: 40px;
+
+
 
   width: 220px;
 
+
+
   display: flex;
+
+
 
   flex-direction: column;
 
+
+
   gap: 20px;
+
 }
+
+
 
 .nutrition-item {
+
   text-align: center;
+
 }
 
+
+
 .nutrition-label {
+
   color: #777;
+
+
 
   font-size: 18px;
 
+
+
   font-family: "Flame";
+
 }
 
+
+
 .nutrition-value {
+
   color: var(--bk-brown);
+
+
 
   font-size: 28px;
 
+
+
   font-weight: 700;
 
+
+
   font-family: "Flame";
+
 }
