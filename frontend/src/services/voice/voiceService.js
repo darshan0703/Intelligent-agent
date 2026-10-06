@@ -39,16 +39,59 @@ import {
 import {
   startInterruptionDetection,
   stopInterruptionDetection,
-  setInterruptionHandler as
-    setInterruptionHandlerInternal,
+  setInterruptionHandler as setInterruptionHandlerInternal,
 } from "./interruptionService";
+
 
 let stopping = false;
 let transcriptCallback = null;
 let speechTriggered = false;
 let sileroInitialized = false;
 
+
+// ======================================================
+// PREPARE VOICE INPUT
+// ======================================================
+// Used only before the FIRST greeting.
+//
+// It prepares the microphone and analyser so that the
+// existing interruption mechanism can hear the customer
+// while the greeting is playing.
+//
+// It does NOT start recording.
+// ======================================================
+
+export async function prepareVoiceInput() {
+  try {
+    console.log(
+      "PREPARING VOICE INPUT FOR GREETING..."
+    );
+
+    await getMicrophone();
+
+    await setupAnalyser();
+
+    console.log(
+      "VOICE INPUT READY FOR GREETING"
+    );
+
+  } catch (error) {
+    console.error(
+      "VOICE INPUT PREPARATION ERROR:",
+      error
+    );
+
+    throw error;
+  }
+}
+
+
+// ======================================================
+// START LISTENING
+// ======================================================
+
 export async function startListening(callback) {
+
   if (isRecording()) {
     return;
   }
@@ -73,48 +116,31 @@ export async function startListening(callback) {
   speechTriggered = false;
 
   try {
+
     console.log(
       "PREPARING VOICE LISTENER..."
     );
 
-    /*
-     * Get the microphone first.
-     *
-     * This is also used by:
-     * - MediaRecorder
-     * - audio analyser
-     * - existing microphone system
-     */
-
     await getMicrophone();
-
-    /*
-     * Keep the analyser setup for now.
-     *
-     * Other services such as
-     * interruption detection may
-     * still depend on it.
-     */
 
     await setupAnalyser();
 
-    /*
-     * Initialize Silero once.
-     *
-     * The AI model loads here.
-     */
 
     if (!sileroInitialized) {
+
       await initializeSileroVAD({
+
         onSpeechStart:
           handleSileroSpeechStart,
 
         onSpeechEnd:
           handleSileroSpeechEnd,
+
       });
 
       sileroInitialized = true;
     }
+
 
     if (
       stopping ||
@@ -123,39 +149,26 @@ export async function startListening(callback) {
       return;
     }
 
+
     console.log(
       "VOICE LISTENER READY"
     );
 
-    /*
-     * Start recording BEFORE
-     * speech detection.
-     *
-     * This prevents short words
-     * from being cut off.
-     */
 
     await startRecording({
+
       onComplete:
         async (recording) => {
+
           if (stopping) {
             return;
           }
 
-          /*
-           * Stop Silero while
-           * processing this turn.
-           */
-
           pauseSileroVAD();
 
-          /*
-           * If Silero never
-           * confirmed human speech,
-           * ignore the recording.
-           */
 
           if (!speechTriggered) {
+
             console.log(
               "NO HUMAN SPEECH DETECTED"
             );
@@ -165,7 +178,9 @@ export async function startListening(callback) {
             return;
           }
 
+
           if (!recording) {
+
             console.log(
               "EMPTY RECORDING"
             );
@@ -175,32 +190,37 @@ export async function startListening(callback) {
             return;
           }
 
+
           await processRecording(
             recording
           );
+
         },
 
+
       onError: () => {
+
         pauseSileroVAD();
 
         if (!stopping) {
           restartListening();
         }
+
       },
+
     });
 
-    /*
-     * Start AI-based voice
-     * activity detection.
-     */
 
     startSileroVAD();
+
 
     console.log(
       "SILERO LISTENING FOR CUSTOMER"
     );
 
+
   } catch (error) {
+
     console.error(
       "VOICE LISTENER ERROR:",
       error
@@ -209,15 +229,24 @@ export async function startListening(callback) {
     pauseSileroVAD();
 
     if (!stopping) {
+
       setTimeout(
         restartListening,
         500
       );
+
     }
+
   }
 }
 
+
+// ======================================================
+// SILERO SPEECH START
+// ======================================================
+
 function handleSileroSpeechStart() {
+
   if (
     stopping ||
     isSpeaking() ||
@@ -226,23 +255,27 @@ function handleSileroSpeechStart() {
     return;
   }
 
-  /*
-   * Ignore duplicate speech
-   * start events.
-   */
 
   if (speechTriggered) {
     return;
   }
 
+
   speechTriggered = true;
+
 
   console.log(
     "SILERO: CUSTOMER TURN STARTED"
   );
 }
 
+
+// ======================================================
+// SILERO SPEECH END
+// ======================================================
+
 function handleSileroSpeechEnd() {
+
   if (
     stopping ||
     !isRecording()
@@ -250,49 +283,40 @@ function handleSileroSpeechEnd() {
     return;
   }
 
-  /*
-   * Ignore speech-end events
-   * if Silero never confirmed
-   * speech in this turn.
-   */
 
   if (!speechTriggered) {
     return;
   }
 
+
   console.log(
     "SILERO: CUSTOMER TURN ENDED"
   );
 
-  /*
-   * Stop AI detection first
-   * so no duplicate events
-   * are generated while
-   * MediaRecorder finishes.
-   */
 
   pauseSileroVAD();
-
-  /*
-   * Silero decides when the
-   * customer has finished
-   * speaking.
-   */
 
   stopRecording();
 }
 
-async function processRecording(
-  recording
-) {
+
+// ======================================================
+// PROCESS RECORDING
+// ======================================================
+
+async function processRecording(recording) {
+
   if (stopping) {
     return;
   }
 
+
   try {
+
     console.log(
       "SENDING AUDIO TO WHISPER..."
     );
+
 
     const result =
       await sendAudioToWhisper(
@@ -300,23 +324,28 @@ async function processRecording(
         recording.mimeType
       );
 
+
     if (stopping) {
       return;
     }
 
+
     const transcript =
       result?.transcript;
+
 
     console.log(
       "WHISPER TRANSCRIPT:",
       transcript
     );
 
+
     if (
       !isValidTranscript(
         transcript
       )
     ) {
+
       console.log(
         "IGNORING INVALID TRANSCRIPT"
       );
@@ -326,72 +355,87 @@ async function processRecording(
       return;
     }
 
+
     console.log(
       "VALID CUSTOMER TRANSCRIPT:",
       transcript
     );
 
-    /*
-     * Send transcript to
-     * VoiceConversationProvider.
-     */
 
     transcriptCallback?.(
       transcript
     );
 
+
   } catch (error) {
+
     console.error(
       "WHISPER ERROR:",
       error
     );
 
+
     if (!stopping) {
       restartListening();
     }
+
   }
 }
 
+
+// ======================================================
+// RESTART LISTENING
+// ======================================================
+
 function restartListening() {
+
   if (stopping) {
     return;
   }
+
 
   if (isSpeaking()) {
     return;
   }
 
+
   if (isRecording()) {
     return;
   }
 
+
   speechTriggered = false;
 
+
   pauseSileroVAD();
+
 
   console.log(
     "RESTARTING CUSTOMER LISTENER"
   );
 
+
   setTimeout(() => {
+
     if (
       !stopping &&
       !isSpeaking() &&
       !isRecording()
     ) {
+
       startListening();
+
     }
+
   }, 400);
 }
 
+
+// ======================================================
+// STOP LISTENING
+// ======================================================
+
 export function stopListening() {
-  /*
-   * Stop only the current
-   * listening cycle.
-   *
-   * The voice conversation
-   * itself remains active.
-   */
 
   speechTriggered = false;
 
@@ -401,15 +445,27 @@ export function stopListening() {
 
   cleanupRecorder();
 }
+
+
+// ======================================================
+// SPEAK
+// ======================================================
+// IMPORTANT:
+//
+// This is the SAME speak() function for:
+// 1. Initial greeting
+// 2. Menu responses
+// 3. Category responses
+// 4. Cart responses
+// 5. Every later Kokoro response
+//
+// The existing interruption mechanism remains here.
+// ======================================================
 
 export function speak(
   text,
   onComplete
 ) {
-  /*
-   * Stop customer listening
-   * before the kiosk speaks.
-   */
 
   pauseSileroVAD();
 
@@ -419,42 +475,55 @@ export function speak(
 
   speechTriggered = false;
 
+
   speakText(
     text,
     {
       onStart: () => {
-        /*
-         * Existing interruption
-         * detection remains active.
-         *
-         * We will improve this
-         * later using Silero too.
-         */
 
         if (!stopping) {
+
+          console.log(
+            "STARTING INTERRUPTION DETECTION"
+          );
+
           startInterruptionDetection();
+
         }
+
       },
 
+
       onComplete: () => {
+
         stopInterruptionDetection();
+
 
         if (onComplete) {
           onComplete();
         }
+
       },
     }
   );
 }
 
+
+// ======================================================
+// STOP ENTIRE VOICE SESSION
+// ======================================================
+
 export function stopVoiceSession() {
+
   console.log(
     "STOPPING ENTIRE VOICE SESSION"
   );
 
+
   stopping = true;
 
   speechTriggered = false;
+
 
   pauseSileroVAD();
 
@@ -470,39 +539,50 @@ export function stopVoiceSession() {
 
   releaseMicrophone();
 
-  /*
-   * Destroy Silero only when
-   * the entire voice session
-   * ends.
-   */
-
   destroySileroVAD();
+
 
   sileroInitialized = false;
 
   transcriptCallback = null;
+
 
   console.log(
     "VOICE SESSION STOPPED"
   );
 }
 
+
+// ======================================================
+// INTERRUPTION HANDLER
+// ======================================================
+
 export function setInterruptionHandler(
   handler
 ) {
+
   setInterruptionHandlerInternal(
     () => {
+
       if (!isSpeaking()) {
         return;
       }
+
 
       console.log(
         "INTERRUPTION DETECTED"
       );
 
+
+      // Stop Kokoro.
+
       stopSpeaking();
 
+
+      // Continue existing conversation flow.
+
       handler?.();
+
     }
   );
 }
