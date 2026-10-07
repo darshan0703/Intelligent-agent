@@ -369,7 +369,7 @@
 .recommended-title {
   position: absolute;
 
-  top: 980px;
+  top: 915px;
   left: 40px;
 }
 
@@ -405,10 +405,10 @@
 .recommendations {
   position: absolute;
 
-  top: 1050px;
+  top: 965px;
   left: 40px;
 
-  width: 900px;
+  width: 980px;
 
   display: flex;
 
@@ -417,6 +417,9 @@
   overflow-x: auto;
 
   scrollbar-width: none;
+
+  padding: 16px 12px 24px;
+  margin: -16px -12px 0;
 }
 
 .recommendations::-webkit-scrollbar {
@@ -424,90 +427,109 @@
 }
 
 .recommend-card {
-  min-width: 240px;
-  height: 96px;
-  padding: 8px 14px;
-  border-radius: 20px;
+  width: 235px;
+  min-width: 235px;
+  height: 325px;
+  padding: 16px 14px;
+  border-radius: 24px;
   background: #ffffff;
-  border: 2px solid rgba(255, 122, 0, 0.2);
+  border: 2px solid rgba(91, 43, 17, 0.15);
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
+  justify-content: space-between;
+  gap: 8px;
   color: var(--bk-brown);
   flex-shrink: 0;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
-  transition: all 0.2s ease;
+  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   position: relative;
   box-sizing: border-box;
 }
 
 .recommend-card:hover {
-  transform: translateY(-2px);
-  border-color: #ff7a00;
-  box-shadow: 0 6px 18px rgba(255, 122, 0, 0.15);
+  transform: translateY(-4px);
+  border-color: var(--bk-orange);
+  box-shadow: 0 6px 20px rgba(255, 122, 0, 0.3);
+  z-index: 2;
 }
 
 .recommend-card-img {
-  width: 64px;
-  height: 64px;
+  width: 140px;
+  height: 140px;
   object-fit: contain;
   flex-shrink: 0;
 }
 
 .recommend-card-info {
+  width: 100%;
   display: flex;
   flex-direction: column;
+  align-items: center;
   justify-content: center;
-  flex: 1;
   min-width: 0;
-  gap: 3px;
+  gap: 4px;
+  text-align: center;
 }
 
 .recommend-card-name {
+  width: 100%;
   font-family: "Flame";
-  font-size: 15px;
+  font-size: 20px;
   line-height: 1.2;
   color: var(--bk-brown);
-  white-space: nowrap;
+  text-align: center;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 110px;
+  min-height: 44px;
+  word-break: break-word;
 }
 
 .recommend-card-price {
   font-family: "Flame";
-  font-size: 15px;
+  font-size: 20px;
   font-weight: 700;
-  color: #d62300;
+  color: var(--bk-brown);
 }
 
 .recommend-card-add-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #ff7a00, #d62300);
+  width: 100%;
+  height: 40px;
+  border-radius: 14px;
+  background: var(--bk-orange);
   border: none;
   color: #ffffff;
-  font-size: 22px;
+  font-family: "Flame";
+  font-size: 16px;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
   cursor: pointer;
   flex-shrink: 0;
-  box-shadow: 0 3px 8px rgba(214, 35, 0, 0.35);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: none;
+  transition: transform 0.15s ease, opacity 0.15s ease;
   line-height: 1;
 }
 
+.recommend-card-add-btn::before {
+  content: "Add To Cart";
+  white-space: nowrap;
+}
+
 .recommend-card-add-btn:hover {
-  transform: scale(1.18);
-  box-shadow: 0 5px 12px rgba(214, 35, 0, 0.5);
+  transform: translateY(-1px);
+  opacity: 0.92;
 }
 
 .recommend-card-add-btn:active {
-  transform: scale(0.92);
+  transform: scale(0.97);
 }
 
 

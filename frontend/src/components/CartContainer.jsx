@@ -1,4 +1,5 @@
 import "./CartContainer.css";
+import { useRef, useEffect } from "react";
 import { useCart } from "../context/CartContext";
 import { useNavigate } from "react-router-dom";
 
@@ -14,6 +15,41 @@ function CartContainer() {
   const count = Number(itemCount) || 0;
   const cartTotal = Number(total) || 0;
   const isEmpty = count === 0;
+
+  const cartItemsRef = useRef(null);
+  const prevCartRef = useRef(cart);
+  const prevCountRef = useRef(count);
+
+  useEffect(() => {
+    const prevCart = prevCartRef.current || [];
+    const prevCount = prevCountRef.current || 0;
+
+    if (count > prevCount) {
+      let targetIndex = -1;
+
+      if (cart.length > prevCart.length) {
+        targetIndex = cart.length - 1;
+      } else {
+        targetIndex = cart.findIndex((item, idx) => {
+          const prevItem = prevCart[idx];
+          return prevItem && item.quantity > prevItem.quantity;
+        });
+      }
+
+      if (targetIndex !== -1 && cartItemsRef.current) {
+        const targetElement = cartItemsRef.current.children[targetIndex];
+        if (targetElement && typeof targetElement.scrollIntoView === "function") {
+          targetElement.scrollIntoView({
+            behavior: "smooth",
+            block: "nearest",
+          });
+        }
+      }
+    }
+
+    prevCartRef.current = cart;
+    prevCountRef.current = count;
+  }, [cart, count]);
 
   const handleReviewPay = () => {
     if (count === 0) {
@@ -53,7 +89,7 @@ function CartContainer() {
       {/* ========================================= */}
 
       {!isEmpty && (
-        <div className="cart-items">
+        <div className="cart-items" ref={cartItemsRef}>
           {cart.map((item, index) => (
             <div key={index} className="cart-item">
               <div className="cart-item-header">
