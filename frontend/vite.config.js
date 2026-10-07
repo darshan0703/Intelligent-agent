@@ -41,6 +41,16 @@ export default defineConfig({
         changeOrigin: true,
       },
 
+      "/category": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
+
+      "/recommendations": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
+
       "/menu": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,

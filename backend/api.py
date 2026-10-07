@@ -43,6 +43,7 @@ from services.menu_service import (
     get_product,
 )
 from services.productservice import get_product_recommendations
+from services.modules.m06_condiment_gating import get_checkout_dip_suggestions
 from state import conversation_context, reset_conversation
 load_dotenv()
 print("INITIALIZING KOKORO TTS...")
@@ -128,6 +129,58 @@ def set_preference(request: dict):
         "success": True,
         "food_preference": conversation_context.get("food_preference")
     }
+@app.get("/category/{category_name}/recommendations")
+def category_recommendations(category_name: str, preference: str | None = None):
+    from services.menuservice import build_burger_recommendation_data, build_category_response
+    cart = conversation_context.get("cart", [])
+    pref = preference or conversation_context.get("food_preference")
+    cat_norm = category_name.strip().lower()
+
+    if cat_norm in ("burger", "burgers"):
+        items = get_category("burger")
+        rec_data = build_burger_recommendation_data(items, cart=cart)
+        return {
+            "success": True,
+            "data": rec_data
+        }
+    elif cat_norm in ("drink", "drinks"):
+        resp = build_category_response(
+            category="drink",
+            title="Drinks",
+            screen="recommended_drinks",
+            conversation_context=conversation_context,
+            filter_field="type",
+            filter_values=["hot", "cold"],
+            all_items_key="all_drinks"
+        )
+        return {"success": True, "data": resp.data}
+    elif cat_norm in ("side", "sides"):
+        resp = build_category_response(
+            category="side",
+            title="Sides",
+            screen="recommended_sides",
+            conversation_context=conversation_context,
+            filter_field="foodType",
+            filter_values=["veg", "non veg"],
+            all_items_key="all_sides"
+        )
+        return {"success": True, "data": resp.data}
+    elif cat_norm in ("dessert", "desserts"):
+        resp = build_category_response(
+            category="dessert",
+            title="Desserts",
+            screen="recommended_desserts",
+            conversation_context=conversation_context,
+            all_items_key="all_desserts"
+        )
+        return {"success": True, "data": resp.data}
+    else:
+        items = get_category(cat_norm)
+        from services.recommendation import build_recommendations
+        p, pr, a = build_recommendations(items, food_type=pref or "both", cart=cart)
+        return {"success": True, "data": {"priority": p, "premium": pr, "additional": a}}
+
+
 @app.get("/menu/burgers")
 def burgers(preference: str | None = None):
     pref = preference or conversation_context.get("food_preference")
@@ -280,6 +333,91 @@ def message(request: MessageRequest):
             [],
         ),
     }
+
+class CheckoutSuggestionsRequest(BaseModel):
+    cart_lines: list[dict] | None = None
+
+
+def _build_checkout_recommendations(cart):
+    from services.menu_service import get_category
+    from services.modules.m06_condiment_gating import get_checkout_dip_suggestions
+    all_sides = get_category("side")
+    dips = get_checkout_dip_suggestions(all_sides, cart)
+    recs = []
+    seen_ids = set()
+
+    # If cart has finger food (e.g. fries), prioritize sauces then dips first
+    if dips:
+        for d in dips:
+            if d.get("id") not in seen_ids:
+                seen_ids.add(d.get("id"))
+                name_lower = str(d.get("name", "")).lower()
+                badge = "🌶️ Signature Sauce" if "sauce" in name_lower else "🍟 Perfect Dip"
+                recs.append({
+                    "id": d.get("id"),
+                    "name": d.get("name"),
+                    "price": float(d.get("price") or 0),
+                    "image": d.get("image"),
+                    "category": d.get("category", "side"),
+                    "badge": badge,
+                })
+
+    # Complement with drinks / desserts to provide a complete 3-4 card shelf
+    from services.recommendation import build_recommendations
+    drinks = get_category("drink")
+    desserts = get_category("dessert")
+    p, pr, a = build_recommendations(drinks + desserts, cart=cart)
+    for item in (p + pr + a):
+        if len(recs) >= 4:
+            break
+        if item.get("id") not in seen_ids:
+            seen_ids.add(item.get("id"))
+            cat = str(item.get("category", "")).lower()
+            badge = "🥤 Refreshing Drink" if "drink" in cat else ("🍦 Sweet Treat" if "dessert" in cat else "⭐ Best Match")
+            recs.append({
+                "id": item.get("id"),
+                "name": item.get("name"),
+                "price": float(item.get("price") or 0),
+                "image": item.get("image"),
+                "category": item.get("category"),
+                "badge": badge,
+            })
+    return recs
+
+
+@app.get("/recommendations/checkout")
+def checkout_suggestions_get():
+    cart = conversation_context.get("cart", [])
+    recs = _build_checkout_recommendations(cart)
+    return {
+        "success": True,
+        "recommendations": recs,
+        "suggestions": recs,
+    }
+
+
+@app.post("/recommendations/checkout")
+def checkout_suggestions_post(body: CheckoutSuggestionsRequest | None = None):
+    cart = (body.cart_lines if body and body.cart_lines is not None else None) or conversation_context.get("cart", [])
+    recs = _build_checkout_recommendations(cart)
+    return {
+        "success": True,
+        "recommendations": recs,
+        "suggestions": recs,
+    }
+
+
+@app.get("/cart/checkout-suggestions")
+def checkout_suggestions_alias():
+    cart = conversation_context.get("cart", [])
+    recs = _build_checkout_recommendations(cart)
+    return {
+        "success": True,
+        "recommendations": recs,
+        "suggestions": recs,
+    }
+
+
 @app.post("/cart/add")
 def cart_add(request: AddToCartRequest):
     return cart_add_item(

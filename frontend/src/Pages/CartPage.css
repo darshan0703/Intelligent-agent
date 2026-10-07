@@ -16,7 +16,7 @@
     right: 60px;
 
     top: 300px;
-    bottom: 980px;
+    bottom: 1080px;
 
     display: flex;
     flex-direction: column;
@@ -105,36 +105,28 @@
 
     font-family: "Flame";
 
-    font-size: 30px;
-
-    font-weight: 700;
+    font-size: 34px;
 
     cursor: pointer;
 }
 
 .cart-page-item-quantity button:active {
-    transform: scale(0.95);
+    transform: scale(0.92);
 }
 
 .cart-page-item-price {
-    text-align: right;
-
     color: var(--bk-brown);
 
     font-family: "Flame";
 
-    font-size: 30px;
+    font-size: 32px;
 
-    font-weight: 700;
-
-    white-space: nowrap;
+    text-align: right;
 }
 
 .cart-page-remove {
-    width: 50px;
-    height: 50px;
-
-    padding: 0;
+    width: 45px;
+    height: 45px;
 
     border: none;
 
@@ -159,15 +151,148 @@
     transform: scale(0.9);
 }
 
+/* ── PRE-CHECKOUT / REVIEW RECOMMENDATIONS SHELF ── */
+.cart-recommendations-container {
+    position: absolute;
+
+    left: 60px;
+    right: 60px;
+
+    top: 860px;
+    height: 195px;
+
+    padding: 12px 20px;
+
+    background: rgba(255, 122, 0, 0.05);
+
+    border: 2px dashed rgba(255, 122, 0, 0.25);
+
+    border-radius: 24px;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.cart-rec-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.cart-rec-header h3 {
+    margin: 0;
+    font-family: "Flame";
+    font-size: 20px;
+    color: var(--bk-brown);
+}
+
+.cart-rec-sub {
+    font-size: 14px;
+    color: #e35205;
+    font-weight: 600;
+}
+
+.cart-rec-grid {
+    display: flex;
+    gap: 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.cart-rec-grid::-webkit-scrollbar {
+    display: none;
+}
+
+.cart-rec-card {
+    min-width: 250px;
+    max-width: 280px;
+    background: white;
+    border-radius: 16px;
+    padding: 10px 14px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.cart-rec-image {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.cart-rec-details {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.cart-rec-badge {
+    font-size: 10px;
+    font-weight: 700;
+    color: #e35205;
+    background: #fff3e0;
+    padding: 2px 6px;
+    border-radius: 6px;
+    width: fit-content;
+    margin-bottom: 2px;
+}
+
+.cart-rec-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--bk-brown);
+    line-height: 1.25;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
+}
+
+.cart-rec-cost {
+    font-size: 13px;
+    color: #e35205;
+    font-weight: 700;
+    margin-top: 2px;
+}
+
+.cart-rec-add-btn {
+    background: #e35205;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.cart-rec-add-btn.added {
+    background: #2e7d32;
+}
+
+.cart-rec-add-btn:active {
+    transform: scale(0.92);
+}
+
 .cart-page-total {
     position: absolute;
 
     left: 60px;
     right: 60px;
 
-    top: 930px;
+    top: 1075px;
 
-    padding-top: 25px;
+    padding-top: 20px;
 
     border-top: 2px solid rgba(91, 43, 17, 0.12);
 
@@ -191,7 +316,7 @@
     left: 60px;
     right: 60px;
 
-    top: 1050px;
+    top: 1180px;
 }
 
 .payment-section h2 {

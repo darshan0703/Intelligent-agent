@@ -306,6 +306,7 @@ function ProductPage() {
 
       if (data.success) {
         syncCart(data);
+        // Navigate back smoothly without full page refresh
         navigate(origin);
       }
     } catch (error) {

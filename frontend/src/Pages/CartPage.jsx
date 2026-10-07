@@ -1,5 +1,5 @@
 import "./CartPage.css";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCart } from "../context/CartContext";
 import { useNavigate } from "react-router-dom";
 
@@ -13,6 +13,72 @@ function CartPage() {
   const navigate = useNavigate();
 
   const [selectedPayment, setSelectedPayment] = useState(null);
+  const [checkoutRecs, setCheckoutRecs] = useState([]);
+  const [addedIds, setAddedIds] = useState(new Set());
+
+  const resolveImageUrl = (img) => {
+    if (!img) return "";
+    if (img.startsWith("http://") || img.startsWith("https://") || img.startsWith("/")) {
+      return img;
+    }
+    return `/${img}`;
+  };
+
+  // Load dynamic checkout recommendations matching original MLE design
+  const loadCheckoutRecommendations = async () => {
+    try {
+      const res = await fetch("/recommendations/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cart_lines: cart }),
+      });
+      const data = await res.json();
+      if (data?.success && data?.recommendations) {
+        setCheckoutRecs(data.recommendations);
+      } else if (data?.suggestions) {
+        setCheckoutRecs(data.suggestions);
+      } else {
+        setCheckoutRecs([]);
+      }
+    } catch (err) {
+      console.warn("Failed to load checkout recommendations via POST, trying GET:", err);
+      try {
+        const res = await fetch("/recommendations/checkout");
+        const data = await res.json();
+        if (data?.success && data?.recommendations) {
+          setCheckoutRecs(data.recommendations);
+        } else if (data?.suggestions) {
+          setCheckoutRecs(data.suggestions);
+        }
+      } catch (e) {
+        console.warn("Checkout recommendations fetch failed:", e);
+      }
+    }
+  };
+
+  useEffect(() => {
+    loadCheckoutRecommendations();
+  }, [cart]);
+
+  const handleAddRecommended = async (item) => {
+    try {
+      setAddedIds((prev) => new Set(prev).add(item.id));
+      const res = await fetch("/cart/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          item_name: item.name,
+          quantity: 1,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        syncCart(data);
+      }
+    } catch (err) {
+      console.error("Failed to add recommended item to cart:", err);
+    }
+  };
 
   const updateItem = async (itemIndex, action) => {
     try {
@@ -142,6 +208,61 @@ if (data.success) {
           </div>
         ))}
       </div>
+
+      {/* PRE-CHECKOUT / REVIEW RECOMMENDATIONS SHELF (Matching original MLE git branch) */}
+      {checkoutRecs.length > 0 && (
+        <div className="cart-recommendations-container">
+          <div className="cart-rec-header">
+            <div>
+              <h3>Pairs Well With Your Order</h3>
+              <span className="cart-rec-sub">Complete your tray with customer favourites</span>
+            </div>
+          </div>
+          <div className="cart-rec-grid">
+            {checkoutRecs.map((item) => (
+              <div key={item.id} className="cart-rec-card">
+                <img
+                  src={resolveImageUrl(item.image)}
+                  alt={item.name}
+                  className="cart-rec-image"
+                  onError={(e) => {
+                    e.currentTarget.style.opacity = "0.3";
+                  }}
+                />
+                <div className="cart-rec-details">
+                  <span className="cart-rec-badge">{item.badge || "⭐ Best Match"}</span>
+                  <span className="cart-rec-title" title={item.name}>{item.name}</span>
+                  <span className="cart-rec-cost">₹{item.price}</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                  <button
+                    className={`cart-rec-add-btn ${addedIds.has(item.id) ? "added" : ""}`}
+                    onClick={() => handleAddRecommended(item)}
+                  >
+                    {addedIds.has(item.id) ? "✓ Added" : "+ Add"}
+                  </button>
+                  <button
+                    type="button"
+                    title="Dismiss"
+                    style={{
+                      border: "none",
+                      background: "transparent",
+                      color: "#999",
+                      cursor: "pointer",
+                      fontSize: "14px",
+                      padding: "2px 6px",
+                      borderRadius: "50%",
+                    }}
+                    onClick={() => setCheckoutRecs((prev) => prev.filter((r) => r.id !== item.id))}
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="cart-page-total">
         <span>Total</span>
