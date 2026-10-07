@@ -184,24 +184,7 @@ function ProductPage() {
     };
   }, [product?.name]);
 
-  const handleRecommendClick = (item) => {
-    setProductData({
-      screen: "product",
-      data: {
-        product: item,
-        recommendations: [],
-      },
-    });
-    navigate("/product", {
-      state: {
-        origin: location.pathname,
-      },
-    });
-  };
-
-  const handleDirectAddRecommend = async (e, item) => {
-    e.stopPropagation();
-
+  const handleDirectAddRecommend = async (item) => {
     try {
       const response = await fetch("/cart/add", {
         method: "POST",
@@ -389,8 +372,8 @@ function ProductPage() {
           <div
             key={item.id}
             className="recommend-card"
-            onClick={() => handleRecommendClick(item)}
-            title={`View ${item.name}`}
+            onClick={() => handleDirectAddRecommend(item)}
+            title={`Add ${item.name} to Cart`}
           >
             {item.image && (
               <img
@@ -411,7 +394,10 @@ function ProductPage() {
             <button
               type="button"
               className="recommend-card-add-btn"
-              onClick={(e) => handleDirectAddRecommend(e, item)}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDirectAddRecommend(item);
+              }}
               title={`Add ${item.name} to Cart`}
             >
               +
