@@ -26,7 +26,7 @@ function ProductPage() {
     setMealPopupOpen,
   } = useKiosk();
 
-  const { cart, syncCart } = useCart();
+  const { cart, syncCart, notifyCartItemAdded } = useCart();
   const product = productData?.data?.product;
   const [recommendations, setRecommendations] = useState(
     productData?.data?.recommendations || []
@@ -198,8 +198,9 @@ function ProductPage() {
       });
 
       const data = await response.json();
-      if (data && data.cart) {
+      if (data && (data.success || data.cart)) {
         syncCart(data);
+        notifyCartItemAdded();
       }
     } catch (error) {
       console.error("Failed to add recommended item directly to cart:", error);
@@ -289,6 +290,7 @@ function ProductPage() {
 
       if (data.success) {
         syncCart(data);
+        notifyCartItemAdded();
         navigate(origin);
       }
     } catch (error) {
@@ -373,7 +375,6 @@ function ProductPage() {
             key={item.id}
             className="recommend-card"
             onClick={() => handleDirectAddRecommend(item)}
-            title={`Add ${item.name} to Cart`}
           >
             {item.image && (
               <img
@@ -386,7 +387,7 @@ function ProductPage() {
               />
             )}
             <div className="recommend-card-info">
-              <span className="recommend-card-name" title={item.name}>
+              <span className="recommend-card-name">
                 {item.name}
               </span>
               <span className="recommend-card-price">₹ {item.price}</span>
@@ -398,7 +399,7 @@ function ProductPage() {
                 e.stopPropagation();
                 handleDirectAddRecommend(item);
               }}
-              title={`Add ${item.name} to Cart`}
+              aria-label={`Add ${item.name} to Cart`}
             >
               +
             </button>

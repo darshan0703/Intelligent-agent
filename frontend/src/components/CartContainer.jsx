@@ -9,7 +9,13 @@ function CartContainer() {
   const {
     cart,
     itemCount,
-    total
+    total,
+    cartAddEvent,
+    isCartAddEventPending,
+    markCartAddEventHandled,
+    cartScrollTop,
+    getCartScrollTop,
+    setCartScrollTop,
   } = useCart();
 
   const count = Number(itemCount) || 0;
@@ -17,39 +23,82 @@ function CartContainer() {
   const isEmpty = count === 0;
 
   const cartItemsRef = useRef(null);
-  const prevCartRef = useRef(cart);
-  const prevCountRef = useRef(count);
+  const isRestoredRef = useRef(false);
 
+  // Restore saved scroll position on mount/remount (when no add event is pending)
   useEffect(() => {
-    const prevCart = prevCartRef.current || [];
-    const prevCount = prevCountRef.current || 0;
-
-    if (count > prevCount) {
-      let targetIndex = -1;
-
-      if (cart.length > prevCart.length) {
-        targetIndex = cart.length - 1;
-      } else {
-        targetIndex = cart.findIndex((item, idx) => {
-          const prevItem = prevCart[idx];
-          return prevItem && item.quantity > prevItem.quantity;
-        });
-      }
-
-      if (targetIndex !== -1 && cartItemsRef.current) {
-        const targetElement = cartItemsRef.current.children[targetIndex];
-        if (targetElement && typeof targetElement.scrollIntoView === "function") {
-          targetElement.scrollIntoView({
-            behavior: "smooth",
-            block: "nearest",
-          });
-        }
-      }
+    if (isEmpty) {
+      return;
     }
 
-    prevCartRef.current = cart;
-    prevCountRef.current = count;
-  }, [cart, count]);
+    if (isCartAddEventPending && isCartAddEventPending()) {
+      isRestoredRef.current = true;
+      return;
+    }
+
+    if (isRestoredRef.current) {
+      return;
+    }
+
+    const savedTop = getCartScrollTop ? getCartScrollTop() : cartScrollTop;
+    if (savedTop <= 0) {
+      isRestoredRef.current = true;
+      return;
+    }
+
+    let rafId;
+    const applyRestore = () => {
+      if (cartItemsRef.current) {
+        cartItemsRef.current.scrollTop = savedTop;
+        isRestoredRef.current = true;
+      }
+    };
+
+    applyRestore();
+    rafId = requestAnimationFrame(applyRestore);
+
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, [isEmpty, cart]);
+
+  // Handle successful-add auto-scroll
+  useEffect(() => {
+    if (!isCartAddEventPending || !isCartAddEventPending()) {
+      return;
+    }
+
+    let rafId1;
+    let rafId2;
+
+    rafId1 = requestAnimationFrame(() => {
+      rafId2 = requestAnimationFrame(() => {
+        if (cartItemsRef.current) {
+          cartItemsRef.current.scrollTo({
+            top: cartItemsRef.current.scrollHeight,
+            behavior: "smooth",
+          });
+          if (setCartScrollTop) {
+            setCartScrollTop(cartItemsRef.current.scrollHeight);
+          }
+          if (markCartAddEventHandled) {
+            markCartAddEventHandled();
+          }
+        }
+      });
+    });
+
+    return () => {
+      if (rafId1) cancelAnimationFrame(rafId1);
+      if (rafId2) cancelAnimationFrame(rafId2);
+    };
+  }, [cartAddEvent, cart, isCartAddEventPending, markCartAddEventHandled, setCartScrollTop]);
+
+  const handleScroll = (e) => {
+    if (e.target && setCartScrollTop) {
+      setCartScrollTop(e.target.scrollTop);
+    }
+  };
 
   const handleReviewPay = () => {
     if (count === 0) {
@@ -89,7 +138,7 @@ function CartContainer() {
       {/* ========================================= */}
 
       {!isEmpty && (
-        <div className="cart-items" ref={cartItemsRef}>
+        <div className="cart-items" ref={cartItemsRef} onScroll={handleScroll}>
           {cart.map((item, index) => (
             <div key={index} className="cart-item">
               <div className="cart-item-header">

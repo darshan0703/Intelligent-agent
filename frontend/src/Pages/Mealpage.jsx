@@ -21,7 +21,7 @@ function MealPage() {
     const drink = meal?.drink;
 
     const mealSize = meal?.size || "Medium";
-    const { syncCart } = useCart();
+    const { syncCart, notifyCartItemAdded } = useCart();
     const [quantity, setQuantity] = useState(1);
 
     const [selectedSide, setSelectedSide] = useState(side);
@@ -101,6 +101,7 @@ function MealPage() {
 
             if (data.success) {
                 syncCart(data);
+                notifyCartItemAdded();
                 navigate(origin);
             }
 
@@ -154,31 +155,7 @@ function MealPage() {
 
                                 <h1 className="meal-name">
 
-                                    {(() => {
-
-                                        const words = burger.name.split(" ");
-
-                                        const midpoint = Math.ceil(
-                                            words.length / 2
-                                        );
-
-                                        return (
-                                            <>
-
-                                                {words
-                                                    .slice(0, midpoint)
-                                                    .join(" ")}
-
-                                                <br />
-
-                                                {words
-                                                    .slice(midpoint)
-                                                    .join(" ")}
-
-                                            </>
-                                        );
-
-                                    })()}
+                                    {burger.name}
 
                                     {burger.foodType && (
 
