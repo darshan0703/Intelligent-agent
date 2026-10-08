@@ -211,9 +211,11 @@ def handle_burger_selection(
     # The frontend owns the Veg / Non-Veg filter.
     # -----------------------------------------------------
 
+    cart = conversation_context.get("cart", []) if conversation_context else []
     recommendation_data = (
         build_burger_recommendation_data(
-            burgers
+            burgers,
+            cart=cart
         )
     )
 
@@ -505,7 +507,8 @@ def handle_more_options():
 def build_filtered_master_recommendation_data(
     items,
     filter_field,
-    filter_values
+    filter_values,
+    cart=None
 ):
 
     grouped = {}
@@ -524,7 +527,8 @@ def build_filtered_master_recommendation_data(
 
         grouped[filter_value] = build_recommendations(
             filtered_items,
-            filter_value
+            filter_value,
+            cart=cart
         )
 
     priority = []
@@ -596,13 +600,15 @@ def build_category_response(
             data={}
         )
 
+    cart = conversation_context.get("cart", [])
+
     # Build the normal category dataset first.
     if filter_field and filter_values:
         recommendation_data = build_filtered_master_recommendation_data(
-            items, filter_field, filter_values
+            items, filter_field, filter_values, cart=cart
         )
     else:
-        priority, premium, additional = build_recommendations(items)
+        priority, premium, additional = build_recommendations(items, cart=cart)
         recommendation_data = {
             "priority": priority,
             "premium": premium,
@@ -616,8 +622,8 @@ def build_category_response(
         non_veg_items = [item for item in food_type_items if str(item.get("foodType", "")).lower().replace("_", " ").strip() in ("non veg", "non_veg")]
         dietary_data = {
             "both": {"priority": recommendation_data["priority"], "premium": recommendation_data["premium"], "additional": recommendation_data["additional"]},
-            "veg": dict(zip(("priority", "premium", "additional"), build_recommendations(veg_items, "veg"))),
-            "non_veg": dict(zip(("priority", "premium", "additional"), build_recommendations(non_veg_items, "non veg"))),
+            "veg": dict(zip(("priority", "premium", "additional"), build_recommendations(veg_items, "veg", cart=cart))),
+            "non_veg": dict(zip(("priority", "premium", "additional"), build_recommendations(non_veg_items, "non veg", cart=cart))),
         }
         dietary_data["veg"]["priority"] = dietary_data["veg"]["priority"][:2]
         dietary_data["veg"]["premium"] = dietary_data["veg"]["premium"][:2]

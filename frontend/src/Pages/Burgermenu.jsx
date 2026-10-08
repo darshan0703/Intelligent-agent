@@ -16,11 +16,13 @@ import {
 } from "react";
 import { useLocation } from "react-router-dom";
 import { useKiosk } from "../context/KioskContext";
+import { useCart } from "../context/CartContext";
 import { syncScreen } from "../services/screenService";
 
 function Burgermenu() {
   const location = useLocation();
   const { foodPreference, setFoodPreference } = useKiosk();
+  const { cart } = useCart();
 
   const [burgerSections, setBurgerSections] = useState([]);
   const [activeFilter, setActiveFilter] = useState(
@@ -37,11 +39,24 @@ function Burgermenu() {
 
   useEffect(() => {
     const prefParam = activeFilter !== "both" ? `?preference=${activeFilter}` : "";
-    fetch(`/menu/burgers${prefParam}`)
+    fetch(`/menu/burgers${prefParam}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cart }),
+    })
       .then((res) => res.json())
-      .then(setBurgerSections)
-      .catch((err) => console.warn("Failed to fetch burgers:", err));
-  }, [activeFilter]);
+      .then((data) => {
+        if (Array.isArray(data)) setBurgerSections(data);
+      })
+      .catch((err) => {
+        fetch(`/menu/burgers${prefParam}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (Array.isArray(data)) setBurgerSections(data);
+          })
+          .catch((e) => console.warn("Failed to fetch burgers:", e));
+      });
+  }, [activeFilter, cart]);
 
   useEffect(() => {
     syncScreen("burger_menu");

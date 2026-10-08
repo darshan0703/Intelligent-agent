@@ -7,8 +7,17 @@ from repositories.menu_repository import (
 )
 from services.meal_service import get_meal_options
 
-def get_menu(category, preference=None):
-    return get_menu_sections(category, preference=preference)
+def get_menu(category, preference=None, cart=None):
+    from state import conversation_context
+    from services.menu_organizer import organize_menu_sections
+
+    if cart is None:
+        cart = conversation_context.get("cart", [])
+    if preference is None:
+        preference = conversation_context.get("food_preference")
+
+    raw_sections = get_menu_sections(category, preference=preference)
+    return organize_menu_sections(category, raw_sections, preference=preference, cart=cart)
 
 def get_available():
     return repo_get_available()

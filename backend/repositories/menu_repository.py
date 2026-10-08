@@ -39,52 +39,67 @@ def serialize_menu_item(row):
 # BASE QUERY
 # ==========================================================
 
+_MENU_ROWS_CACHE = []
+
 def fetch_menu_rows():
-    response = (
-        supabase.table("inventory")
-        .select(
-            """
-            stock,
-            expiry_date,
-            menu_items!inner(
-                id,
-                name,
-                short_description,
-                long_description,
-                price,
-                image,
-                meal_image,
-                category,
-                food_type,
-                serving_type,
-                section,
-                section_order,
-                display_order,
-                is_meal_available,
-                is_available
+    global _MENU_ROWS_CACHE
+    last_err = None
+    for attempt in range(2):
+        try:
+            response = (
+                supabase.table("inventory")
+                .select(
+                    """
+                    stock,
+                    expiry_date,
+                    menu_items!inner(
+                        id,
+                        name,
+                        short_description,
+                        long_description,
+                        price,
+                        image,
+                        meal_image,
+                        category,
+                        food_type,
+                        serving_type,
+                        section,
+                        section_order,
+                        display_order,
+                        is_meal_available,
+                        is_available
+                    )
+                    """
+                )
+                .eq("branch_id", BRANCH_ID)
+                .gt("stock", 0)
+                .execute()
             )
-            """
-        )
-        .eq("branch_id", BRANCH_ID)
-        .gt("stock", 0)
-        .execute()
-    )
 
-    rows = []
+            rows = []
+            for item in response.data or []:
+                menu = item["menu_items"]
 
-    for item in response.data:
-        menu = item["menu_items"]
+                if not menu["is_available"]:
+                    continue
 
-        if not menu["is_available"]:
-            continue
+                merged = {**menu}
+                merged["stock"] = item["stock"]
+                merged["expiry_date"] = item["expiry_date"]
 
-        merged = {**menu}
-        merged["stock"] = item["stock"]
-        merged["expiry_date"] = item["expiry_date"]
+                rows.append(merged)
 
-        rows.append(merged)
+            if rows:
+                _MENU_ROWS_CACHE = rows
+            return rows
+        except Exception as e:
+            last_err = e
 
-    return rows
+    if _MENU_ROWS_CACHE:
+        print(f"[WARN] fetch_menu_rows Supabase query failed ({last_err}), using cached menu rows.")
+        return _MENU_ROWS_CACHE
+
+    raise last_err
 
 
 # ==========================================================

@@ -6,6 +6,7 @@ import {
   useState,
   useEffect,
   useCallback,
+  useMemo,
 } from "react";
 
 import Header from "../components/Header";
@@ -19,6 +20,7 @@ import fire from "../assets/images/fire.png";
 import crown from "../assets/images/crown.png";
 
 import { useKiosk } from "../context/KioskContext";
+import { useCart } from "../context/CartContext";
 
 import { syncScreen } from "../services/screenService";
 
@@ -27,97 +29,221 @@ function Drink() {
 
   const {
     recommendationData,
+    setRecommendationData,
   } = useKiosk();
+
+  const { cart } = useCart();
+
+  const [
+    fallbackData,
+    setFallbackData
+  ] = useState(null);
 
   const [
     selectedType,
     setSelectedType
   ] = useState("both");
 
+  const [menuItems, setMenuItems] = useState([]);
+
+  // Fetch full category menu once for candidate pool backup
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/menu/drinks")
+      .then((res) => res.json())
+      .then((sections) => {
+        if (!cancelled && Array.isArray(sections)) {
+          const all = sections.flatMap((s) => s.products || []);
+          setMenuItems(all);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch("/category/drink/recommendations")
+      .then((res) => res.json())
+      .then((resData) => {
+        if (!cancelled && resData?.success && resData?.data) {
+          setFallbackData(resData.data);
+          if (setRecommendationData) {
+            setRecommendationData({ data: resData.data });
+          }
+        }
+      })
+      .catch((err) => console.warn("Failed to fetch drink recommendations:", err));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cart, selectedType]);
+
   // ==========================================
   // MASTER BACKEND DATASET
   // ==========================================
 
   const data =
-    recommendationData?.data || {};
-
-  const allDrinks = {
-    priority:
-      data.priority || [],
-
-    premium:
-      data.premium || [],
-
-    additional:
-      data.additional || [],
-  };
+    recommendationData?.data ||
+    fallbackData ||
+    {};
 
   // ==========================================
-  // FILTER MASTER DATASET
+  // REAL-TIME CART EXCLUSION FILTER (M7)
+  // Ensures items in cart NEVER display in 4 cards or additional rows
   // ==========================================
-
-  const filterProducts = useCallback(
-    (products) => {
-
-      const drinkProducts =
-        products.filter(
-          (product) => {
-
-            const category =
-              product?.category
-                ?.toLowerCase()
-                .trim();
-
-            return (
-              !category ||
-              category === "drink"
-            );
-          }
-        );
-
-      if (
-        selectedType === "both"
-      ) {
-        return drinkProducts;
-      }
-
-      return drinkProducts.filter(
-        (product) => {
-
-          const type =
-            product?.type
-              ?.toLowerCase()
-              .trim();
-
-          return (
-            type === selectedType
-          );
-
-        }
-      );
-
-    },
-    [selectedType]
+  const cartNames = useMemo(
+    () => new Set((cart || []).map((c) => String(c?.name || "").trim().toLowerCase())),
+    [cart]
+  );
+  const cartIds = useMemo(
+    () => new Set((cart || []).map((c) => c?.id).filter(Boolean).map(String)),
+    [cart]
   );
 
-  // ==========================================
-  // FILTERED RECOMMENDATION SECTIONS
-  // ==========================================
+  const notInCart = useCallback((item) => {
+    if (!item) return false;
+    const name = String(item?.name || "").trim().toLowerCase();
+    if (cartNames.has(name)) return false;
+    if (item?.id && cartIds.has(String(item.id))) return false;
+    return true;
+  }, [cartNames, cartIds]);
 
-  const freshDrinks =
-    filterProducts(
-      allDrinks.priority
-    );
+  const matchesType = useCallback((item) => {
+    if (!item) return false;
+    if (selectedType === "both") return true;
+    const type = String(item.type || "").toLowerCase().trim();
+    return type === selectedType;
+  }, [selectedType]);
 
-  const premiumDrinks =
-    filterProducts(
-      allDrinks.premium
-    );
+  // Complete pool of eligible candidates for zero-white-card replenishment
+  const allCandidatesPool = useMemo(() => {
+    const list = [
+      ...(data.priority || []),
+      ...(data.premium || []),
+      ...(data.additional || []),
+      ...(data.both?.priority || []),
+      ...(data.both?.premium || []),
+      ...(data.both?.additional || []),
+      ...menuItems,
+    ];
+    const seen = new Set();
+    const deduped = [];
+    for (const item of list) {
+      if (!item) continue;
+      const key = item.id || item.name;
+      if (!seen.has(key)) {
+        seen.add(key);
+        if (matchesType(item)) {
+          deduped.push(item);
+        }
+      }
+    }
+    return deduped;
+  }, [data, menuItems, matchesType]);
 
-  const moreDrinks =
-    filterProducts(
-      allDrinks.additional
-    );
+  // Dynamic backfill guaranteeing exactly 2 Priority and 2 Premium cards
+  const { freshDrinks, premiumDrinks, moreDrinks } = useMemo(() => {
+    const usedKeys = new Set();
+
+    // 1. Priority Items (Cards 1 & 2)
+    const priority = [];
+    for (const item of (data.priority || [])) {
+      if (notInCart(item) && matchesType(item)) {
+        const key = item.id || item.name;
+        priority.push(item);
+        usedKeys.add(key);
+        if (priority.length === 2) break;
+      }
+    }
+
+    if (priority.length < 2) {
+      for (const item of (data.additional || [])) {
+        if (notInCart(item) && matchesType(item)) {
+          const key = item.id || item.name;
+          if (!usedKeys.has(key)) {
+            priority.push(item);
+            usedKeys.add(key);
+            if (priority.length === 2) break;
+          }
+        }
+      }
+    }
+    if (priority.length < 2) {
+      for (const item of allCandidatesPool) {
+        if (notInCart(item)) {
+          const key = item.id || item.name;
+          if (!usedKeys.has(key)) {
+            priority.push(item);
+            usedKeys.add(key);
+            if (priority.length === 2) break;
+          }
+        }
+      }
+    }
+
+    // 2. Premium Items (Cards 3 & 4)
+    const premium = [];
+    for (const item of (data.premium || [])) {
+      if (notInCart(item) && matchesType(item)) {
+        const key = item.id || item.name;
+        if (!usedKeys.has(key)) {
+          premium.push(item);
+          usedKeys.add(key);
+          if (premium.length === 2) break;
+        }
+      }
+    }
+
+    if (premium.length < 2) {
+      const candidatesByPrice = [...allCandidatesPool]
+        .filter(notInCart)
+        .filter((item) => !usedKeys.has(item.id || item.name))
+        .sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0));
+
+      for (const item of candidatesByPrice) {
+        const key = item.id || item.name;
+        premium.push(item);
+        usedKeys.add(key);
+        if (premium.length === 2) break;
+      }
+    }
+
+    // 3. Additional Items (Cards 5, 6, 7, 8)
+    const additional = [];
+    for (const item of (data.additional || [])) {
+      if (notInCart(item) && matchesType(item)) {
+        const key = item.id || item.name;
+        if (!usedKeys.has(key)) {
+          additional.push(item);
+          usedKeys.add(key);
+          if (additional.length === 4) break;
+        }
+      }
+    }
+    if (additional.length < 4) {
+      for (const item of allCandidatesPool) {
+        if (notInCart(item)) {
+          const key = item.id || item.name;
+          if (!usedKeys.has(key)) {
+            additional.push(item);
+            usedKeys.add(key);
+            if (additional.length === 4) break;
+          }
+        }
+      }
+    }
+
+    return {
+      freshDrinks: priority,
+      premiumDrinks: premium,
+      moreDrinks: additional,
+    };
+  }, [data, allCandidatesPool, notInCart, matchesType]);
 
   // ==========================================
   // SCREEN SYNC

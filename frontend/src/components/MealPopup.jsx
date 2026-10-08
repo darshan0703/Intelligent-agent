@@ -22,7 +22,7 @@ function MealPopup({
 
   if (!open) return null;
 
-  if (!meals) return null;
+  if (!meals || !meals.meals || !meals.meals.medium || !meals.meals.large) return null;
 
   return (
 

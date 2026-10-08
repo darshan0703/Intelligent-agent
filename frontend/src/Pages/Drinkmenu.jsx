@@ -14,15 +14,30 @@ import {
   useEffect
 } from "react";
 
-function Drinkmenu() {
+import { useCart } from "../context/CartContext";
 
+function Drinkmenu() {
+  const { cart } = useCart();
   const [drinkSections, setDrinkSections] = useState([]);
 
- useEffect(() => {
-    fetch("/menu/drinks")
-        .then((res) => res.json())
-        .then(setDrinkSections);
-}, []);
+  useEffect(() => {
+    fetch("/menu/drinks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cart }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setDrinkSections(data);
+      })
+      .catch(() => {
+        fetch("/menu/drinks")
+          .then((res) => res.json())
+          .then((data) => {
+            if (Array.isArray(data)) setDrinkSections(data);
+          });
+      });
+  }, [cart]);
 
   const menuContentRef = useRef(null);
 
