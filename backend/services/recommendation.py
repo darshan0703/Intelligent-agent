@@ -169,25 +169,38 @@ def build_recommendations(
         return [], [], []
 
     # =====================================================
-    # CANDIDATE POOL & DYNAMIC PREMIUM FLOOR
+    # STATISTICAL PERCENTILE PRICE TIER PARTITIONING
+    # Dynamically partitions ANY category (Burgers, Sides, Drinks, Desserts)
+    # using price distribution percentiles — ZERO hardcoded numbers.
     # =====================================================
     candidates = filtered
-    _all_prices = [float(i.get("price") or 0) for i in candidates if i.get("price")]
-    _cat_max = max(_all_prices) if _all_prices else 0
-
-    # Adaptive premium floor:
-    # If category max is >= 150 (burgers, drinks, sides), premium floor is at least 120 and 55% of max.
-    # If category max is < 150 (e.g. desserts where max is 129), premium floor is 55% of max (~71).
-    if _cat_max >= 150:
-        premium_floor = max(120.0, _cat_max * 0.55)
+    _prices = sorted([float(i.get("price") or 0) for i in candidates if i.get("price")])
+    
+    if _prices:
+        p_min = _prices[0]
+        p_max = _prices[-1]
+        # P75 (Upper Quartile): Premium threshold (top 30% of category price range)
+        p_75_idx = int(len(_prices) * 0.70)
+        p_75 = _prices[min(p_75_idx, len(_prices) - 1)]
+        # P40 (Mid Quartile): Popular threshold (excludes bottom 40% cheapest budget items)
+        p_40_idx = int(len(_prices) * 0.40)
+        p_40 = _prices[min(p_40_idx, len(_prices) - 1)]
     else:
-        premium_floor = _cat_max * 0.55
+        p_min = p_max = p_75 = p_40 = 0.0
+
+    premium_floor = p_75
+    popular_floor = p_40
 
     # =====================================================
     # BUDGET-AWARE CANDIDATES (MODULE 5) FOR PRIORITY
+    # Popular tier: Excludes bottom 40% cheapest entry items
     # =====================================================
     budget_candidates = apply_price_ceiling(candidates, cart=cart or [])
-    priority_pool = get_priority_items(budget_candidates) if budget_candidates else get_priority_items(candidates)
+    cand_pool = budget_candidates if budget_candidates else candidates
+    popular_candidates = [i for i in cand_pool if float(i.get("price") or 0) >= popular_floor]
+    if not popular_candidates:
+        popular_candidates = cand_pool
+    priority_pool = get_priority_items(popular_candidates)
 
     # =====================================================
     # SINGLE / ALREADY FILTERED TYPE (veg, non_veg, hot, cold)
@@ -204,25 +217,22 @@ def build_recommendations(
 
         used_ids = {item.get("id") or item.get("name") for item in priority}
 
-        # Premium candidates: price >= premium_floor sorted ASCENDING (nearest above floor)
+        # Premium candidates: price >= premium_floor sorted DESCENDING (highest price & margin items first)
         prem_items = [
             item for item in candidates
             if (item.get("id") or item.get("name")) not in used_ids
             and float(item.get("price") or 0) >= premium_floor
         ]
-        prem_items = sorted(prem_items, key=lambda x: float(x.get("price") or 0))
+        prem_items = sorted(prem_items, key=lambda x: float(x.get("price") or 0), reverse=True)
 
-        # Fallback: if no item >= floor, take top 30% costliest sorted ascending
+        # Fallback: if no item >= floor, take top costliest sorted descending
         if not prem_items:
             all_sorted = sorted(
                 [item for item in candidates if (item.get("id") or item.get("name")) not in used_ids],
                 key=lambda x: float(x.get("price") or 0),
                 reverse=True
             )
-            prem_items = sorted(
-                all_sorted[: max(1, len(all_sorted) // 3)],
-                key=lambda x: float(x.get("price") or 0)
-            )
+            prem_items = all_sorted
 
         premium = prem_items[:2]
         if len(premium) < 2:
@@ -321,22 +331,18 @@ def build_recommendations(
 
     used_ids = {item.get("id") or item.get("name") for item in priority}
 
-    # Premium: 1 veg + 1 non-veg (price >= premium_floor sorted ASCENDING)
+    # Premium: 1 veg + 1 non-veg (price >= premium_floor sorted DESCENDING)
     veg_prem = [
         item for item in veg_items
         if (item.get("id") or item.get("name")) not in used_ids
         and float(item.get("price") or 0) >= premium_floor
     ]
-    veg_prem = sorted(veg_prem, key=lambda x: float(x.get("price") or 0))
+    veg_prem = sorted(veg_prem, key=lambda x: float(x.get("price") or 0), reverse=True)
     if not veg_prem:
-        all_sorted = sorted(
+        veg_prem = sorted(
             [item for item in veg_items if (item.get("id") or item.get("name")) not in used_ids],
             key=lambda x: float(x.get("price") or 0),
             reverse=True
-        )
-        veg_prem = sorted(
-            all_sorted[: max(1, len(all_sorted) // 3)],
-            key=lambda x: float(x.get("price") or 0)
         )
 
     non_veg_prem = [
@@ -344,16 +350,12 @@ def build_recommendations(
         if (item.get("id") or item.get("name")) not in used_ids
         and float(item.get("price") or 0) >= premium_floor
     ]
-    non_veg_prem = sorted(non_veg_prem, key=lambda x: float(x.get("price") or 0))
+    non_veg_prem = sorted(non_veg_prem, key=lambda x: float(x.get("price") or 0), reverse=True)
     if not non_veg_prem:
-        all_sorted = sorted(
+        non_veg_prem = sorted(
             [item for item in non_veg_items if (item.get("id") or item.get("name")) not in used_ids],
             key=lambda x: float(x.get("price") or 0),
             reverse=True
-        )
-        non_veg_prem = sorted(
-            all_sorted[: max(1, len(all_sorted) // 3)],
-            key=lambda x: float(x.get("price") or 0)
         )
 
     premium = []

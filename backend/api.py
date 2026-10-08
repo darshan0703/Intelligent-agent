@@ -400,13 +400,13 @@ def _build_checkout_recommendations(cart):
                     "badge": badge,
                 })
 
-    # Complement with drinks / desserts to provide a complete 3-4 card shelf
+    # Complement with drinks / desserts to provide a complete 3-card shelf
     from services.recommendation import build_recommendations
     drinks = get_category("drink")
     desserts = get_category("dessert")
     p, pr, a = build_recommendations(drinks + desserts, cart=cart)
     for item in (p + pr + a):
-        if len(recs) >= 4:
+        if len(recs) >= 3:
             break
         if item.get("id") not in seen_ids:
             seen_ids.add(item.get("id"))
@@ -420,7 +420,7 @@ def _build_checkout_recommendations(cart):
                 "category": item.get("category"),
                 "badge": badge,
             })
-    return recs
+    return recs[:3]
 
 
 @app.get("/recommendations/checkout")
@@ -473,19 +473,6 @@ def meal_options(request: dict):
             return {
                 "success": False,
                 "message": "item_id is required",
-            }
-        meal_flow = conversation_context.get(
-            "meal_flow"
-        )
-        if (
-            meal_flow
-            and meal_flow.get("item_id") == item_id
-            and meal_flow.get("status") == "declined"
-        ):
-            return {
-                "success": True,
-                "is_meal_available": False,
-                "message": "Meal offer was declined.",
             }
         pref = request.get("food_preference") or conversation_context.get("food_preference")
         cart = request.get("cart") or conversation_context.get("cart", [])

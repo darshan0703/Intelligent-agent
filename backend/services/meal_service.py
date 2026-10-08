@@ -99,46 +99,50 @@ def get_default_meal(meal_size):
 
 
 def get_upgrade_options(meal_size, role=None):
-    response = (
-        supabase.table("meal_upgrade_rules")
-        .select("""
-            extra_price,
-            menu_items!inner(
-                id,
-                name,
-                image,
-                price,
-                section,
-                meal_role,
-                food_type,
-                is_available
-            )
-        """)
-        .eq("meal_size", meal_size)
-        .eq("is_enabled", True)
-        .execute()
-    )
+    try:
+        response = (
+            supabase.table("meal_upgrade_rules")
+            .select("""
+                extra_price,
+                menu_items!inner(
+                    id,
+                    name,
+                    image,
+                    price,
+                    section,
+                    meal_role,
+                    food_type,
+                    is_available
+                )
+            """)
+            .eq("meal_size", meal_size)
+            .eq("is_enabled", True)
+            .execute()
+        )
 
-    options = []
+        options = []
 
-    for row in response.data or []:
-        item = row.get("menu_items")
+        for row in response.data or []:
+            item = row.get("menu_items")
 
-        if not item:
-            continue
+            if not item:
+                continue
 
-        if role is not None and item.get("meal_role") != role:
-            continue
+            if role is not None and item.get("meal_role") != role:
+                continue
 
-        if not item.get("is_available"):
-            continue
+            if not item.get("is_available"):
+                continue
 
-        options.append({
-            **item,
-            "extra_price": row["extra_price"],
-        })
+            options.append({
+                **item,
+                "extra_price": row["extra_price"],
+            })
 
-    return options
+        return options
+    except Exception as e:
+        print(f"[WARN] Error fetching upgrade options: {e}")
+        return []
 
 
 def build_meal(item_id, meal_size, food_preference=None, cart=None):

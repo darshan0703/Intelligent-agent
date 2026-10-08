@@ -21,6 +21,7 @@ export default defineConfig({
   ],
 
   server: {
+    port: 5173,
     allowedHosts: [
       "plunging-marital-unsafe.ngrok-free.dev",
     ],
