@@ -1,7 +1,6 @@
 from services.meal_service import get_meal_options
 from state import conversation_context
 from repositories.menu_repository import add_to_cart
-from services.menu_service import get_meal_options
 from schemas import KioskResponse, ScreenTypes
 from repositories.order_repository import complete_order as repository_complete_order
 
@@ -67,7 +66,15 @@ def add_item(item_name, quantity=1):
 
             "foodType": product["foodType"],
 
-            "image": product["image"]
+            "image": product["image"],
+
+            "section": product.get("section"),
+
+            "meal_role": product.get("meal_role"),
+
+            "is_meal_only": product.get("is_meal_only", False),
+
+            "display_order": product.get("display_order"),
 
         })
 

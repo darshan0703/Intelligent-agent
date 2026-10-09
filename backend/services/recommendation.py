@@ -8,6 +8,94 @@ from services.modules.m06_condiment_gating import filter_for_recommendation_page
 
 
 # =========================================================
+# DATE & NUMERIC HELPERS
+# =========================================================
+
+def _parse_expiry_date(expiry):
+    """
+    Safely normalizes expiry into a datetime.date object.
+    Returns: (parsed_date: date | None, is_valid: bool)
+      - If expiry is None or '': returns (None, True) -> treated as no expiry specified.
+      - If isinstance(expiry, datetime): returns (expiry.date(), True)
+      - If isinstance(expiry, date): returns (expiry, True)
+      - If isinstance(expiry, str): tries ISO format (with optional Z/offset) and YYYY-MM-DD.
+          Returns (parsed_date, True) on success, (None, False) on failure.
+      - Any other type: returns (None, False).
+    """
+    if expiry is None or expiry == "":
+        return None, True
+
+    if isinstance(expiry, datetime):
+        return expiry.date(), True
+
+    if isinstance(expiry, date):
+        return expiry, True
+
+    if isinstance(expiry, str):
+        s = expiry.strip()
+        if not s:
+            return None, True
+        if s.endswith("Z"):
+            s = s[:-1] + "+00:00"
+        try:
+            return datetime.fromisoformat(s).date(), True
+        except (ValueError, TypeError):
+            pass
+        try:
+            return datetime.strptime(s[:10], "%Y-%m-%d").date(), True
+        except (ValueError, TypeError):
+            pass
+        return None, False
+
+    return None, False
+
+
+def _is_expiry_eligible(item, today):
+    """
+    Checks if an item is eligible based on expiry date:
+      - Missing/None expiry: eligible (standard non-perishable/untracked item).
+      - Invalid/malformed expiry: ineligible (safe policy: do not treat unparseable dates as valid).
+      - Expired (date < today): ineligible.
+      - Future or today (date >= today): eligible.
+    """
+    if not isinstance(item, dict):
+        return False
+
+    expiry = item.get("expiry")
+    if expiry is None or expiry == "":
+        return True
+
+    parsed_date, is_valid = _parse_expiry_date(expiry)
+    if not is_valid:
+        return False
+
+    if parsed_date is not None and parsed_date < today:
+        return False
+
+    return True
+
+
+def _parse_stock(stock_val):
+    if stock_val is None:
+        return None
+    try:
+        return float(stock_val)
+    except (ValueError, TypeError):
+        return None
+
+
+def _is_stock_eligible(item):
+    """
+    Checks if an item has positive available stock.
+    Items with zero, negative, missing, or malformed stock are ineligible across all tiers.
+    """
+    if not isinstance(item, dict):
+        return False
+    val = _parse_stock(item.get("stock"))
+    return val is not None and val > 0
+
+
+# =========================================================
 # PRIORITY CALCULATION
 # =========================================================
 
@@ -15,30 +103,46 @@ def get_priority_items(menu):
     today = date.today()
 
     for item in menu:
+        if not isinstance(item, dict):
+            continue
+
         expiry = item.get("expiry")
+        parsed_date, is_valid = _parse_expiry_date(expiry)
 
-        if isinstance(expiry, str):
-            expiry = datetime.fromisoformat(expiry).date()
+        if is_valid and parsed_date is not None:
+            days_to_expiry = (parsed_date - today).days
+            if days_to_expiry >= 0:
+                expiry_score = max(0, 30 - days_to_expiry)
+            else:
+                expiry_score = 0
+        else:
+            expiry_score = 0
 
-        days_to_expiry = (
-            (expiry - today).days
-            if expiry
-            else 30
-        )
+        # Safe stock parsing
+        raw_stock = item.get("stock")
+        try:
+            stock_score = float(raw_stock) if raw_stock is not None else 0.0
+            if stock_score < 0:
+                stock_score = 0.0
+        except (ValueError, TypeError):
+            stock_score = 0.0
 
-        expiry_score = max(
-            0,
-            30 - days_to_expiry
-        )
+        # Safe score parsing
+        raw_score = item.get("score")
+        try:
+            score_multiplier = float(raw_score) if raw_score is not None else 1.0
+            if score_multiplier < 0:
+                score_multiplier = 0.0
+        except (ValueError, TypeError):
+            score_multiplier = 0.0
 
         item["priority"] = (
-            item.get("stock", 0)
-            + expiry_score
-        ) * item.get("score", 1.0)
+            stock_score + expiry_score
+        ) * score_multiplier
 
     return sorted(
         menu,
-        key=lambda x: x["priority"],
+        key=lambda x: x.get("priority", 0.0) if isinstance(x, dict) else 0.0,
         reverse=True
     )
 
@@ -168,6 +272,19 @@ def build_recommendations(
     if not filtered:
         return [], [], []
 
+    # -----------------------------------------------------
+    # EXPIRY & DEFENSIVE STOCK CHECK
+    # Exclude expired items, invalid expiry dates, and zero/negative/invalid stock
+    # -----------------------------------------------------
+    today = date.today()
+    filtered = [
+        item for item in filtered
+        if _is_stock_eligible(item) and _is_expiry_eligible(item, today)
+    ]
+
+    if not filtered:
+        return [], [], []
+
     # =====================================================
     # STATISTICAL PERCENTILE PRICE TIER PARTITIONING
     # Dynamically partitions ANY category (Burgers, Sides, Drinks, Desserts)
@@ -209,7 +326,7 @@ def build_recommendations(
         priority = priority_pool[:2]
         if len(priority) < 2:
             used = {x.get("id") or x.get("name") for x in priority}
-            for it in get_priority_items(candidates):
+            for it in get_priority_items(cand_pool):
                 if (it.get("id") or it.get("name")) not in used:
                     priority.append(it)
                     if len(priority) == 2:
@@ -255,14 +372,14 @@ def build_recommendations(
     # =====================================================
     # BOTH (VEG + NON-VEG)
     # =====================================================
-    veg_items = [item for item in candidates if normalize_food_type(item.get("foodType")) == "veg"]
-    non_veg_items = [item for item in candidates if normalize_food_type(item.get("foodType")) == "non_veg"]
+    veg_items = [item for item in candidates if normalize_food_type(item.get("foodType") or item.get("food_type")) == "veg"]
+    non_veg_items = [item for item in candidates if normalize_food_type(item.get("foodType") or item.get("food_type")) == "non_veg"]
 
     if not veg_items or not non_veg_items:
         priority = priority_pool[:2]
         if len(priority) < 2:
             used = {x.get("id") or x.get("name") for x in priority}
-            for it in get_priority_items(candidates):
+            for it in get_priority_items(cand_pool):
                 if (it.get("id") or it.get("name")) not in used:
                     priority.append(it)
                     if len(priority) == 2:
@@ -275,7 +392,7 @@ def build_recommendations(
             if (item.get("id") or item.get("name")) not in used_ids
             and float(item.get("price") or 0) >= premium_floor
         ]
-        prem_items = sorted(prem_items, key=lambda x: float(x.get("price") or 0))
+        prem_items = sorted(prem_items, key=lambda x: float(x.get("price") or 0), reverse=True)
 
         if not prem_items:
             all_sorted = sorted(
@@ -283,10 +400,7 @@ def build_recommendations(
                 key=lambda x: float(x.get("price") or 0),
                 reverse=True
             )
-            prem_items = sorted(
-                all_sorted[: max(1, len(all_sorted) // 3)],
-                key=lambda x: float(x.get("price") or 0)
-            )
+            prem_items = all_sorted
 
         premium = prem_items[:2]
         if len(premium) < 2:
@@ -307,13 +421,11 @@ def build_recommendations(
         return priority[:2], premium[:2], additional[:4]
 
     # Priority: 1 veg + 1 non-veg (budget-aware)
-    veg_priority = get_priority_items([i for i in budget_candidates if normalize_food_type(i.get("foodType")) == "veg"])
-    if not veg_priority:
-        veg_priority = get_priority_items(veg_items)
+    budget_veg = [i for i in cand_pool if normalize_food_type(i.get("foodType") or i.get("food_type")) == "veg"]
+    budget_non_veg = [i for i in cand_pool if normalize_food_type(i.get("foodType") or i.get("food_type")) == "non_veg"]
 
-    non_veg_priority = get_priority_items([i for i in budget_candidates if normalize_food_type(i.get("foodType")) == "non_veg"])
-    if not non_veg_priority:
-        non_veg_priority = get_priority_items(non_veg_items)
+    veg_priority = get_priority_items(budget_veg)
+    non_veg_priority = get_priority_items(budget_non_veg)
 
     priority = []
     if veg_priority:
@@ -323,7 +435,7 @@ def build_recommendations(
 
     if len(priority) < 2:
         used = {x.get("id") or x.get("name") for x in priority}
-        for it in priority_pool:
+        for it in get_priority_items(cand_pool):
             if (it.get("id") or it.get("name")) not in used:
                 priority.append(it)
                 if len(priority) == 2:

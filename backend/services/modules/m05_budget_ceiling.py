@@ -4,6 +4,8 @@ def _get_item_price(item: Dict[str, Any]) -> float:
     p = item.get("price")
     if p is None:
         p = item.get("original_price")
+    if p is None:
+        p = item.get("unitPrice")
     if isinstance(p, dict):
         p = p.get("amount") or p.get("price")
     try:
@@ -14,15 +16,48 @@ def _get_item_price(item: Dict[str, Any]) -> float:
 def _get_item_category(item: Dict[str, Any]) -> str:
     cat = item.get("category")
     if cat:
-        return str(cat).lower()
-    try:
-        from services.menu_service import get_product
-        p = get_product(item.get("name", ""))
-        if p and p.get("category"):
-            return str(p["category"]).lower()
-    except Exception:
-        pass
+        return str(cat).strip().lower()
     return ""
+
+def _extract_cart_items(cart: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Decomposes the cart into individual items for budget evaluation:
+    - Normal standalone items contribute their own price and category.
+    - Meal combos contribute their individual component items (main_item, side, drink).
+    - The meal's bundle price (unitPrice / subtotal) is never used as an anchor.
+    """
+    items = []
+    for item in cart:
+        if not isinstance(item, dict):
+            continue
+
+        # Check if item is a composite meal combo
+        is_meal = (
+            item.get("type") == "meal"
+            or isinstance(item.get("main_item"), dict)
+            or isinstance(item.get("side"), dict)
+            or isinstance(item.get("drink"), dict)
+        )
+
+        if is_meal:
+            main = item.get("main_item") or item.get("burger")
+            if isinstance(main, dict):
+                cat = main.get("category") or "burger"
+                items.append({**main, "category": cat})
+
+            side = item.get("side")
+            if isinstance(side, dict):
+                cat = side.get("category") or "side"
+                items.append({**side, "category": cat})
+
+            drink = item.get("drink")
+            if isinstance(drink, dict):
+                cat = drink.get("category") or "drink"
+                items.append({**drink, "category": cat})
+        else:
+            items.append(item)
+
+    return items
 
 def apply_price_ceiling(
     candidates: List[Dict[str, Any]],
@@ -32,11 +67,15 @@ def apply_price_ceiling(
     if not cart:
         return candidates
 
-    mains = [item for item in cart if _get_item_category(item) in ("burger", "burgers", "main")]
+    eval_items = _extract_cart_items(cart)
+    if not eval_items:
+        return candidates
+
+    mains = [item for item in eval_items if _get_item_category(item) in ("burger", "burgers", "main")]
     if mains:
         anchor_item = max(mains, key=_get_item_price)
     else:
-        anchor_item = max(cart, key=_get_item_price)
+        anchor_item = max(eval_items, key=_get_item_price)
         
     anchor_price = _get_item_price(anchor_item)
     anchor_category = _get_item_category(anchor_item)
@@ -55,7 +94,7 @@ def apply_price_ceiling(
     survivors = []
     
     for item in candidates:
-        price = float(item.get("price") or item.get("original_price", 0))
+        price = _get_item_price(item)
         item_category = _get_item_category(item)
         
         # M5 SPEC: Only applies to CROSS-SELLS. 

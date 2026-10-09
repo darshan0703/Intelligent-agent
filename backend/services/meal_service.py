@@ -1,4 +1,7 @@
+from datetime import date
 from database import supabase
+from services.modules.m01_dietary_lock import get_item_food_type
+from services.recommendation import _is_stock_eligible, _is_expiry_eligible
 
 
 MEAL_UPGRADE_PRICES = {
@@ -7,25 +10,88 @@ MEAL_UPGRADE_PRICES = {
 }
 
 
+def _parse_price(val):
+    """
+    Safely extracts and parses price or extra_price into a non-negative float.
+    Returns:
+      - float >= 0.0 if valid numeric or numeric string
+      - None if missing, None, negative, or malformed string ('N/A', 'invalid')
+    """
+    if val is None:
+        return None
+    if isinstance(val, dict):
+        val = val.get("amount") or val.get("price")
+    try:
+        f = float(val)
+        if f < 0.0:
+            return None
+        return f
+    except (ValueError, TypeError):
+        return None
+
+
+def _is_item_eligible(item, today=None):
+    """
+    Validates stock and expiry eligibility for an item:
+    - Positive stock required.
+    - Zero, negative, or missing stock is ineligible.
+    - Missing/None expiry is considered eligible (non-perishable/untracked).
+    - Expired or malformed expiry is ineligible.
+    """
+    if not isinstance(item, dict):
+        return False
+    if today is None:
+        today = date.today()
+
+    inv = item.get("inventory")
+    stock = item.get("stock")
+    expiry = item.get("expiry") or item.get("expiry_date")
+
+    if stock is None:
+        if isinstance(inv, dict):
+            stock = inv.get("stock")
+        elif isinstance(inv, list) and inv:
+            stock = inv[0].get("stock")
+
+    if expiry is None:
+        if isinstance(inv, dict):
+            expiry = inv.get("expiry_date") or inv.get("expiry")
+        elif isinstance(inv, list) and inv:
+            expiry = inv[0].get("expiry_date") or inv[0].get("expiry")
+
+    eligibility_dict = {
+        "stock": stock,
+        "expiry": expiry,
+    }
+
+    return _is_stock_eligible(eligibility_dict) and _is_expiry_eligible(eligibility_dict, today)
+
+
 def serialize_meal_option(item, extra_price, is_default=False):
+    parsed_price = _parse_price(item.get("price"))
+    if parsed_price is None:
+        parsed_price = 0.0
+    parsed_extra = _parse_price(extra_price)
+    if parsed_extra is None:
+        parsed_extra = 0.0
+
     return {
         "id": item["id"],
         "name": item["name"],
         "image": item["image"],
-        "price": float(item["price"]),
-        "extra_price": float(extra_price),
+        "price": parsed_price,
+        "extra_price": parsed_extra,
         "is_default": is_default,
-        "section": item["section"],
+        "section": item.get("section"),
         "foodType": item.get("food_type"),
     }
 
 
 def is_veg_meal_item(item):
-    ft = str(item.get("foodType") or item.get("food_type") or "").lower().strip()
-    name = str(item.get("name", "")).lower()
-    if "non" in ft or any(k in name for k in ["chicken", "wings", "nugget", "boneless", "mutton", "fish"]):
-        return False
-    return True
+    """
+    Canonical vegetarian check leveraging M01 normalize_food_type.
+    """
+    return get_item_food_type(item) == "veg"
 
 
 def organize_meal_options(options, food_preference=None, cart=None):
@@ -52,7 +118,9 @@ def organize_meal_options(options, food_preference=None, cart=None):
             diet_pri = 0 if is_veg else 1
 
         is_def = 0 if item.get("is_default") else 1
-        extra = float(item.get("extra_price") or 0)
+        extra = _parse_price(item.get("extra_price"))
+        if extra is None:
+            extra = 9999.0
         return (in_cart, diet_pri, is_def, extra)
 
     return sorted(options, key=option_key)
@@ -74,14 +142,14 @@ def get_default_meal(meal_size):
 
         side = (
             supabase.table("menu_items")
-            .select("*")
+            .select("*, inventory(stock, expiry_date)")
             .eq("id", default_row["default_side_id"])
             .execute()
         )
 
         drink = (
             supabase.table("menu_items")
-            .select("*")
+            .select("*, inventory(stock, expiry_date)")
             .eq("id", default_row["default_drink_id"])
             .execute()
         )
@@ -89,9 +157,18 @@ def get_default_meal(meal_size):
         if not side.data or not drink.data:
             return None
 
+        side_item = side.data[0]
+        drink_item = drink.data[0]
+
+        # Inventory and availability validation
+        if not side_item.get("is_available") or not _is_item_eligible(side_item):
+            return None
+        if not drink_item.get("is_available") or not _is_item_eligible(drink_item):
+            return None
+
         return {
-            "side": side.data[0],
-            "drink": drink.data[0],
+            "side": side_item,
+            "drink": drink_item,
         }
     except Exception as e:
         print(f"Error getting default meal: {e}")
@@ -112,7 +189,11 @@ def get_upgrade_options(meal_size, role=None):
                     section,
                     meal_role,
                     food_type,
-                    is_available
+                    is_available,
+                    inventory (
+                        stock,
+                        expiry_date
+                    )
                 )
             """)
             .eq("meal_size", meal_size)
@@ -121,6 +202,7 @@ def get_upgrade_options(meal_size, role=None):
         )
 
         options = []
+        today = date.today()
 
         for row in response.data or []:
             item = row.get("menu_items")
@@ -134,9 +216,22 @@ def get_upgrade_options(meal_size, role=None):
             if not item.get("is_available"):
                 continue
 
+            if not _is_item_eligible(item, today):
+                continue
+
+            # Never silently interpret an invalid extra_price as a valid zero-price upgrade
+            parsed_extra = _parse_price(row.get("extra_price"))
+            if parsed_extra is None:
+                continue
+
+            parsed_price = _parse_price(item.get("price"))
+            if parsed_price is None:
+                continue
+
             options.append({
                 **item,
-                "extra_price": row["extra_price"],
+                "price": parsed_price,
+                "extra_price": parsed_extra,
             })
 
         return options
@@ -149,7 +244,7 @@ def build_meal(item_id, meal_size, food_preference=None, cart=None):
     try:
         burger_res = (
             supabase.table("menu_items")
-            .select("*")
+            .select("*, inventory(stock, expiry_date)")
             .eq("id", item_id)
             .execute()
         )
@@ -161,6 +256,13 @@ def build_meal(item_id, meal_size, food_preference=None, cart=None):
 
         # Only items with meal_role == 'main' can be converted into meal combos
         if burger_data.get("meal_role") != "main" or not burger_data.get("is_meal_available"):
+            return None
+
+        if not burger_data.get("is_available") or not _is_item_eligible(burger_data):
+            return None
+
+        burger_price = _parse_price(burger_data.get("price"))
+        if burger_price is None:
             return None
 
         defaults = get_default_meal(meal_size)
@@ -207,7 +309,12 @@ def build_meal(item_id, meal_size, food_preference=None, cart=None):
         side_options = organize_meal_options(side_options, food_preference=effective_pref, cart=cart)
         drink_options = organize_meal_options(drink_options, food_preference=effective_pref, cart=cart)
 
-        upgrade_price = MEAL_UPGRADE_PRICES.get(meal_size, 140)
+        upgrade_price = _parse_price(MEAL_UPGRADE_PRICES.get(meal_size, 140))
+        if upgrade_price is None:
+            upgrade_price = 140.0
+
+        side_price = _parse_price(side_default.get("price")) or 0.0
+        drink_price = _parse_price(drink_default.get("price")) or 0.0
 
         return {
             "size": meal_size,
@@ -215,7 +322,7 @@ def build_meal(item_id, meal_size, food_preference=None, cart=None):
             "burger": {
                 "id": burger_data["id"],
                 "name": burger_data["name"],
-                "price": float(burger_data["price"]),
+                "price": burger_price,
                 "image": burger_data.get("meal_image") or burger_data.get("image"),
                 "foodType": burger_data.get("food_type"),
             },
@@ -223,7 +330,7 @@ def build_meal(item_id, meal_size, food_preference=None, cart=None):
             "side": {
                 "id": side_default["id"],
                 "name": side_default["name"],
-                "price": float(side_default["price"]),
+                "price": side_price,
                 "image": side_default.get("image"),
                 "foodType": side_default.get("food_type"),
             },
@@ -231,18 +338,15 @@ def build_meal(item_id, meal_size, food_preference=None, cart=None):
             "drink": {
                 "id": drink_default["id"],
                 "name": drink_default["name"],
-                "price": float(drink_default["price"]),
+                "price": drink_price,
                 "image": drink_default.get("image"),
                 "foodType": drink_default.get("food_type"),
             },
 
-            "burger_price": float(burger_data["price"]),
-            "upgrade_price": float(upgrade_price),
+            "burger_price": burger_price,
+            "upgrade_price": upgrade_price,
 
-            "meal_price": (
-                float(burger_data["price"])
-                + float(upgrade_price)
-            ),
+            "meal_price": burger_price + upgrade_price,
 
             "side_options": side_options,
             "drink_options": drink_options,
@@ -303,8 +407,8 @@ def get_meal_options(item_id, food_preference=None, cart=None):
     except Exception as e:
         print(f"Error getting meal options for item {item_id}: {e}")
         return {
-            "success": True,
+            "success": False,
             "product_id": item_id,
             "is_meal_available": False,
-            "message": str(e),
+            "message": "Failed to load meal options.",
         }

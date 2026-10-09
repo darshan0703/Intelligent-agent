@@ -194,21 +194,19 @@ def burgers_get(preference: str | None = None):
 @app.post("/menu/burgers")
 def burgers_post(body: MenuRequest | None = None, preference: str | None = None):
     pref = preference or conversation_context.get("food_preference")
-    cart = (body.cart if body and body.cart is not None else None) or conversation_context.get("cart", [])
+    cart = body.cart if (body and body.cart is not None) else conversation_context.get("cart", [])
     return get_menu("burger", preference=pref, cart=cart)
 
 
 @app.get("/menu/drinks")
 def drinks_get(preference: str | None = None):
-    pref = preference or conversation_context.get("food_preference")
-    return get_menu("drink", preference=pref, cart=conversation_context.get("cart", []))
+    return get_menu("drink", preference=preference, cart=conversation_context.get("cart", []))
 
 
 @app.post("/menu/drinks")
 def drinks_post(body: MenuRequest | None = None, preference: str | None = None):
-    pref = preference or conversation_context.get("food_preference")
-    cart = (body.cart if body and body.cart is not None else None) or conversation_context.get("cart", [])
-    return get_menu("drink", preference=pref, cart=cart)
+    cart = body.cart if (body and body.cart is not None) else conversation_context.get("cart", [])
+    return get_menu("drink", preference=preference, cart=cart)
 
 
 @app.get("/menu/sides")
@@ -220,21 +218,19 @@ def sides_get(preference: str | None = None):
 @app.post("/menu/sides")
 def sides_post(body: MenuRequest | None = None, preference: str | None = None):
     pref = preference or conversation_context.get("food_preference")
-    cart = (body.cart if body and body.cart is not None else None) or conversation_context.get("cart", [])
+    cart = body.cart if (body and body.cart is not None) else conversation_context.get("cart", [])
     return get_menu("side", preference=pref, cart=cart)
 
 
 @app.get("/menu/desserts")
 def desserts_get(preference: str | None = None):
-    pref = preference or conversation_context.get("food_preference")
-    return get_menu("dessert", preference=pref, cart=conversation_context.get("cart", []))
+    return get_menu("dessert", preference=preference, cart=conversation_context.get("cart", []))
 
 
 @app.post("/menu/desserts")
 def desserts_post(body: MenuRequest | None = None, preference: str | None = None):
-    pref = preference or conversation_context.get("food_preference")
-    cart = (body.cart if body and body.cart is not None else None) or conversation_context.get("cart", [])
-    return get_menu("dessert", preference=pref, cart=cart)
+    cart = body.cart if (body and body.cart is not None) else conversation_context.get("cart", [])
+    return get_menu("dessert", preference=preference, cart=cart)
 @app.get("/cart")
 def cart():
     return get_cart()
@@ -475,7 +471,7 @@ def meal_options(request: dict):
                 "message": "item_id is required",
             }
         pref = request.get("food_preference") or conversation_context.get("food_preference")
-        cart = request.get("cart") or conversation_context.get("cart", [])
+        cart = request.get("cart") if ("cart" in request and request.get("cart") is not None) else conversation_context.get("cart", [])
         offer = get_meal_options(item_id, food_preference=pref, cart=cart)
         if not offer or not offer.get("is_meal_available"):
             return offer or {
@@ -491,9 +487,9 @@ def meal_options(request: dict):
     except Exception as e:
         print(f"Error in meal_options endpoint: {e}")
         return {
-            "success": True,
+            "success": False,
             "is_meal_available": False,
-            "message": "Meal not available.",
+            "message": "Failed to load meal options.",
         }
 @app.post("/meal/decline")
 def decline_meal():
