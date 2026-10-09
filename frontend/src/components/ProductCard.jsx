@@ -75,7 +75,6 @@ function ProductCard({
       {/* PRODUCT NAME */}
       <h2
         className={`burger-card-name ${variant}-name`}
-        title={product.name}
       >
         {product.name}
       </h2>
