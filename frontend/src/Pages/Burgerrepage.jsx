@@ -6,6 +6,7 @@ import {
   useState,
   useEffect,
   useCallback,
+  useMemo,
 } from "react";
 
 import { syncScreen } from "../services/screenService";
@@ -22,6 +23,7 @@ import BackButton from "../components/BackButton";
 import FooterDecoration from "../components/FooterDecoration";
 
 import { useKiosk } from "../context/KioskContext";
+import { useCart } from "../context/CartContext";
 
 
 function Burger() {
@@ -30,9 +32,12 @@ function Burger() {
 
   const {
     recommendationData,
+    setRecommendationData,
     foodPreference,
     setFoodPreference,
   } = useKiosk();
+
+  const { cart } = useCart();
 
 
   const [
@@ -94,99 +99,91 @@ function Burger() {
   // without recommendation data.
   // ==========================================
 
+  const [menuItems, setMenuItems] = useState([]);
+
+  // Fetch full category menu once for candidate pool backup
   useEffect(() => {
-
-    if (
-      recommendationData?.data?.both ||
-      fallbackData
-    ) {
-      return;
-    }
-
-
+    let cancelled = false;
     fetch("/menu/burgers")
-
       .then((res) => res.json())
-
       .then((sections) => {
-
-        const all = sections.flatMap(
-          (section) =>
-            section.products || []
-        );
-
-
-        const veg = all.filter(
-          (product) => {
-
-            const type = String(
-              product.type ||
-              product.foodType ||
-              ""
-            )
-              .toLowerCase()
-              .replace(/_/g, " ")
-              .trim();
-
-            return type === "veg";
-          }
-        );
-
-
-        const nonVeg = all.filter(
-          (product) => {
-
-            const type = String(
-              product.type ||
-              product.foodType ||
-              ""
-            )
-              .toLowerCase()
-              .replace(/_/g, " ")
-              .trim();
-
-            return type === "non veg";
-          }
-        );
-
-
-        setFallbackData({
-
-          both: {
-            priority: all.slice(0, 2),
-            premium: all.slice(2, 4),
-            additional: all.slice(4, 8),
-          },
-
-          veg: {
-            priority: veg.slice(0, 2),
-            premium: veg.slice(2, 4),
-            additional: veg.slice(4, 8),
-          },
-
-          non_veg: {
-            priority: nonVeg.slice(0, 2),
-            premium: nonVeg.slice(2, 4),
-            additional: nonVeg.slice(4, 8),
-          },
-
-        });
-
+        if (!cancelled && Array.isArray(sections)) {
+          const all = sections.flatMap((s) => s.products || []);
+          setMenuItems(all);
+        }
       })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
+  // Primary recommendations fetch
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch("/category/burger/recommendations")
+      .then((res) => res.json())
+      .then((resData) => {
+        if (!cancelled && resData?.success && resData?.data) {
+          setFallbackData(resData.data);
+          if (setRecommendationData) {
+            setRecommendationData({ data: resData.data });
+          }
+        } else {
+          throw new Error("Invalid recommendation data");
+        }
+      })
       .catch((error) => {
-
+        if (cancelled) return;
         console.warn(
-          "Fallback burger fetch failed:",
+          "Primary burger recs fetch failed, using menu fallback:",
           error
         );
+        fetch("/menu/burgers")
+          .then((res) => res.json())
+          .then((sections) => {
+            if (cancelled) return;
+            const all = sections.flatMap((s) => s.products || []);
+            const veg = all.filter(
+              (p) => String(p.type || p.foodType || "").toLowerCase().trim() === "veg"
+            );
+            const nonVeg = all.filter(
+              (p) => String(p.type || p.foodType || "").toLowerCase().trim() === "non veg"
+            );
+            const byPriceDesc = [...all].sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0));
+            const premiumAll = byPriceDesc.filter((p) => (Number(p.price) || 0) >= 120).slice(0, 2);
+            const premiumVeg = [...veg].sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0)).filter((p) => (Number(p.price) || 0) >= 120).slice(0, 2);
+            const premiumNonVeg = [...nonVeg].sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0)).filter((p) => (Number(p.price) || 0) >= 120).slice(0, 2);
 
+            const premIds = new Set(premiumAll.map((p) => p.id || p.name));
+            const remainingAll = all.filter((p) => !premIds.has(p.id || p.name));
+
+            setFallbackData({
+              both: {
+                priority: remainingAll.slice(0, 2),
+                premium: premiumAll,
+                additional: remainingAll.slice(2, 6),
+              },
+              veg: {
+                priority: veg.filter((p) => !premiumVeg.some((pv) => pv.id === p.id)).slice(0, 2),
+                premium: premiumVeg,
+                additional: veg.filter((p) => !premiumVeg.some((pv) => pv.id === p.id)).slice(2, 6),
+              },
+              non_veg: {
+                priority: nonVeg.filter((p) => !premiumNonVeg.some((pv) => pv.id === p.id)).slice(0, 2),
+                premium: premiumNonVeg,
+                additional: nonVeg.filter((p) => !premiumNonVeg.some((pv) => pv.id === p.id)).slice(2, 6),
+              },
+            });
+          })
+          .catch((err) => console.warn("Fallback burger fetch failed:", err));
       });
 
-  }, [
-    recommendationData,
-    fallbackData
-  ]);
+    return () => {
+      cancelled = true;
+    };
+  }, [cart, selectedType]);
 
 
   // ==========================================
@@ -201,17 +198,6 @@ function Burger() {
 
   // ==========================================
   // SELECT BACKEND DATASET
-  //
-  // IMPORTANT:
-  //
-  // We DO NOT filter products locally anymore.
-  //
-  // Backend already created:
-  //
-  // data.both
-  // data.veg
-  // data.non_veg
-  //
   // ==========================================
 
   const preferenceKey =
@@ -231,19 +217,160 @@ function Burger() {
 
 
   // ==========================================
-  // SELECTED DATASET
+  // REAL-TIME CART EXCLUSION FILTER (M7)
+  // Ensures items in cart NEVER display in 4 cards or additional rows
   // ==========================================
+  const cartNames = useMemo(
+    () => new Set((cart || []).map((c) => String(c?.name || "").trim().toLowerCase())),
+    [cart]
+  );
+  const cartIds = useMemo(
+    () => new Set((cart || []).map((c) => c?.id).filter(Boolean).map(String)),
+    [cart]
+  );
 
-  const priorityItems =
-    selectedData.priority || [];
+  const notInCart = useCallback((item) => {
+    if (!item) return false;
+    const name = String(item?.name || "").trim().toLowerCase();
+    if (cartNames.has(name)) return false;
+    if (item?.id && cartIds.has(String(item.id))) return false;
+    return true;
+  }, [cartNames, cartIds]);
 
+  // Complete pool of eligible candidates for zero-white-card replenishment
+  const allCandidatesPool = useMemo(() => {
+    const list = [
+      ...(selectedData.priority || []),
+      ...(selectedData.premium || []),
+      ...(selectedData.additional || []),
+      ...(backendData.both?.priority || []),
+      ...(backendData.both?.premium || []),
+      ...(backendData.both?.additional || []),
+      ...(backendData.veg?.priority || []),
+      ...(backendData.veg?.premium || []),
+      ...(backendData.veg?.additional || []),
+      ...(backendData.non_veg?.priority || []),
+      ...(backendData.non_veg?.premium || []),
+      ...(backendData.non_veg?.additional || []),
+      ...menuItems,
+    ];
+    const seen = new Set();
+    const deduped = [];
+    for (const item of list) {
+      if (!item) continue;
+      const key = item.id || item.name;
+      if (!seen.has(key)) {
+        seen.add(key);
+        const itemType = String(item.type || item.foodType || "").toLowerCase().trim();
+        if (selectedType === "veg" && itemType && !itemType.includes("veg")) continue;
+        if (selectedType === "veg" && itemType.includes("non")) continue;
+        if (selectedType === "non veg" && itemType && !itemType.includes("non")) continue;
+        deduped.push(item);
+      }
+    }
+    return deduped;
+  }, [selectedData, backendData, menuItems, selectedType]);
 
-  const premiumItems =
-    selectedData.premium || [];
+  // Dynamic backfill guaranteeing exactly 2 Priority and 2 Premium cards
+  const { priorityItems, premiumItems, additionalItems } = useMemo(() => {
+    const usedKeys = new Set();
 
+    // 1. Priority Items (Cards 1 & 2)
+    const priority = [];
+    for (const item of (selectedData.priority || [])) {
+      if (notInCart(item)) {
+        const key = item.id || item.name;
+        priority.push(item);
+        usedKeys.add(key);
+        if (priority.length === 2) break;
+      }
+    }
 
-  const additionalItems =
-    selectedData.additional || [];
+    // Backfill priority if fewer than 2 items remain
+    if (priority.length < 2) {
+      for (const item of (selectedData.additional || [])) {
+        if (notInCart(item)) {
+          const key = item.id || item.name;
+          if (!usedKeys.has(key)) {
+            priority.push(item);
+            usedKeys.add(key);
+            if (priority.length === 2) break;
+          }
+        }
+      }
+    }
+    if (priority.length < 2) {
+      for (const item of allCandidatesPool) {
+        if (notInCart(item)) {
+          const key = item.id || item.name;
+          if (!usedKeys.has(key)) {
+            priority.push(item);
+            usedKeys.add(key);
+            if (priority.length === 2) break;
+          }
+        }
+      }
+    }
+
+    // 2. Premium Items (Cards 3 & 4)
+    const premium = [];
+    for (const item of (selectedData.premium || [])) {
+      if (notInCart(item)) {
+        const key = item.id || item.name;
+        if (!usedKeys.has(key)) {
+          premium.push(item);
+          usedKeys.add(key);
+          if (premium.length === 2) break;
+        }
+      }
+    }
+
+    // Backfill premium if fewer than 2 items remain
+    if (premium.length < 2) {
+      const candidatesByPrice = [...allCandidatesPool]
+        .filter(notInCart)
+        .filter((item) => !usedKeys.has(item.id || item.name))
+        .sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0));
+
+      for (const item of candidatesByPrice) {
+        const key = item.id || item.name;
+        premium.push(item);
+        usedKeys.add(key);
+        if (premium.length === 2) break;
+      }
+    }
+
+    // 3. Additional Items (Cards 5, 6, 7, 8)
+    const additional = [];
+    for (const item of (selectedData.additional || [])) {
+      if (notInCart(item)) {
+        const key = item.id || item.name;
+        if (!usedKeys.has(key)) {
+          additional.push(item);
+          usedKeys.add(key);
+          if (additional.length === 4) break;
+        }
+      }
+    }
+    if (additional.length < 4) {
+      for (const item of allCandidatesPool) {
+        if (notInCart(item)) {
+          const key = item.id || item.name;
+          if (!usedKeys.has(key)) {
+            additional.push(item);
+            usedKeys.add(key);
+            if (additional.length === 4) break;
+          }
+        }
+      }
+    }
+
+    return {
+      priorityItems: priority,
+      premiumItems: premium,
+      additionalItems: additional,
+    };
+  }, [selectedData, allCandidatesPool, notInCart]);
 
 
   // ==========================================
@@ -635,13 +762,17 @@ function Burger() {
           PREMIUM SECTION
           ================================== */}
 
-      <p className="Premium-text">
-        Premium Collection
-      </p>
+      {premiumItems.length > 0 && (
+        <>
+          <p className="Premium-text">
+            Premium Collection
+          </p>
 
-      <p className="Premium-text2">
-        Handpicked just for you
-      </p>
+          <p className="Premium-text2">
+            Handpicked just for you
+          </p>
+        </>
+      )}
 
 
       {/* ==================================

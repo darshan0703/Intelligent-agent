@@ -21,6 +21,7 @@ export default defineConfig({
   ],
 
   server: {
+    port: 5173,
     allowedHosts: [
       "plunging-marital-unsafe.ngrok-free.dev",
     ],
@@ -37,6 +38,16 @@ export default defineConfig({
       },
 
       "/message": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
+
+      "/category": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
+
+      "/recommendations": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
       },

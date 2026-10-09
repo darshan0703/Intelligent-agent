@@ -24,6 +24,7 @@ function ProductPage() {
     setMealData,
     mealPopupOpen,
     setMealPopupOpen,
+    foodPreference,
   } = useKiosk();
 
   const { cart, syncCart } = useCart();
@@ -90,6 +91,8 @@ function ProductPage() {
         },
         body: JSON.stringify({
           item_id: requestedProductId,
+          food_preference: foodPreference,
+          cart,
         }),
         signal,
       });
@@ -289,6 +292,7 @@ function ProductPage() {
 
       if (data.success) {
         syncCart(data);
+        // Navigate back smoothly without full page refresh
         navigate(origin);
       }
     } catch (error) {

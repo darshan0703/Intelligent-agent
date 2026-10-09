@@ -1,7 +1,8 @@
 import "./Mealpage.css";
-import React, { useState } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
+import { useKiosk } from "../context/KioskContext";
 import Header from "../components/Header";
 import PreviousButton from "../components/PreviousButton";
 import CartContainer from "../components/CartContainer";
@@ -21,10 +22,97 @@ function MealPage() {
     const drink = meal?.drink;
 
     const mealSize = meal?.size || "Medium";
-    const { syncCart } = useCart();
+    const { syncCart, cart } = useCart();
+    const { foodPreference } = useKiosk();
     const [quantity, setQuantity] = useState(1);
 
     const [selectedSide, setSelectedSide] = useState(side);
+
+    const burgerFoodType = String(burger?.foodType || burger?.food_type || "").toLowerCase().trim();
+    const userPref = String(foodPreference || "").toLowerCase().trim();
+
+    // Context-aware preference:
+    // If user explicitly chose 'veg' or 'non_veg', respect that.
+    // If user is in 'both' / neutral, infer from the burger itself!
+    // A Veg Burger builds a Veg meal (all Veg sides first), Non-Veg burger builds Non-Veg first.
+    const effectivePref = useMemo(() => {
+        if (userPref === "veg") return "veg";
+        if (userPref.includes("non")) return "non_veg";
+        return burgerFoodType === "veg" ? "veg" : "non_veg";
+    }, [userPref, burgerFoodType]);
+
+    const isVegItem = (item) => {
+        const ft = String(item?.foodType || item?.food_type || "").toLowerCase().trim();
+        const name = String(item?.name || "").toLowerCase();
+        if (ft.includes("non") || ["chicken", "wings", "nugget", "boneless", "mutton", "fish"].some((k) => name.includes(k))) {
+            return false;
+        }
+        return true;
+    };
+
+    const isItemInCart = (item) => {
+        if (!item || !cart || !Array.isArray(cart)) return false;
+        const itemId = item.id;
+        const itemName = String(item.name || "").trim().toLowerCase();
+        return cart.some((c) => {
+            if (c.id && itemId && String(c.id) === String(itemId)) return true;
+            const cName = String(c.name || "").trim().toLowerCase();
+            if (cName && (cName === itemName || (itemName.length > 5 && cName === itemName))) return true;
+
+            // Check inside meal combo in cart
+            if (c.type === "meal") {
+                const main = c.main_item || c.burger || {};
+                const s = c.side || {};
+                const d = c.drink || {};
+                if (String(main.id) === String(itemId) || String(s.id) === String(itemId) || String(d.id) === String(itemId)) return true;
+                if (main.name && String(main.name).trim().toLowerCase() === itemName) return true;
+                if (s.name && String(s.name).trim().toLowerCase() === itemName) return true;
+                if (d.name && String(d.name).trim().toLowerCase() === itemName) return true;
+            }
+            return false;
+        });
+    };
+
+    const sortedSideOptions = useMemo(() => {
+        const options = meal?.side_options ?? [];
+        return [...options].sort((a, b) => {
+            const aInCart = isItemInCart(a) ? 1 : 0;
+            const bInCart = isItemInCart(b) ? 1 : 0;
+            if (aInCart !== bInCart) return aInCart - bInCart; // cart exclusion at last
+
+            const aIsVeg = isVegItem(a);
+            const bIsVeg = isVegItem(b);
+
+            if (effectivePref === "veg") {
+                const aPri = aIsVeg ? 0 : 1;
+                const bPri = bIsVeg ? 0 : 1;
+                if (aPri !== bPri) return aPri - bPri; // Veg first, non-veg after
+            } else if (effectivePref === "non_veg") {
+                const aPri = aIsVeg ? 1 : 0;
+                const bPri = bIsVeg ? 1 : 0;
+                if (aPri !== bPri) return aPri - bPri; // Non-veg first, veg after
+            }
+
+            // Default first
+            const aDef = a.id === side?.id ? 0 : 1;
+            const bDef = b.id === side?.id ? 0 : 1;
+            if (aDef !== bDef) return aDef - bDef;
+
+            return (Number(a.extra_price) || 0) - (Number(b.extra_price) || 0);
+        });
+    }, [meal?.side_options, effectivePref, cart, side]);
+
+    useEffect(() => {
+        if (!selectedSide && sortedSideOptions.length > 0) {
+            setSelectedSide(sortedSideOptions[0]);
+        } else if (selectedSide && isItemInCart(selectedSide)) {
+            const firstUncarted = sortedSideOptions.find((s) => !isItemInCart(s));
+            if (firstUncarted) setSelectedSide(firstUncarted);
+        } else if (effectivePref === "veg" && selectedSide && !isVegItem(selectedSide)) {
+            const firstVeg = sortedSideOptions.find((s) => isVegItem(s) && !isItemInCart(s));
+            if (firstVeg) setSelectedSide(firstVeg);
+        }
+    }, [sortedSideOptions, effectivePref, cart]);
 
     const drinkSections = [
 
@@ -54,6 +142,29 @@ function MealPage() {
                 selectedDrinkSection
 
         );
+
+    const sortedVisibleDrinks = useMemo(() => {
+        return [...visibleDrinks].sort((a, b) => {
+            const aInCart = isItemInCart(a) ? 1 : 0;
+            const bInCart = isItemInCart(b) ? 1 : 0;
+            if (aInCart !== bInCart) return aInCart - bInCart; // cart exclusion at last
+
+            const aDef = a.id === drink?.id ? 0 : 1;
+            const bDef = b.id === drink?.id ? 0 : 1;
+            if (aDef !== bDef) return aDef - bDef;
+
+            return (Number(a.extra_price) || 0) - (Number(b.extra_price) || 0);
+        });
+    }, [visibleDrinks, cart, drink]);
+
+    useEffect(() => {
+        if (!selectedDrink && sortedVisibleDrinks.length > 0) {
+            setSelectedDrink(sortedVisibleDrinks[0]);
+        } else if (selectedDrink && isItemInCart(selectedDrink)) {
+            const firstUncarted = sortedVisibleDrinks.find((d) => !isItemInCart(d));
+            if (firstUncarted) setSelectedDrink(firstUncarted);
+        }
+    }, [sortedVisibleDrinks, cart]);
 
     const mealPrice =
         meal?.meal_price ?? 0;
@@ -321,7 +432,7 @@ function MealPage() {
 
                         <div className="meal-grid">
 
-                            {meal.side_options?.map((item) => (
+                            {sortedSideOptions.map((item) => (
 
                                 <div
 
@@ -350,7 +461,13 @@ function MealPage() {
 
                                     <div className="meal-card-name">
 
-                                        <p>
+                                        <p style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+
+                                            <img
+                                                src={isVegItem(item) ? vegIcon : nonVegIcon}
+                                                alt=""
+                                                style={{ width: "13px", height: "13px", objectFit: "contain", flexShrink: 0 }}
+                                            />
 
                                             {item.name}
 
@@ -414,7 +531,7 @@ function MealPage() {
 
                         <div className="drink-grid">
 
-                            {visibleDrinks.map((item) => (
+                            {sortedVisibleDrinks.map((item) => (
 
                                 <div
 

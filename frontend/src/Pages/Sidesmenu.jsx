@@ -15,10 +15,12 @@ import {
 } from "react";
 import { useLocation } from "react-router-dom";
 import { useKiosk } from "../context/KioskContext";
+import { useCart } from "../context/CartContext";
 
 function Sidesmenu() {
   const location = useLocation();
   const { foodPreference, setFoodPreference } = useKiosk();
+  const { cart } = useCart();
 
   const [sidesSections, setSidesSections] = useState([]);
   const [activeFilter, setActiveFilter] = useState(
@@ -35,11 +37,24 @@ function Sidesmenu() {
 
   useEffect(() => {
     const prefParam = activeFilter !== "both" ? `?preference=${activeFilter}` : "";
-    fetch(`/menu/sides${prefParam}`)
+    fetch(`/menu/sides${prefParam}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cart }),
+    })
       .then((res) => res.json())
-      .then(setSidesSections)
-      .catch((err) => console.warn("Failed to fetch sides:", err));
-  }, [activeFilter]);
+      .then((data) => {
+        if (Array.isArray(data)) setSidesSections(data);
+      })
+      .catch((err) => {
+        fetch(`/menu/sides${prefParam}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (Array.isArray(data)) setSidesSections(data);
+          })
+          .catch((e) => console.warn("Failed to fetch sides:", e));
+      });
+  }, [activeFilter, cart]);
 
   const menuContentRef = useRef(null);
   const sectionRefs = useRef({});

@@ -32,6 +32,8 @@ def serialize_menu_item(row):
         "section": row["section"],
         "section_order": row["section_order"],
         "display_order": row["display_order"],
+        "meal_role": row.get("meal_role"),
+        "is_meal_only": bool(row.get("is_meal_only", False)),
     }
 
 
@@ -39,52 +41,92 @@ def serialize_menu_item(row):
 # BASE QUERY
 # ==========================================================
 
+_MENU_ROWS_CACHE = []
+
 def fetch_menu_rows():
-    response = (
-        supabase.table("inventory")
-        .select(
-            """
-            stock,
-            expiry_date,
-            menu_items!inner(
-                id,
-                name,
-                short_description,
-                long_description,
-                price,
-                image,
-                meal_image,
-                category,
-                food_type,
-                serving_type,
-                section,
-                section_order,
-                display_order,
-                is_meal_available,
-                is_available
+    global _MENU_ROWS_CACHE
+    last_err = None
+    for attempt in range(2):
+        try:
+            response = (
+                supabase.table("inventory")
+                .select(
+                    """
+                    stock,
+                    expiry_date,
+                    menu_items!inner(
+                        id,
+                        name,
+                        short_description,
+                        long_description,
+                        price,
+                        image,
+                        meal_image,
+                        category,
+                        food_type,
+                        serving_type,
+                        section,
+                        section_order,
+                        display_order,
+                        meal_role,
+                        is_meal_only,
+                        is_meal_available,
+                        is_available
+                    )
+                    """
+                )
+                .eq("branch_id", BRANCH_ID)
+                .gt("stock", 0)
+                .execute()
             )
-            """
-        )
-        .eq("branch_id", BRANCH_ID)
-        .gt("stock", 0)
-        .execute()
-    )
 
-    rows = []
+            rows = []
+            for item in response.data or []:
+                menu = item["menu_items"]
 
-    for item in response.data:
-        menu = item["menu_items"]
+                if not menu["is_available"]:
+                    continue
 
-        if not menu["is_available"]:
-            continue
+                merged = {**menu}
+                merged["stock"] = item["stock"]
+                merged["expiry_date"] = item["expiry_date"]
 
-        merged = {**menu}
-        merged["stock"] = item["stock"]
-        merged["expiry_date"] = item["expiry_date"]
+                rows.append(merged)
 
-        rows.append(merged)
+            if rows:
+                _MENU_ROWS_CACHE = rows
+            return rows
+        except Exception as e:
+            last_err = e
 
-    return rows
+    if _MENU_ROWS_CACHE:
+        print(f"[WARN] fetch_menu_rows Supabase query failed ({last_err}), using cached menu rows.")
+        return _MENU_ROWS_CACHE
+
+    raise last_err
+
+
+# ==========================================================
+# CATEGORY NORMALIZATION
+# ==========================================================
+
+CATEGORY_MAP = {
+    "burger": "burger",
+    "burgers": "burger",
+    "drink": "drink",
+    "drinks": "drink",
+    "side": "side",
+    "sides": "side",
+    "dessert": "dessert",
+    "desserts": "dessert",
+}
+
+
+def normalize_category(category):
+    if not category or not isinstance(category, str):
+        return None
+    cat = str(category).strip().lower().replace("-", " ").replace("_", " ")
+    return CATEGORY_MAP.get(cat)
 
 
 # ==========================================================
@@ -92,25 +134,14 @@ def fetch_menu_rows():
 # ==========================================================
 
 def get_menu_sections(category, preference=None):
+    norm_cat = normalize_category(category)
+    if not norm_cat:
+        return []
 
     rows = [
         r for r in fetch_menu_rows()
-        if r["category"].lower() == category.lower()
+        if str(r.get("category", "")).lower() == norm_cat
     ]
-
-    if preference:
-        pref = str(preference).lower().replace("-", " ").replace("_", " ").strip()
-        if pref == "veg":
-            rows = [
-                r for r in rows
-                if "veg" in str(r.get("food_type", "")).lower()
-                and "non" not in str(r.get("food_type", "")).lower()
-            ]
-        elif "non" in pref:
-            rows = [
-                r for r in rows
-                if "non" in str(r.get("food_type", "")).lower()
-            ]
 
     rows.sort(key=lambda x: (x["section_order"], x["display_order"]))
 
@@ -144,14 +175,20 @@ def get_available():
 # CATEGORY ITEMS
 # ==========================================================
 
+def _normalize_key(val: str) -> str:
+    return str(val or "").strip().lower().replace("-", " ").replace("_", " ")
+
+
 def get_category(category):
 
     rows = fetch_menu_rows()
+    norm_cat = _normalize_key(category)
 
-    if category in ["veg", "non_veg"]:
-        rows = [r for r in rows if r["food_type"].lower() == category.lower()]
+    if norm_cat in ("veg", "non veg"):
+        rows = [r for r in rows if _normalize_key(r.get("food_type")) == norm_cat]
     else:
-        rows = [r for r in rows if r["category"].lower() == category.lower()]
+        cat_target = "side" if norm_cat in ("side", "sides") else norm_cat
+        rows = [r for r in rows if _normalize_key(r.get("category")).rstrip("s") == cat_target.rstrip("s")]
 
     return [serialize_menu_item(r) for r in rows]
 

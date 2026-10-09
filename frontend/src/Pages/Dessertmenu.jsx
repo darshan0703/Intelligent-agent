@@ -13,15 +13,30 @@ import {
   useEffect
 } from "react";
 
-function Dessertmenu() {
+import { useCart } from "../context/CartContext";
 
+function Dessertmenu() {
+  const { cart } = useCart();
   const [dessertSections, setDessertSections] = useState([]);
 
   useEffect(() => {
-    fetch("/menu/desserts")
+    fetch("/menu/desserts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cart }),
+    })
       .then((res) => res.json())
-      .then(setDessertSections);
-  }, []);
+      .then((data) => {
+        if (Array.isArray(data)) setDessertSections(data);
+      })
+      .catch(() => {
+        fetch("/menu/desserts")
+          .then((res) => res.json())
+          .then((data) => {
+            if (Array.isArray(data)) setDessertSections(data);
+          });
+      });
+  }, [cart]);
 
   const menuContentRef = useRef(null);
 
