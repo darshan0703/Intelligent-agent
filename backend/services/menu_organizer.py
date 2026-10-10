@@ -246,16 +246,9 @@ def organize_menu_sections(
             if any(k in p_name for k in ["whopper", "royale", "classic cold coffee", "peri peri fries"]):
                 base_score += 0.5
 
-            # Affinity score
-            affinity_score = 0.0
-            for c_name in cart_names:
-                words = [w for w in c_name.split() if len(w) > 3]
-                if any(w in p_name for w in words):
-                    affinity_score += 0.5
-                if "spicy" in c_name and any(w in p_name for w in ["peri", "chilli", "fiery"]):
-                    affinity_score += 0.4
-                if "fries" in c_name and "dip" in p_name:
-                    affinity_score += 0.6
+            # Module A: Sensory contrast affinity score
+            from services.modules.m02_m03_basket_completion import compute_sensory_score
+            affinity_score = compute_sensory_score(cart, p)
 
             # Soft Margin & Budget Fit: Invalid prices (p_price is None) receive 0.0 boost
             budget_fit_score = 0.0
