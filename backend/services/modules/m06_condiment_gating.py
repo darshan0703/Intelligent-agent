@@ -53,14 +53,21 @@ def is_meal_only_item(item: Dict[str, Any]) -> bool:
 
 def is_condiment(item: Dict[str, Any]) -> bool:
     """
-    Returns True if item is a dip / sauce / condiment based on canonical database metadata.
-    In the database, condiments reside in the 'Dips' section under sides.
-    Zero product name heuristics or keyword substring searching.
+    Returns True if item is a dip / sauce / condiment based on section or category metadata.
+    Does NOT flag desserts (e.g. Choco Dip Softie).
     """
     if not isinstance(item, dict):
         return False
+    cat = str(item.get("category") or "").strip().lower()
+    if cat in ("dessert", "desserts", "sweet", "sweets"):
+        return False
     section = str(item.get("section") or "").strip().lower()
-    return section == "dips"
+    if section in ("dips", "dip", "sauces", "sauce"):
+        return True
+    name = str(item.get("name") or "").strip().lower()
+    if ("dip" in name or "sauce" in name) and cat in ("side", "sides", "sauce", "sauces"):
+        return True
+    return False
 
 
 def is_side_item(item: Dict[str, Any], is_nested_meal: bool = False) -> bool:

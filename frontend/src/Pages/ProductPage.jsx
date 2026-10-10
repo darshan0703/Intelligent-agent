@@ -230,7 +230,7 @@ function ProductPage() {
       } finally {
         delete refreshTimersRef.current[item.id];
       }
-    }, 10000);
+    }, 5000);
   };
 
   const handleMealButtonClick = () => {

@@ -94,16 +94,20 @@ def is_veg_meal_item(item):
     return get_item_food_type(item) == "veg"
 
 
-def organize_meal_options(options, food_preference=None, cart=None):
+def organize_meal_options(options, food_preference=None, cart=None, main_product=None):
     """
     Organizes meal upgrade options:
     - If food_preference is 'veg': Veg items first, Non-veg items after.
     - If food_preference is 'non_veg': Non-veg items first, Veg items after.
+    - Module A Sensory & Flavor Harmony: Ranks options according to selected main_product & cart context
+      (e.g., Peri Peri main product brings compatible Peri Peri sides & complementary cold drinks higher).
     - Cart Exclusion: items already in cart are moved to the VERY LAST!
-    - Within each group: default first, then lower extra_price first.
+    - Within each group: default first, then higher sensory affinity, then lower extra_price first.
     """
     from services.menu_organizer import is_item_in_cart
-    cart = cart or []
+    from services.modules.m02_m03_basket_completion import compute_sensory_score
+
+    cart_ctx = (cart or []) + ([main_product] if main_product else [])
     pref = str(food_preference or "veg").lower().strip()
 
     def option_key(item):
@@ -118,10 +122,11 @@ def organize_meal_options(options, food_preference=None, cart=None):
             diet_pri = 0 if is_veg else 1
 
         is_def = 0 if item.get("is_default") else 1
+        sensory = compute_sensory_score(cart_ctx, item)
         extra = _parse_price(item.get("extra_price"))
         if extra is None:
             extra = 9999.0
-        return (in_cart, diet_pri, is_def, extra)
+        return (in_cart, diet_pri, -round(sensory, 2), is_def, extra)
 
     return sorted(options, key=option_key)
 
@@ -305,9 +310,9 @@ def build_meal(item_id, meal_size, food_preference=None, cart=None):
             if item.get("meal_role") == "drink"
         ]
 
-        # Organize options with dietary priority and cart exclusion
-        side_options = organize_meal_options(side_options, food_preference=effective_pref, cart=cart)
-        drink_options = organize_meal_options(drink_options, food_preference=effective_pref, cart=cart)
+        # Organize options with dietary priority, Module A flavor & sensory affinity, and cart exclusion
+        side_options = organize_meal_options(side_options, food_preference=effective_pref, cart=cart, main_product=burger_data)
+        drink_options = organize_meal_options(drink_options, food_preference=effective_pref, cart=cart, main_product=burger_data)
 
         upgrade_price = _parse_price(MEAL_UPGRADE_PRICES.get(meal_size, 140))
         if upgrade_price is None:
