@@ -56,9 +56,9 @@ export async function initializeSileroVAD({
        * browser.
        */
 
-      positiveSpeechThreshold: 0.7,
+      positiveSpeechThreshold: 0.8,
 
-      negativeSpeechThreshold: 0.4,
+      negativeSpeechThreshold: 0.5,
 
       /*
        * In version 0.0.30,
@@ -66,9 +66,9 @@ export async function initializeSileroVAD({
        * in milliseconds.
        */
 
-      redemptionMs: 800,
+      redemptionMs: 1000,
 
-      minSpeechMs: 250,
+      minSpeechMs: 400,
 
       /*
        * Called when Silero believes
