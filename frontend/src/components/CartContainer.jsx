@@ -1,7 +1,35 @@
 import "./CartContainer.css";
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useMemo } from "react";
 import { useCart } from "../context/CartContext";
 import { useNavigate } from "react-router-dom";
+
+const getCartItemKey = (item) => {
+  if (item.type === "meal") {
+    return `meal_${item.name}_${item.side?.id}_${item.drink?.id}`;
+  }
+  return `item_${item.id || item.name}`;
+};
+
+const loadSavedOrder = () => {
+  try {
+    const raw = sessionStorage.getItem("cart_item_order");
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveOrder = (order) => {
+  try {
+    sessionStorage.setItem("cart_item_order", JSON.stringify(order));
+  } catch {
+    // Ignore sessionStorage errors
+  }
+};
+
+// Module-level persistent key order and cart snapshot across component remounts
+let persistentOrderKeys = [];
+let prevCartSnapshot = [];
 
 function CartContainer() {
   const navigate = useNavigate();
@@ -24,6 +52,70 @@ function CartContainer() {
 
   const cartItemsRef = useRef(null);
   const isRestoredRef = useRef(false);
+
+  // Maintain display order: moving newly added or quantity-increased items to the bottom
+  const displayCart = useMemo(() => {
+    if (!cart || cart.length === 0) {
+      persistentOrderKeys = [];
+      prevCartSnapshot = [];
+      saveOrder([]);
+      return [];
+    }
+
+    const currentKeysSet = new Set(cart.map(getCartItemKey));
+    let order = persistentOrderKeys.length > 0 ? persistentOrderKeys : loadSavedOrder();
+    order = order.filter((k) => currentKeysSet.has(k));
+
+    // Detect which item was newly added or had its quantity increased
+    if (prevCartSnapshot.length > 0) {
+      const prevQtyMap = new Map();
+      for (const p of prevCartSnapshot) {
+        prevQtyMap.set(getCartItemKey(p), p.quantity || 0);
+      }
+
+      let updatedKey = null;
+      for (const item of cart) {
+        const key = getCartItemKey(item);
+        const prevQty = prevQtyMap.get(key) || 0;
+        if (item.quantity > prevQty) {
+          updatedKey = key;
+          break;
+        }
+      }
+
+      if (updatedKey) {
+        order = order.filter((k) => k !== updatedKey);
+        order.push(updatedKey);
+      }
+    }
+
+    // Ensure any newly added or remaining keys in cart are present in order
+    for (const item of cart) {
+      const k = getCartItemKey(item);
+      if (!order.includes(k)) {
+        order.push(k);
+      }
+    }
+
+    persistentOrderKeys = order;
+    prevCartSnapshot = cart;
+    saveOrder(order);
+
+    const itemMap = new Map();
+    for (const item of cart) {
+      itemMap.set(getCartItemKey(item), item);
+    }
+
+    const result = [];
+    for (const k of order) {
+      const item = itemMap.get(k);
+      if (item) {
+        result.push(item);
+      }
+    }
+
+    return result;
+  }, [cart]);
 
   // Restore saved scroll position on mount/remount (when no add event is pending)
   useEffect(() => {
@@ -139,8 +231,8 @@ function CartContainer() {
 
       {!isEmpty && (
         <div className="cart-items" ref={cartItemsRef} onScroll={handleScroll}>
-          {cart.map((item, index) => (
-            <div key={index} className="cart-item">
+          {displayCart.map((item) => (
+            <div key={getCartItemKey(item)} className="cart-item">
               <div className="cart-item-header">
                 {/* ITEM NAME */}
                 <div className="cart-item-name">{item.name}</div>
