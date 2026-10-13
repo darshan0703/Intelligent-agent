@@ -16,6 +16,9 @@ function MealPage({ meal: propMeal } = {}) {
     const navigate = useNavigate();
     const origin = state?.origin || "/";
     const meal = propMeal || state?.meal;
+    const isEditMode = Boolean(state?.editMode);
+    const editIndex = state?.editIndex;
+    const savedQuantity = state?.quantity || 1;
 
     const burger = meal?.burger;
     const side = meal?.side;
@@ -24,7 +27,7 @@ function MealPage({ meal: propMeal } = {}) {
     const { syncCart, cart, notifyCartItemAdded } = useCart();
     const { foodPreference } = useKiosk();
     const mealSize = meal?.size || "Medium";
-    const [quantity, setQuantity] = useState(1);
+    const [quantity, setQuantity] = useState(savedQuantity);
 
     const [selectedSide, setSelectedSide] = useState(side);
 
@@ -54,7 +57,10 @@ function MealPage({ meal: propMeal } = {}) {
         if (!item || !cart || !Array.isArray(cart)) return false;
         const itemId = item.id;
         const itemName = String(item.name || "").trim().toLowerCase();
-        return cart.some((c) => {
+        return cart.some((c, idx) => {
+            if (isEditMode && typeof editIndex === "number" && idx === editIndex) {
+                return false;
+            }
             if (c.id && itemId && String(c.id) === String(itemId)) return true;
             const cName = String(c.name || "").trim().toLowerCase();
             if (cName && (cName === itemName || (itemName.length > 5 && cName === itemName))) return true;
@@ -210,6 +216,23 @@ function MealPage({ meal: propMeal } = {}) {
 
         try {
 
+            if (isEditMode && typeof editIndex === "number") {
+                const removeRes = await fetch("/cart/item", {
+                    method: "PATCH",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        item_index: editIndex,
+                        action: "remove",
+                    }),
+                });
+                const removeData = await removeRes.json();
+                if (!removeData.success) {
+                    console.error("Failed to remove old meal item:", removeData.message);
+                }
+            }
+
             const response = await fetch(
                 "/cart/add-meal",
                 {
@@ -249,6 +272,11 @@ function MealPage({ meal: propMeal } = {}) {
 
     };
     const handleDeclineMeal = async () => {
+        if (isEditMode) {
+            navigate(origin);
+            return;
+        }
+
         try {
             const response = await fetch(
                 "/meal/decline",
@@ -631,7 +659,9 @@ function MealPage({ meal: propMeal } = {}) {
                     >
                         {(!selectedSide || !selectedDrink)
                             ? "Choose Side & Drink to Add Meal"
-                            : `Add Meal To Cart • ₹${totalPrice * quantity}`}
+                            : isEditMode
+                                ? `Update Meal In Cart • ₹${totalPrice * quantity}`
+                                : `Add Meal To Cart • ₹${totalPrice * quantity}`}
                     </button>
 
                 </>
