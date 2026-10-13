@@ -2,6 +2,7 @@ from schemas import KioskResponse, ScreenTypes
 from services.menu_service import get_product, get_category
 from services.modules.m01_dietary_lock import get_item_food_type, normalize_food_type
 from services.modules.m07_cart_exclusion import exclude_cart_items
+from services.modules.m06_condiment_gating import filter_for_recommendation_page
 
 
 def get_product_recommendations(product, cart=None, limit=3, preference=None):
@@ -14,7 +15,8 @@ def get_product_recommendations(product, cart=None, limit=3, preference=None):
 
     Applies:
     1. Module 7 Cart Exclusion: drop any items already present in the cart.
-    2. Module 1 Dietary Lock / Smart Preference:
+    2. Module 6 Condiment Gating: drop dips from product page shelves (dips belong on checkout).
+    3. Module 1 Dietary Lock / Smart Preference:
        - If viewing a veg product, or active preference is veg, or cart is 100% veg:
          STRICT VEG ONLY (non-veg items strictly eradicated).
        - If viewing a non-veg product, or preference is non-veg:
@@ -56,19 +58,24 @@ def get_product_recommendations(product, cart=None, limit=3, preference=None):
     seen_names = {str(product.get("name", "")).strip().lower()}
 
     def filter_and_sort_candidates(items):
-        # 1. Exclude items already in cart
-        candidates = exclude_cart_items(items, cart=cart or [])
+        # 1. Exclude items already in cart & filter out condiments/dips (M6 Gating)
+        candidates = filter_for_recommendation_page(exclude_cart_items(items, cart=cart or []))
 
         if eff_pref == "veg":
             # Strict veg only
-            return [i for i in candidates if get_item_food_type(i) == "veg"]
+            filtered = [i for i in candidates if get_item_food_type(i) == "veg"]
         elif eff_pref == "non_veg":
             # Smart blend: prioritize non-veg first, then veg
             non_veg_list = [i for i in candidates if get_item_food_type(i) == "non_veg"]
             veg_list = [i for i in candidates if get_item_food_type(i) == "veg"]
-            return non_veg_list + veg_list
+            filtered = non_veg_list + veg_list
         else:
-            return candidates
+            filtered = candidates
+
+        # Module A: Apply soft sensory contrast ranking within the fixed category slot
+        from services.modules.m02_m03_basket_completion import rank_candidates_with_sensory
+        cart_ctx = (cart or []) + ([product] if product else [])
+        return rank_candidates_with_sensory(filtered, cart=cart_ctx, placement="normal")
 
     # Pick 1 item from each target category
     for target_cat in target_cats:
