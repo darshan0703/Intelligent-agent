@@ -19,6 +19,7 @@ export function UIActionProvider({ children }) {
       new CustomEvent("kiosk-ui-action", {
         detail: {
           action,
+          value,
         },
       })
     );
