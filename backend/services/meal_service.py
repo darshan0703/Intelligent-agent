@@ -1,7 +1,21 @@
+import re
 from datetime import date
 from database import supabase
 from services.modules.m01_dietary_lock import get_item_food_type
 from services.recommendation import _is_stock_eligible, _is_expiry_eligible
+
+
+def _sanitize_error(e) -> str:
+    """
+    Sanitizes error messages before logging to ensure that sensitive values
+    (database passwords, API tokens, credentials, secrets) are redacted.
+    """
+    msg = str(e) if e is not None else ""
+    msg = re.sub(r"://([^:]+):([^@]+)@", r"://\1:***@", msg)
+    msg = re.sub(r"\b(token|secret|pass(?:word)?|credential|apikey|key)s?[=:\s]+[^\s,;&]+", r"\1: [REDACTED]", msg, flags=re.IGNORECASE)
+    msg = re.sub(r"Bearer\s+[A-Za-z0-9\-\._~\+\/]+=*", "Bearer [REDACTED]", msg, flags=re.IGNORECASE)
+    msg = re.sub(r"SYNTHETIC_TEST_[A-Za-z0-9_]+", "[REDACTED]", msg)
+    return msg
 
 
 MEAL_UPGRADE_PRICES = {
@@ -76,9 +90,9 @@ def serialize_meal_option(item, extra_price, is_default=False):
         parsed_extra = 0.0
 
     return {
-        "id": item["id"],
-        "name": item["name"],
-        "image": item["image"],
+        "id": item.get("id"),
+        "name": item.get("name"),
+        "image": item.get("image"),
         "price": parsed_price,
         "extra_price": parsed_extra,
         "is_default": is_default,
@@ -176,7 +190,7 @@ def get_default_meal(meal_size):
             "drink": drink_item,
         }
     except Exception as e:
-        print(f"Error getting default meal: {e}")
+        print(f"Error getting default meal: {_sanitize_error(e)}")
         return None
 
 
@@ -241,7 +255,7 @@ def get_upgrade_options(meal_size, role=None):
 
         return options
     except Exception as e:
-        print(f"[WARN] Error fetching upgrade options: {e}")
+        print(f"[WARN] Error fetching upgrade options: {_sanitize_error(e)}")
         return []
 
 
@@ -336,16 +350,20 @@ def build_meal(item_id, meal_size, food_preference=None, cart=None):
                 "id": side_default["id"],
                 "name": side_default["name"],
                 "price": side_price,
+                "extra_price": 0.0,
                 "image": side_default.get("image"),
                 "foodType": side_default.get("food_type"),
+                "section": side_default.get("section"),
             },
 
             "drink": {
                 "id": drink_default["id"],
                 "name": drink_default["name"],
                 "price": drink_price,
+                "extra_price": 0.0,
                 "image": drink_default.get("image"),
                 "foodType": drink_default.get("food_type"),
+                "section": drink_default.get("section"),
             },
 
             "burger_price": burger_price,
@@ -357,7 +375,7 @@ def build_meal(item_id, meal_size, food_preference=None, cart=None):
             "drink_options": drink_options,
         }
     except Exception as e:
-        print(f"Error building meal for item {item_id}: {e}")
+        print(f"Error building meal for item {item_id}: {_sanitize_error(e)}")
         return None
 
 
@@ -410,7 +428,7 @@ def get_meal_options(item_id, food_preference=None, cart=None):
             },
         }
     except Exception as e:
-        print(f"Error getting meal options for item {item_id}: {e}")
+        print(f"Error getting meal options for item {item_id}: {_sanitize_error(e)}")
         return {
             "success": False,
             "product_id": item_id,

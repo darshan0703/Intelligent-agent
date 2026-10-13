@@ -1,5 +1,5 @@
 import "./Mealpage.css";
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { useKiosk } from "../context/KioskContext";
@@ -11,11 +11,11 @@ import FooterDecoration from "../components/FooterDecoration";
 import vegIcon from "../assets/images/veg.png";
 import nonVegIcon from "../assets/images/nonveg.png";
 
-function MealPage() {
+function MealPage({ meal: propMeal } = {}) {
     const { state } = useLocation();
     const navigate = useNavigate();
     const origin = state?.origin || "/";
-    const meal = state?.meal;
+    const meal = propMeal || state?.meal;
 
     const burger = meal?.burger;
     const side = meal?.side;
@@ -42,12 +42,12 @@ function MealPage() {
     }, [userPref, burgerFoodType]);
 
     const isVegItem = (item) => {
-        const ft = String(item?.foodType || item?.food_type || "").toLowerCase().trim();
-        const name = String(item?.name || "").toLowerCase();
-        if (ft.includes("non") || ["chicken", "wings", "nugget", "boneless", "mutton", "fish"].some((k) => name.includes(k))) {
-            return false;
-        }
-        return true;
+        const ft = String(item?.foodType || item?.food_type || "")
+            .toLowerCase()
+            .replace("-", "_")
+            .replace(" ", "_")
+            .trim();
+        return ft === "veg";
     };
 
     const isItemInCart = (item) => {
@@ -102,46 +102,76 @@ function MealPage() {
         });
     }, [meal?.side_options, effectivePref, cart, side]);
 
-    useEffect(() => {
-        if (!selectedSide && sortedSideOptions.length > 0) {
-            setSelectedSide(sortedSideOptions[0]);
-        } else if (selectedSide && isItemInCart(selectedSide)) {
-            const firstUncarted = sortedSideOptions.find((s) => !isItemInCart(s));
-            if (firstUncarted) setSelectedSide(firstUncarted);
-        } else if (effectivePref === "veg" && selectedSide && !isVegItem(selectedSide)) {
-            const firstVeg = sortedSideOptions.find((s) => isVegItem(s) && !isItemInCart(s));
-            if (firstVeg) setSelectedSide(firstVeg);
-        }
-    }, [sortedSideOptions, effectivePref, cart]);
-
-    const drinkSections = [
-
+    const drinkSections = useMemo(() => [
         ...new Set(
-
             (meal?.drink_options ?? []).map(
-
                 item => item.section
-
-            )
-
+            ).filter(Boolean)
         )
+    ], [meal?.drink_options]);
 
-    ];
+    const defaultDrinkSection =
+        (meal?.drink_options ?? []).find(d => d.id === drink?.id)?.section ||
+        drink?.section ||
+        drinkSections[0] ||
+        "";
 
     const [selectedDrinkSection, setSelectedDrinkSection] =
-        useState(drinkSections[0] || "");
+        useState(defaultDrinkSection);
 
     const [selectedDrink, setSelectedDrink] =
         useState(drink);
 
     const visibleDrinks =
         (meal?.drink_options ?? []).filter(
-
             item =>
                 item.section ===
                 selectedDrinkSection
-
         );
+
+    const mealKey = meal
+        ? `${meal.burger?.id || meal.id || ""}_${meal.size || ""}_${meal.side?.id || ""}_${meal.drink?.id || ""}`
+        : null;
+    const initializedMealKeyRef = useRef(null);
+    const userSelectedSideRef = useRef(false);
+    const userSelectedDrinkRef = useRef(false);
+    const userSelectedSectionRef = useRef(false);
+
+    useEffect(() => {
+        if (!meal) return;
+
+        const isNewMeal = mealKey && mealKey !== initializedMealKeyRef.current;
+        if (isNewMeal) {
+            initializedMealKeyRef.current = mealKey;
+            userSelectedSideRef.current = false;
+            userSelectedDrinkRef.current = false;
+            userSelectedSectionRef.current = false;
+
+            // Initialize side strictly from included default side (never pick a recommendation)
+            if (meal.side) {
+                setSelectedSide(meal.side);
+            } else {
+                setSelectedSide(null);
+            }
+
+            // Initialize drink strictly from included default drink (never pick a recommendation)
+            if (meal.drink) {
+                setSelectedDrink(meal.drink);
+            } else {
+                setSelectedDrink(null);
+            }
+
+            // Initialize drink category to default drink's category
+            const initialSection =
+                (meal.drink_options ?? []).find((d) => d.id === meal.drink?.id)?.section ||
+                meal.drink?.section ||
+                (meal.drink_options && meal.drink_options[0]?.section) ||
+                "";
+            if (initialSection) {
+                setSelectedDrinkSection(initialSection);
+            }
+        }
+    }, [meal, mealKey]);
 
     const sortedVisibleDrinks = useMemo(() => {
         return [...visibleDrinks].sort((a, b) => {
@@ -156,15 +186,6 @@ function MealPage() {
             return (Number(a.extra_price) || 0) - (Number(b.extra_price) || 0);
         });
     }, [visibleDrinks, cart, drink]);
-
-    useEffect(() => {
-        if (!selectedDrink && sortedVisibleDrinks.length > 0) {
-            setSelectedDrink(sortedVisibleDrinks[0]);
-        } else if (selectedDrink && isItemInCart(selectedDrink)) {
-            const firstUncarted = sortedVisibleDrinks.find((d) => !isItemInCart(d));
-            if (firstUncarted) setSelectedDrink(firstUncarted);
-        }
-    }, [sortedVisibleDrinks, cart]);
 
     const mealPrice =
         meal?.meal_price ?? 0;
@@ -182,6 +203,10 @@ function MealPage() {
 
     console.log("Burger:", burger);
     const handleAddMeal = async () => {
+        if (!selectedSide || !selectedDrink) {
+            alert("Please select both a side and a drink to complete your meal.");
+            return;
+        }
 
         try {
 
@@ -331,15 +356,13 @@ function MealPage() {
 
                                     <div className="meal-item-left">
 
-                                        🍟 {selectedSide?.name}
+                                        🍟 {selectedSide?.name || "Select an available side"}
 
                                     </div>
 
                                     <div className="meal-item-right">
 
-                                        {sideExtra > 0
-                                            ? `+₹${sideExtra}`
-                                            : "₹0"}
+                                        {selectedSide ? (sideExtra > 0 ? `+₹${sideExtra}` : "₹0") : "—"}
 
                                     </div>
 
@@ -349,15 +372,13 @@ function MealPage() {
 
                                     <div className="meal-item-left">
 
-                                        🥤 {selectedDrink?.name}
+                                        🥤 {selectedDrink?.name || "Select an available drink"}
 
                                     </div>
 
                                     <div className="meal-item-right">
 
-                                        {drinkExtra > 0
-                                            ? `+₹${drinkExtra}`
-                                            : "₹0"}
+                                        {selectedDrink ? (drinkExtra > 0 ? `+₹${drinkExtra}` : "₹0") : "—"}
 
                                     </div>
 
@@ -434,9 +455,10 @@ function MealPage() {
                                             : ""
                                         }`}
 
-                                    onClick={() =>
-                                        setSelectedSide(item)
-                                    }
+                                    onClick={() => {
+                                        userSelectedSideRef.current = true;
+                                        setSelectedSide(item);
+                                    }}
 
                                 >
 
@@ -506,9 +528,10 @@ function MealPage() {
                                             : ""
                                     }
 
-                                    onClick={() =>
-                                        setSelectedDrinkSection(section)
-                                    }
+                                    onClick={() => {
+                                        userSelectedSectionRef.current = true;
+                                        setSelectedDrinkSection(section);
+                                    }}
 
                                 >
 
@@ -533,9 +556,10 @@ function MealPage() {
                                             : ""
                                         }`}
 
-                                    onClick={() =>
-                                        setSelectedDrink(item)
-                                    }
+                                    onClick={() => {
+                                        userSelectedDrinkRef.current = true;
+                                        setSelectedDrink(item);
+                                    }}
 
                                 >
 
@@ -616,8 +640,12 @@ function MealPage() {
                     <button
                         className="meal-add-cart-btn"
                         onClick={handleAddMeal}
+                        disabled={!selectedSide || !selectedDrink}
+                        style={(!selectedSide || !selectedDrink) ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
                     >
-                        {`Add Meal To Cart • ₹${totalPrice * quantity}`}
+                        {(!selectedSide || !selectedDrink)
+                            ? "Choose Side & Drink to Add Meal"
+                            : `Add Meal To Cart • ₹${totalPrice * quantity}`}
                     </button>
 
                 </>
