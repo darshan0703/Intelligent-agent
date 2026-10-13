@@ -8,6 +8,7 @@ function CartContainer() {
 
   const {
     cart,
+    displayCart,
     itemCount,
     total,
     cartAddEvent,
@@ -139,8 +140,8 @@ function CartContainer() {
 
       {!isEmpty && (
         <div className="cart-items" ref={cartItemsRef} onScroll={handleScroll}>
-          {cart.map((item, index) => (
-            <div key={index} className="cart-item">
+          {displayCart.map((item) => (
+            <div key={item._uniqueKey} className="cart-item">
               <div className="cart-item-header">
                 {/* ITEM NAME */}
                 <div className="cart-item-name">{item.name}</div>

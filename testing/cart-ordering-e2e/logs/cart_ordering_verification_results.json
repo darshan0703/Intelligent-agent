@@ -1,0 +1,87 @@
+{
+  "Behavior 1: Add products correct items & qty": {
+    "status": "PASS",
+    "observed_items": [
+      "Crispy Veg",
+      "Crispy Chicken",
+      "Chicken Makhani"
+    ],
+    "observed_count": "(3 items)",
+    "observed_total": "Review & Pay\u20b9 227/-",
+    "expected_items": [
+      "Crispy Veg",
+      "Crispy Chicken",
+      "Chicken Makhani"
+    ],
+    "expected_total": "\u20b9 227/-"
+  },
+  "Behavior 4: Sidebar ordering matches Cart Page": {
+    "status": "PASS",
+    "sidebar_ordering": [
+      "Crispy Veg",
+      "Crispy Chicken",
+      "Chicken Makhani"
+    ],
+    "cart_page_ordering": [
+      "Crispy Veg",
+      "Crispy Chicken",
+      "Chicken Makhani"
+    ],
+    "match": true
+  },
+  "Behavior 2: Increasing quantity moves to bottom": {
+    "status": "PASS",
+    "initial_first_item": "Crispy Veg",
+    "resulting_order": [
+      "Crispy Chicken",
+      "Chicken Makhani",
+      "Crispy Veg"
+    ],
+    "item_at_bottom": "Crispy Veg",
+    "expected_order": [
+      "Crispy Chicken",
+      "Chicken Makhani",
+      "Crispy Veg"
+    ]
+  },
+  "Behavior 3: Removing item preserves unrelated ordering": {
+    "status": "PASS",
+    "removed_item": "Crispy Chicken",
+    "resulting_order": [
+      "Chicken Makhani",
+      "Crispy Veg"
+    ],
+    "expected_order": [
+      "Chicken Makhani",
+      "Crispy Veg"
+    ]
+  },
+  "Behavior 5: Rapid cart mutations guarded": {
+    "status": "PASS",
+    "items_after_rapid": [
+      "Crispy Veg",
+      "Chicken Makhani"
+    ],
+    "quantities_after_rapid": [
+      "2",
+      "3"
+    ],
+    "in_flight_lock_verified": true
+  },
+  "Behavior 6: Recommendation badges visible & functional": {
+    "status": "PASS",
+    "badges_found": [
+      "\ud83e\udd64 Best Drink",
+      "\ud83c\udf66 Sweet Finish"
+    ],
+    "cards_count": 2,
+    "single_dismiss_verified": true
+  },
+  "Behavior 7: Clearing cart resets ordering state": {
+    "status": "PASS",
+    "pre_order": "[\"item_1#0\",\"item_3#0\"]",
+    "post_order": null,
+    "post_snapshot": null,
+    "cart_cleared": true
+  }
+}
