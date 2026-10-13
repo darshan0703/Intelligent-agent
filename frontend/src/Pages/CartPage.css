@@ -68,6 +68,45 @@
     font-size: 22px;
 }
 
+.cart-page-meal-desc-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 8px;
+}
+
+.cart-page-meal-desc-row p {
+    margin: 0;
+    color: #888;
+    font-family: "Flame";
+    font-size: 22px;
+}
+
+.cart-page-customize-btn {
+    display: inline-flex;
+    align-items: center;
+    background: transparent;
+    border: none;
+    padding: 0;
+    color: #888;
+    font-family: "Flame", sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: color 0.15s ease, transform 0.1s ease;
+}
+
+.cart-page-customize-btn:hover {
+    color: #888;
+    text-decoration: underline;
+}
+
+.cart-page-customize-btn:active {
+    transform: scale(0.96);
+    opacity: 0.85;
+}
+
 .cart-page-item-quantity {
     display: flex;
 

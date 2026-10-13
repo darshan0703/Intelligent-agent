@@ -16,6 +16,9 @@ function MealPage() {
     const navigate = useNavigate();
     const origin = state?.origin || "/";
     const meal = state?.meal;
+    const isEditMode = Boolean(state?.editMode);
+    const editIndex = state?.editIndex;
+    const savedQuantity = state?.quantity || 1;
 
     const burger = meal?.burger;
     const side = meal?.side;
@@ -24,9 +27,13 @@ function MealPage() {
     const { syncCart, cart, notifyCartItemAdded } = useCart();
     const { foodPreference } = useKiosk();
     const mealSize = meal?.size || "Medium";
-    const [quantity, setQuantity] = useState(1);
+    const [quantity, setQuantity] = useState(savedQuantity);
 
-    const [selectedSide, setSelectedSide] = useState(side);
+    const matchedSideOption = (meal?.side_options ?? []).find(
+        (s) => s.id === side?.id
+    );
+    const initialSide = matchedSideOption || side;
+    const [selectedSide, setSelectedSide] = useState(initialSide);
 
     const burgerFoodType = String(burger?.foodType || burger?.food_type || "").toLowerCase().trim();
     const userPref = String(foodPreference || "").toLowerCase().trim();
@@ -54,7 +61,10 @@ function MealPage() {
         if (!item || !cart || !Array.isArray(cart)) return false;
         const itemId = item.id;
         const itemName = String(item.name || "").trim().toLowerCase();
-        return cart.some((c) => {
+        return cart.some((c, idx) => {
+            if (isEditMode && typeof editIndex === "number" && idx === editIndex) {
+                return false;
+            }
             if (c.id && itemId && String(c.id) === String(itemId)) return true;
             const cName = String(c.name || "").trim().toLowerCase();
             if (cName && (cName === itemName || (itemName.length > 5 && cName === itemName))) return true;
@@ -105,14 +115,14 @@ function MealPage() {
     useEffect(() => {
         if (!selectedSide && sortedSideOptions.length > 0) {
             setSelectedSide(sortedSideOptions[0]);
-        } else if (selectedSide && isItemInCart(selectedSide)) {
+        } else if (!isEditMode && selectedSide && isItemInCart(selectedSide)) {
             const firstUncarted = sortedSideOptions.find((s) => !isItemInCart(s));
             if (firstUncarted) setSelectedSide(firstUncarted);
-        } else if (effectivePref === "veg" && selectedSide && !isVegItem(selectedSide)) {
+        } else if (!isEditMode && effectivePref === "veg" && selectedSide && !isVegItem(selectedSide)) {
             const firstVeg = sortedSideOptions.find((s) => isVegItem(s) && !isItemInCart(s));
             if (firstVeg) setSelectedSide(firstVeg);
         }
-    }, [sortedSideOptions, effectivePref, cart]);
+    }, [sortedSideOptions, effectivePref, cart, isEditMode]);
 
     const drinkSections = [
 
@@ -128,11 +138,18 @@ function MealPage() {
 
     ];
 
+    const matchedDrinkOption = (meal?.drink_options ?? []).find(
+        (d) => d.id === drink?.id
+    );
+    const initialDrink = matchedDrinkOption || drink;
+    const initialDrinkSection =
+        drink?.section || matchedDrinkOption?.section || drinkSections[0] || "";
+
     const [selectedDrinkSection, setSelectedDrinkSection] =
-        useState(drinkSections[0] || "");
+        useState(initialDrinkSection);
 
     const [selectedDrink, setSelectedDrink] =
-        useState(drink);
+        useState(initialDrink);
 
     const visibleDrinks =
         (meal?.drink_options ?? []).filter(
@@ -160,11 +177,11 @@ function MealPage() {
     useEffect(() => {
         if (!selectedDrink && sortedVisibleDrinks.length > 0) {
             setSelectedDrink(sortedVisibleDrinks[0]);
-        } else if (selectedDrink && isItemInCart(selectedDrink)) {
+        } else if (!isEditMode && selectedDrink && isItemInCart(selectedDrink)) {
             const firstUncarted = sortedVisibleDrinks.find((d) => !isItemInCart(d));
             if (firstUncarted) setSelectedDrink(firstUncarted);
         }
-    }, [sortedVisibleDrinks, cart]);
+    }, [sortedVisibleDrinks, cart, isEditMode]);
 
     const mealPrice =
         meal?.meal_price ?? 0;
@@ -184,6 +201,23 @@ function MealPage() {
     const handleAddMeal = async () => {
 
         try {
+
+            if (isEditMode && typeof editIndex === "number") {
+                const removeRes = await fetch("/cart/item", {
+                    method: "PATCH",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        item_index: editIndex,
+                        action: "remove",
+                    }),
+                });
+                const removeData = await removeRes.json();
+                if (!removeData.success) {
+                    console.error("Failed to remove old meal item:", removeData.message);
+                }
+            }
 
             const response = await fetch(
                 "/cart/add-meal",
@@ -224,6 +258,11 @@ function MealPage() {
 
     };
     const handleDeclineMeal = async () => {
+        if (isEditMode) {
+            navigate(origin);
+            return;
+        }
+
         try {
             const response = await fetch(
                 "/meal/decline",
@@ -603,7 +642,9 @@ function MealPage() {
                         className="meal-add-cart-btn"
                         onClick={handleAddMeal}
                     >
-                        {`Add Meal To Cart • ₹${totalPrice * quantity}`}
+                        {isEditMode
+                            ? `Update Meal In Cart • ₹${totalPrice * quantity}`
+                            : `Add Meal To Cart • ₹${totalPrice * quantity}`}
                     </button>
 
                 </>

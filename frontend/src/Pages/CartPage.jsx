@@ -1,6 +1,7 @@
 import "./CartPage.css";
 import { useState, useEffect } from "react";
 import { useCart } from "../context/CartContext";
+import { useKiosk } from "../context/KioskContext";
 import { useNavigate } from "react-router-dom";
 
 import Header from "../components/Header";
@@ -10,6 +11,7 @@ import FooterDecoration from "../components/FooterDecoration";
 
 function CartPage() {
   const { cart, total, syncCart } = useCart();
+  const { foodPreference } = useKiosk();
   const navigate = useNavigate();
 
   const [selectedPayment, setSelectedPayment] = useState(null);
@@ -160,6 +162,48 @@ function CartPage() {
     }
   };
 
+  const handleCustomizeMeal = async (item, index) => {
+    const burgerId = item.main_item?.id || item.burger?.id || item.id;
+    if (!burgerId) return;
+
+    try {
+      const res = await fetch("/meal/options", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          item_id: burgerId,
+          food_preference: foodPreference,
+          cart,
+        }),
+      });
+
+      const data = await res.json();
+      if (data?.success && data?.is_meal_available) {
+        const sizeKey = (item.meal_size || "medium").toLowerCase();
+        const baseMeal = data.meals?.[sizeKey] || data.meals?.medium || data.meals?.large;
+
+        if (!baseMeal) return;
+
+        navigate("/mealpage", {
+          state: {
+            meal: {
+              ...baseMeal,
+              size: item.meal_size || baseMeal.size || "medium",
+              side: item.side,
+              drink: item.drink,
+            },
+            origin: "/cart",
+            editMode: true,
+            editIndex: index,
+            quantity: item.quantity || 1,
+          },
+        });
+      }
+    } catch (err) {
+      console.error("Failed to load meal options for customization:", err);
+    }
+  };
+
  const handleContinue = async () => {
   if (!selectedPayment) return;
 
@@ -225,9 +269,19 @@ if (data.success) {
               <h2>{item.name}</h2>
 
               {item.type === "meal" && (
-                <p>
-                  Includes {item.side?.name} + {item.drink?.name}
-                </p>
+                <div className="cart-page-meal-desc-row">
+                  <p>
+                    Includes {item.side?.name} + {item.drink?.name}
+                  </p>
+                  <button
+                    type="button"
+                    className="cart-page-customize-btn"
+                    onClick={() => handleCustomizeMeal(item, index)}
+                    aria-label={`Customize ${item.name}`}
+                  >
+                    Customize &gt;
+                  </button>
+                </div>
               )}
             </div>
 
