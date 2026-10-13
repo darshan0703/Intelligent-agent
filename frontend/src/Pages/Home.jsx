@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useVoiceConversation } from "../context/VoiceConversationProvider";
+import { useCart } from "../context/CartContext";
 import { startSession } from "../services/api";
 
 import mealHome from "../assets/images/Meals/mealhome5.png";
@@ -10,6 +11,7 @@ import mealHome from "../assets/images/Meals/mealhome5.png";
 function Home() {
   const navigate = useNavigate();
   const { startVoiceConversation } = useVoiceConversation();
+  const { clearCart } = useCart();
 
   const [starting, setStarting] = useState(false);
 
@@ -19,6 +21,7 @@ function Home() {
     setStarting(true);
 
     try {
+      clearCart();
       const session = await startSession();
 
       localStorage.setItem("session_id", session.session_id);
