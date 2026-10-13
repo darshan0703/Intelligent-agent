@@ -1,0 +1,33 @@
+{
+  "Scenario A": {
+    "status": "PASS",
+    "voice_command": "I want a Crispy Chicken burger",
+    "initial_route": "/burgermenu",
+    "final_route": "http://localhost:5173/burgermenu",
+    "observations": "Burger opened by voice, added to cart, returned to originating /burgermenu (not Home), cart retained item."
+  },
+  "Scenario B": {
+    "status": "FAIL",
+    "error": "Timeout 10000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation to \"**/product\" until 'load'\n============================================================"
+  },
+  "Scenario C": {
+    "status": "FAIL",
+    "error": "Timeout 10000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation to \"**/product\" until 'load'\n============================================================"
+  },
+  "Scenario D": {
+    "status": "FAIL",
+    "error": "Expected voice 'Go back' to return to /burgermenu, got http://localhost:5173/product"
+  },
+  "Scenario E": {
+    "status": "FAIL",
+    "error": ""
+  },
+  "Scenario F": {
+    "status": "FAIL",
+    "error": "Locator.wait_for: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\".cart-recommendations-container\") to be visible\n"
+  },
+  "Scenario G": {
+    "status": "FAIL",
+    "error": "Cart should have items before isolation check"
+  }
+}

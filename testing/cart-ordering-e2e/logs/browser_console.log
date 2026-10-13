@@ -1,0 +1,620 @@
+[01:59:29] === RUNNING SCENARIO A: Product selection and origin preservation ===
+[01:59:29] Navigating to Home screen...
+[debug] [vite] connecting...
+[debug] [vite] connected.
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] Cart: 0 0
+[log] Cart: 0 0
+[log] Cart: 0 0
+[log] Cart: 0 0
+[01:59:31] Clicked TOUCH TO START.
+[01:59:31] Waiting for Silero VAD to arm...
+[log] VOICE INTERFACE ENABLED
+[log] PREPARING VOICE INPUT FOR GREETING...
+[log] VOICE INPUT READY FOR GREETING
+[log] REQUESTING TTS: Hi! Welcome to Burger King. What can I get for you today?
+[log] SYNCING CURRENT SCREEN: category_selection {}
+[log] SYNCING CURRENT SCREEN: category_selection {}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: category_selection, available_controls: Array(1), meal_offer: null}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: category_selection, available_controls: Array(1), meal_offer: null}
+[log] TTS PLAYING
+[log] STARTING INTERRUPTION DETECTION
+[log] TTS AUDIO ENDED
+[log] TTS FINISHED
+[log] STARTING CUSTOMER LISTENING
+[log] PREPARING VOICE LISTENER...
+[log] INITIALIZING SILERO VAD...
+[log] VAD | debug > initializing vad
+[log] VAD | debug > vad is initialized
+[log] VAD | debug > initializing micVAD
+[log] using default audio context
+[log] VAD | debug > started micVAD
+[log] SILERO VAD READY
+[log] VOICE LISTENER READY
+[log] CUSTOMER RECORDER ARMED
+[log] STARTING SILERO VAD
+[log] SILERO LISTENING FOR CUSTOMER
+[01:59:36] Silero VAD is active and listening.
+[01:59:37] Screenshot saved: testing/cart-ordering-e2e/screenshots/00_fresh_session_categories.png
+[01:59:37] Navigating to Burgermenu via UI clicks...
+[log] BACKEND RESPONSE: {screen: recommended_burgers, message: I'd recommend our Veg Whopper. If you're looking f…options in burgers if you'd like to explore them., data: Object}
+[log] HANDLING RESPONSE: {screen: recommended_burgers, message: I'd recommend our Veg Whopper. If you're looking f…options in burgers if you'd like to explore them., data: Object}
+[log] ==========================================
+[log] BURGER SELECTED TYPE: both
+[log] BURGER DATASET KEY: both
+[log] BURGER SELECTED DATA: {priority: Array(2), premium: Array(2), additional: Array(4)}
+[log] BURGER PRIORITY: [Object, Object]
+[log] BURGER PREMIUM: [Object, Object]
+[log] BURGER ADDITIONAL: [Object, Object, Object, Object]
+[log] ==========================================
+[log] ==========================================
+[log] BURGER SELECTED TYPE: both
+[log] BURGER DATASET KEY: both
+[log] BURGER SELECTED DATA: {priority: Array(2), premium: Array(2), additional: Array(4)}
+[log] BURGER PRIORITY: [Object, Object]
+[log] BURGER PREMIUM: [Object, Object]
+[log] BURGER ADDITIONAL: [Object, Object, Object, Object]
+[log] ==========================================
+[log] SYNCING CURRENT SCREEN: recommended_burgers {}
+[log] SYNCING CURRENT SCREEN: recommended_burgers {}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: recommended_burgers, available_controls: Array(5), meal_offer: null}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: recommended_burgers, available_controls: Array(5), meal_offer: null}
+[log] SYNCING CURRENT SCREEN: burger_menu {}
+[log] SYNCING CURRENT SCREEN: burger_menu {}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: burger_menu, available_controls: Array(0), meal_offer: null}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: burger_menu, available_controls: Array(0), meal_offer: null}
+[01:59:42] Arrived at /burgermenu.
+[01:59:42] Screenshot saved: testing/cart-ordering-e2e/screenshots/scenario_a_01_burgermenu.png
+[01:59:42] Speaking command: 'I want a Crispy Chicken burger'
+[01:59:43] Spoke (duration 2.58s). Waiting 7s for response...
+[log] SILERO: SPEECH STARTED
+[log] SILERO: CUSTOMER TURN STARTED
+[log] VAD | debug > Detected real speech start
+[log] SILERO: SPEECH ENDED
+[log] SILERO: CUSTOMER TURN ENDED
+[log] PAUSING SILERO VAD
+[log] CUSTOMER RECORDING STOPPED
+[log] CUSTOMER RECORDING COMPLETE: 37388 bytes
+[log] PAUSING SILERO VAD
+[log] SENDING AUDIO TO WHISPER...
+[log] WHISPER TRANSCRIPT: I want a crispy chicken burger.
+[log] VALID CUSTOMER TRANSCRIPT: I want a crispy chicken burger.
+[log] VOICE TRANSCRIPT: I want a crispy chicken burger.
+[log] PAUSING SILERO VAD
+[log] CUSTOMER MESSAGE: I want a crispy chicken burger.
+[log] BACKEND RESPONSE: {screen: product, message: Good choice! Would you like to make that a meal with a side and a drink?, data: Object}
+[log] VOICE BACKEND RESPONSE: {screen: product, message: Good choice! Would you like to make that a meal with a side and a drink?, data: Object}
+[log] HANDLING RESPONSE: {screen: product, message: Good choice! Would you like to make that a meal with a side and a drink?, data: Object}
+[log] PAUSING SILERO VAD
+[log] REQUESTING TTS: Good choice! Would you like to make that a meal with a side and a drink?
+[log] SYNCING CURRENT SCREEN: product {meal_offer: Object}
+[log] SYNCING CURRENT SCREEN: product {meal_offer: Object}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: product, available_controls: Array(3), meal_offer: Object}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: product, available_controls: Array(3), meal_offer: Object}
+[01:59:54] Screenshot saved: testing/cart-ordering-e2e/screenshots/scenario_a_02_product_page.png
+[log] SYNC CART {success: true, cart: Array(1), itemCount: 1, subtotal: 79, total: 79}
+[log] Cart: 1 79
+[log] Cart: 1 79
+[log] SYNCING CURRENT SCREEN: burger_menu {}
+[log] SYNCING CURRENT SCREEN: burger_menu {}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: burger_menu, available_controls: Array(0), meal_offer: null}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: burger_menu, available_controls: Array(0), meal_offer: null}
+[log] TTS PLAYING
+[log] STARTING INTERRUPTION DETECTION
+[01:59:57] URL after adding to cart: http://localhost:5173/burgermenu
+[01:59:57] Screenshot saved: testing/cart-ordering-e2e/screenshots/scenario_a_03_returned_to_burgermenu.png
+[01:59:57] Cart count text: (1 item), item elements: 1
+[01:59:57] === SCENARIO A: PASSED ===
+[01:59:57] === RUNNING SCENARIO B: Voice product switching ===
+[01:59:57] Navigating to Home screen...
+[debug] [vite] connecting...
+[debug] [vite] connected.
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] Cart: 0 0
+[log] Cart: 0 0
+[log] Cart: 0 0
+[log] Cart: 0 0
+[02:00:02] Clicked TOUCH TO START.
+[02:00:02] Waiting for Silero VAD to arm...
+[log] VOICE INTERFACE ENABLED
+[log] PREPARING VOICE INPUT FOR GREETING...
+[log] VOICE INPUT READY FOR GREETING
+[log] REQUESTING TTS: Hi! Welcome to Burger King. What can I get for you today?
+[log] SYNCING CURRENT SCREEN: category_selection {}
+[log] SYNCING CURRENT SCREEN: category_selection {}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: category_selection, available_controls: Array(1), meal_offer: null}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: category_selection, available_controls: Array(1), meal_offer: null}
+[log] TTS PLAYING
+[log] STARTING INTERRUPTION DETECTION
+[02:00:03] Silero VAD is active and listening.
+[02:00:04] Screenshot saved: testing/cart-ordering-e2e/screenshots/00_fresh_session_categories.png
+[02:00:04] Navigating to Burgermenu via UI clicks...
+[log] BACKEND RESPONSE: {screen: recommended_burgers, message: I'd recommend our Veg Whopper. If you're looking f…options in burgers if you'd like to explore them., data: Object}
+[log] HANDLING RESPONSE: {screen: recommended_burgers, message: I'd recommend our Veg Whopper. If you're looking f…options in burgers if you'd like to explore them., data: Object}
+[log] ==========================================
+[log] BURGER SELECTED TYPE: both
+[log] BURGER DATASET KEY: both
+[log] BURGER SELECTED DATA: {priority: Array(2), premium: Array(2), additional: Array(4)}
+[log] BURGER PRIORITY: [Object, Object]
+[log] BURGER PREMIUM: [Object, Object]
+[log] BURGER ADDITIONAL: [Object, Object, Object, Object]
+[log] ==========================================
+[log] ==========================================
+[log] BURGER SELECTED TYPE: both
+[log] BURGER DATASET KEY: both
+[log] BURGER SELECTED DATA: {priority: Array(2), premium: Array(2), additional: Array(4)}
+[log] BURGER PRIORITY: [Object, Object]
+[log] BURGER PREMIUM: [Object, Object]
+[log] BURGER ADDITIONAL: [Object, Object, Object, Object]
+[log] ==========================================
+[log] SYNCING CURRENT SCREEN: recommended_burgers {}
+[log] SYNCING CURRENT SCREEN: recommended_burgers {}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: recommended_burgers, available_controls: Array(5), meal_offer: null}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: recommended_burgers, available_controls: Array(5), meal_offer: null}
+[log] TTS AUDIO ENDED
+[log] TTS FINISHED
+[log] STARTING CUSTOMER LISTENING
+[log] PREPARING VOICE LISTENER...
+[log] INITIALIZING SILERO VAD...
+[log] VAD | debug > initializing vad
+[log] VAD | debug > vad is initialized
+[log] VAD | debug > initializing micVAD
+[log] using default audio context
+[log] VAD | debug > started micVAD
+[log] SILERO VAD READY
+[log] VOICE LISTENER READY
+[log] CUSTOMER RECORDER ARMED
+[log] STARTING SILERO VAD
+[log] SILERO LISTENING FOR CUSTOMER
+[log] SYNCING CURRENT SCREEN: burger_menu {}
+[log] SYNCING CURRENT SCREEN: burger_menu {}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: burger_menu, available_controls: Array(0), meal_offer: null}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: burger_menu, available_controls: Array(0), meal_offer: null}
+[02:00:09] Arrived at /burgermenu.
+[02:00:09] Speaking command: 'I want a Crispy Chicken burger'
+[02:00:11] Spoke (duration 2.58s). Waiting 7s for response...
+[log] SILERO: SPEECH STARTED
+[log] SILERO: CUSTOMER TURN STARTED
+[log] VAD | debug > Detected real speech start
+[log] SILERO: SPEECH ENDED
+[log] SILERO: CUSTOMER TURN ENDED
+[log] PAUSING SILERO VAD
+[log] CUSTOMER RECORDING STOPPED
+[log] CUSTOMER RECORDING COMPLETE: 37388 bytes
+[log] PAUSING SILERO VAD
+[log] SENDING AUDIO TO WHISPER...
+[log] WHISPER TRANSCRIPT: I want a crispy chicken burger.
+[log] VALID CUSTOMER TRANSCRIPT: I want a crispy chicken burger.
+[log] VOICE TRANSCRIPT: I want a crispy chicken burger.
+[log] PAUSING SILERO VAD
+[log] CUSTOMER MESSAGE: I want a crispy chicken burger.
+[02:00:28] Scenario B EXCEPTION: Timeout 10000ms exceeded.
+=========================== logs ===========================
+waiting for navigation to "**/product" until 'load'
+============================================================
+[02:00:28] === RUNNING SCENARIO C: Meal customization (Accept & Decline) ===
+[02:00:28] Navigating to Home screen...
+[debug] [vite] connecting...
+[debug] [vite] connected.
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] Cart: 0 0
+[log] Cart: 0 0
+[log] Cart: 0 0
+[log] Cart: 0 0
+[02:00:32] Clicked TOUCH TO START.
+[02:00:32] Waiting for Silero VAD to arm...
+[log] VOICE INTERFACE ENABLED
+[log] PREPARING VOICE INPUT FOR GREETING...
+[log] VOICE INPUT READY FOR GREETING
+[log] REQUESTING TTS: Hi! Welcome to Burger King. What can I get for you today?
+[log] SYNCING CURRENT SCREEN: category_selection {}
+[log] SYNCING CURRENT SCREEN: category_selection {}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: category_selection, available_controls: Array(1), meal_offer: null}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: category_selection, available_controls: Array(1), meal_offer: null}
+[log] TTS PLAYING
+[log] STARTING INTERRUPTION DETECTION
+[02:00:33] Silero VAD is active and listening.
+[02:00:34] Screenshot saved: testing/cart-ordering-e2e/screenshots/00_fresh_session_categories.png
+[02:00:34] Navigating to Burgermenu via UI clicks...
+[log] TTS AUDIO ENDED
+[log] TTS FINISHED
+[log] STARTING CUSTOMER LISTENING
+[log] PREPARING VOICE LISTENER...
+[log] INITIALIZING SILERO VAD...
+[log] VAD | debug > initializing vad
+[log] VAD | debug > vad is initialized
+[log] VAD | debug > initializing micVAD
+[log] using default audio context
+[log] VAD | debug > started micVAD
+[log] SILERO VAD READY
+[log] VOICE LISTENER READY
+[log] CUSTOMER RECORDER ARMED
+[log] STARTING SILERO VAD
+[log] SILERO LISTENING FOR CUSTOMER
+[log] BACKEND RESPONSE: {screen: recommended_burgers, message: I'd recommend our Veg Whopper. If you're looking f…options in burgers if you'd like to explore them., data: Object}
+[log] HANDLING RESPONSE: {screen: recommended_burgers, message: I'd recommend our Veg Whopper. If you're looking f…options in burgers if you'd like to explore them., data: Object}
+[log] ==========================================
+[log] BURGER SELECTED TYPE: both
+[log] BURGER DATASET KEY: both
+[log] BURGER SELECTED DATA: {priority: Array(2), premium: Array(2), additional: Array(4)}
+[log] BURGER PRIORITY: [Object, Object]
+[log] BURGER PREMIUM: [Object, Object]
+[log] BURGER ADDITIONAL: [Object, Object, Object, Object]
+[log] ==========================================
+[log] ==========================================
+[log] BURGER SELECTED TYPE: both
+[log] BURGER DATASET KEY: both
+[log] BURGER SELECTED DATA: {priority: Array(2), premium: Array(2), additional: Array(4)}
+[log] BURGER PRIORITY: [Object, Object]
+[log] BURGER PREMIUM: [Object, Object]
+[log] BURGER ADDITIONAL: [Object, Object, Object, Object]
+[log] ==========================================
+[log] SYNCING CURRENT SCREEN: recommended_burgers {}
+[log] SYNCING CURRENT SCREEN: recommended_burgers {}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: recommended_burgers, available_controls: Array(5), meal_offer: null}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: recommended_burgers, available_controls: Array(5), meal_offer: null}
+[log] SYNCING CURRENT SCREEN: burger_menu {}
+[log] SYNCING CURRENT SCREEN: burger_menu {}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: burger_menu, available_controls: Array(0), meal_offer: null}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: burger_menu, available_controls: Array(0), meal_offer: null}
+[02:00:40] Arrived at /burgermenu.
+[02:00:40] Speaking command: 'I want a Crispy Chicken burger'
+[02:00:41] Spoke (duration 2.58s). Waiting 7s for response...
+[log] SILERO: SPEECH STARTED
+[log] SILERO: CUSTOMER TURN STARTED
+[log] VAD | debug > Detected real speech start
+[log] SILERO: SPEECH ENDED
+[log] SILERO: CUSTOMER TURN ENDED
+[log] PAUSING SILERO VAD
+[log] CUSTOMER RECORDING STOPPED
+[log] CUSTOMER RECORDING COMPLETE: 37388 bytes
+[log] PAUSING SILERO VAD
+[log] SENDING AUDIO TO WHISPER...
+[log] WHISPER TRANSCRIPT: I want a crispy chicken burger.
+[log] VALID CUSTOMER TRANSCRIPT: I want a crispy chicken burger.
+[log] VOICE TRANSCRIPT: I want a crispy chicken burger.
+[log] PAUSING SILERO VAD
+[log] CUSTOMER MESSAGE: I want a crispy chicken burger.
+[log] BACKEND RESPONSE: {screen: burger_menu, message: Good choice! Would you like to make that a meal with a side and a drink?, cart: Array(0)}
+[log] VOICE BACKEND RESPONSE: {screen: burger_menu, message: Good choice! Would you like to make that a meal with a side and a drink?, cart: Array(0)}
+[log] HANDLING RESPONSE: {screen: burger_menu, message: Good choice! Would you like to make that a meal with a side and a drink?, cart: Array(0)}
+[log] PAUSING SILERO VAD
+[log] REQUESTING TTS: Good choice! Would you like to make that a meal with a side and a drink?
+[log] TTS PLAYING
+[log] STARTING INTERRUPTION DETECTION
+[log] TTS AUDIO ENDED
+[log] TTS FINISHED
+[log] STARTING CUSTOMER LISTENING
+[log] PREPARING VOICE LISTENER...
+[log] VOICE LISTENER READY
+[log] CUSTOMER RECORDER ARMED
+[log] STARTING SILERO VAD
+[log] SILERO LISTENING FOR CUSTOMER
+[02:00:58] Scenario C EXCEPTION: Timeout 10000ms exceeded.
+=========================== logs ===========================
+waiting for navigation to "**/product" until 'load'
+============================================================
+[02:00:58] === RUNNING SCENARIO D: Navigation and Back behavior ===
+[02:00:58] Navigating to Home screen...
+[debug] [vite] connecting...
+[debug] [vite] connected.
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] Cart: 0 0
+[log] Cart: 0 0
+[error] Failed to load resource: net::ERR_CONNECTION_CLOSED
+[log] Cart: 0 0
+[log] Cart: 0 0
+[02:01:01] Clicked TOUCH TO START.
+[02:01:01] Waiting for Silero VAD to arm...
+[log] VOICE INTERFACE ENABLED
+[log] PREPARING VOICE INPUT FOR GREETING...
+[log] VOICE INPUT READY FOR GREETING
+[log] REQUESTING TTS: Hi! Welcome to Burger King. What can I get for you today?
+[log] SYNCING CURRENT SCREEN: category_selection {}
+[log] SYNCING CURRENT SCREEN: category_selection {}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: category_selection, available_controls: Array(1), meal_offer: null}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: category_selection, available_controls: Array(1), meal_offer: null}
+[log] TTS PLAYING
+[log] STARTING INTERRUPTION DETECTION
+[02:01:02] Silero VAD is active and listening.
+[02:01:03] Screenshot saved: testing/cart-ordering-e2e/screenshots/00_fresh_session_categories.png
+[log] BACKEND RESPONSE: {screen: recommended_burgers, message: I'd recommend our Veg Whopper. If you're looking f…options in burgers if you'd like to explore them., data: Object}
+[log] HANDLING RESPONSE: {screen: recommended_burgers, message: I'd recommend our Veg Whopper. If you're looking f…options in burgers if you'd like to explore them., data: Object}
+[log] ==========================================
+[log] BURGER SELECTED TYPE: both
+[log] BURGER DATASET KEY: both
+[log] BURGER SELECTED DATA: {priority: Array(2), premium: Array(2), additional: Array(4)}
+[log] BURGER PRIORITY: [Object, Object]
+[log] BURGER PREMIUM: [Object, Object]
+[log] BURGER ADDITIONAL: [Object, Object, Object, Object]
+[log] ==========================================
+[log] ==========================================
+[log] BURGER SELECTED TYPE: both
+[log] BURGER DATASET KEY: both
+[log] BURGER SELECTED DATA: {priority: Array(2), premium: Array(2), additional: Array(4)}
+[log] BURGER PRIORITY: [Object, Object]
+[log] BURGER PREMIUM: [Object, Object]
+[log] BURGER ADDITIONAL: [Object, Object, Object, Object]
+[log] ==========================================
+[log] SYNCING CURRENT SCREEN: recommended_burgers {}
+[log] SYNCING CURRENT SCREEN: recommended_burgers {}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: recommended_burgers, available_controls: Array(5), meal_offer: null}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: recommended_burgers, available_controls: Array(5), meal_offer: null}
+[02:01:06] Screenshot saved: testing/cart-ordering-e2e/screenshots/scenario_d_01_burgers_rec.png
+[log] SYNCING CURRENT SCREEN: category_selection {}
+[log] SYNCING CURRENT SCREEN: category_selection {}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: category_selection, available_controls: Array(1), meal_offer: null}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: category_selection, available_controls: Array(1), meal_offer: null}
+[log] TTS AUDIO ENDED
+[log] TTS FINISHED
+[log] STARTING CUSTOMER LISTENING
+[log] PREPARING VOICE LISTENER...
+[log] INITIALIZING SILERO VAD...
+[log] VAD | debug > initializing vad
+[log] VAD | debug > vad is initialized
+[log] VAD | debug > initializing micVAD
+[log] using default audio context
+[log] VAD | debug > started micVAD
+[log] SILERO VAD READY
+[log] VOICE LISTENER READY
+[log] CUSTOMER RECORDER ARMED
+[log] STARTING SILERO VAD
+[log] SILERO LISTENING FOR CUSTOMER
+[log] BACKEND RESPONSE: {screen: recommended_burgers, message: I'd recommend our Veg Whopper. If you're looking f…options in burgers if you'd like to explore them., data: Object}
+[log] HANDLING RESPONSE: {screen: recommended_burgers, message: I'd recommend our Veg Whopper. If you're looking f…options in burgers if you'd like to explore them., data: Object}
+[log] ==========================================
+[log] BURGER SELECTED TYPE: both
+[log] BURGER DATASET KEY: both
+[log] BURGER SELECTED DATA: {priority: Array(2), premium: Array(2), additional: Array(4)}
+[log] BURGER PRIORITY: [Object, Object]
+[log] BURGER PREMIUM: [Object, Object]
+[log] BURGER ADDITIONAL: [Object, Object, Object, Object]
+[log] ==========================================
+[log] ==========================================
+[log] BURGER SELECTED TYPE: both
+[log] BURGER DATASET KEY: both
+[log] BURGER SELECTED DATA: {priority: Array(2), premium: Array(2), additional: Array(4)}
+[log] BURGER PRIORITY: [Object, Object]
+[log] BURGER PREMIUM: [Object, Object]
+[log] BURGER ADDITIONAL: [Object, Object, Object, Object]
+[log] ==========================================
+[log] SYNCING CURRENT SCREEN: recommended_burgers {}
+[log] SYNCING CURRENT SCREEN: recommended_burgers {}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: recommended_burgers, available_controls: Array(5), meal_offer: null}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: recommended_burgers, available_controls: Array(5), meal_offer: null}
+[log] ==========================================
+[log] BURGER SELECTED TYPE: both
+[log] BURGER DATASET KEY: both
+[log] BURGER SELECTED DATA: {priority: Array(2), premium: Array(2), additional: Array(4)}
+[log] BURGER PRIORITY: [Object, Object]
+[log] BURGER PREMIUM: [Object, Object]
+[log] BURGER ADDITIONAL: [Object, Object, Object, Object]
+[log] ==========================================
+[log] ==========================================
+[log] BURGER SELECTED TYPE: both
+[log] BURGER DATASET KEY: both
+[log] BURGER SELECTED DATA: {priority: Array(2), premium: Array(2), additional: Array(4)}
+[log] BURGER PRIORITY: [Object, Object]
+[log] BURGER PREMIUM: [Object, Object]
+[log] BURGER ADDITIONAL: [Object, Object, Object, Object]
+[log] ==========================================
+[log] ==========================================
+[log] BURGER SELECTED TYPE: both
+[log] BURGER DATASET KEY: both
+[log] BURGER SELECTED DATA: {priority: Array(2), premium: Array(2), additional: Array(4)}
+[log] BURGER PRIORITY: [Object, Object]
+[log] BURGER PREMIUM: [Object, Object]
+[log] BURGER ADDITIONAL: [Object, Object, Object, Object]
+[log] ==========================================
+[log] ==========================================
+[log] BURGER SELECTED TYPE: both
+[log] BURGER DATASET KEY: both
+[log] BURGER SELECTED DATA: {priority: Array(2), premium: Array(2), additional: Array(4)}
+[log] BURGER PRIORITY: [Object, Object]
+[log] BURGER PREMIUM: [Object, Object]
+[log] BURGER ADDITIONAL: [Object, Object, Object, Object]
+[log] ==========================================
+[log] SYNCING CURRENT SCREEN: burger_menu {}
+[log] SYNCING CURRENT SCREEN: burger_menu {}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: burger_menu, available_controls: Array(0), meal_offer: null}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: burger_menu, available_controls: Array(0), meal_offer: null}
+[02:01:12] Screenshot saved: testing/cart-ordering-e2e/screenshots/scenario_d_02_burgermenu.png
+[log] CLICKED
+[log] /product
+[log] SYNCING CURRENT SCREEN: product {meal_offer: Object}
+[log] SYNCING CURRENT SCREEN: product {meal_offer: Object}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: product, available_controls: Array(3), meal_offer: Object}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: product, available_controls: Array(3), meal_offer: Object}
+[02:01:14] Screenshot saved: testing/cart-ordering-e2e/screenshots/scenario_d_03_product_details.png
+[log] SYNCING CURRENT SCREEN: burger_menu {}
+[log] SYNCING CURRENT SCREEN: burger_menu {}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: burger_menu, available_controls: Array(0), meal_offer: null}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: burger_menu, available_controls: Array(0), meal_offer: null}
+[log] CLICKED
+[log] /product
+[log] SYNCING CURRENT SCREEN: product {meal_offer: Object}
+[log] SYNCING CURRENT SCREEN: product {meal_offer: Object}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: product, available_controls: Array(3), meal_offer: Object}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: product, available_controls: Array(3), meal_offer: Object}
+[02:01:21] Speaking command: 'Go back'
+[log] MAX RECORDING TIME REACHED
+[log] CUSTOMER RECORDING STOPPED
+[log] EMPTY RECORDING
+[log] PAUSING SILERO VAD
+[log] NO HUMAN SPEECH DETECTED
+[log] PAUSING SILERO VAD
+[log] RESTARTING CUSTOMER LISTENER
+[log] PREPARING VOICE LISTENER...
+[log] VOICE LISTENER READY
+[log] CUSTOMER RECORDER ARMED
+[log] STARTING SILERO VAD
+[log] SILERO LISTENING FOR CUSTOMER
+[02:01:22] Spoke (duration 1.44s). Waiting 6s for response...
+[log] SILERO: SPEECH STARTED
+[log] SILERO: CUSTOMER TURN STARTED
+[log] VAD | debug > Detected real speech start
+[log] SILERO: SPEECH ENDED
+[log] SILERO: CUSTOMER TURN ENDED
+[log] PAUSING SILERO VAD
+[log] CUSTOMER RECORDING STOPPED
+[log] CUSTOMER RECORDING COMPLETE: 18649 bytes
+[log] PAUSING SILERO VAD
+[log] SENDING AUDIO TO WHISPER...
+[log] WHISPER TRANSCRIPT: Go back.
+[log] VALID CUSTOMER TRANSCRIPT: Go back.
+[log] VOICE TRANSCRIPT: Go back.
+[log] PAUSING SILERO VAD
+[log] CUSTOMER MESSAGE: Go back.
+[02:01:30] Scenario D EXCEPTION: Expected voice 'Go back' to return to /burgermenu, got http://localhost:5173/product
+[02:01:30] === RUNNING SCENARIO E: Cart ordering & mutation safeguards ===
+[02:01:30] Navigating to Home screen...
+[debug] [vite] connecting...
+[debug] [vite] connected.
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] Cart: 0 0
+[log] Cart: 0 0
+[log] Cart: 0 0
+[log] Cart: 0 0
+[02:01:32] Clicked TOUCH TO START.
+[02:01:32] Waiting for Silero VAD to arm...
+[log] VOICE INTERFACE ENABLED
+[log] PREPARING VOICE INPUT FOR GREETING...
+[log] VOICE INPUT READY FOR GREETING
+[log] REQUESTING TTS: Hi! Welcome to Burger King. What can I get for you today?
+[log] SYNCING CURRENT SCREEN: category_selection {}
+[log] SYNCING CURRENT SCREEN: category_selection {}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: category_selection, available_controls: Array(1), meal_offer: null}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: category_selection, available_controls: Array(1), meal_offer: null}
+[log] TTS PLAYING
+[log] STARTING INTERRUPTION DETECTION
+[02:01:33] Silero VAD is active and listening.
+[02:01:35] Screenshot saved: testing/cart-ordering-e2e/screenshots/00_fresh_session_categories.png
+[02:01:35] Navigating to Burgermenu via UI clicks...
+[log] BACKEND RESPONSE: {screen: recommended_burgers, message: I'd recommend our Veg Whopper. If you're looking f…options in burgers if you'd like to explore them., data: Object}
+[log] HANDLING RESPONSE: {screen: recommended_burgers, message: I'd recommend our Veg Whopper. If you're looking f…options in burgers if you'd like to explore them., data: Object}
+[log] ==========================================
+[log] BURGER SELECTED TYPE: both
+[log] BURGER DATASET KEY: both
+[log] BURGER SELECTED DATA: {priority: Array(2), premium: Array(2), additional: Array(4)}
+[log] BURGER PRIORITY: [Object, Object]
+[log] BURGER PREMIUM: [Object, Object]
+[log] BURGER ADDITIONAL: [Object, Object, Object, Object]
+[log] ==========================================
+[log] ==========================================
+[log] BURGER SELECTED TYPE: both
+[log] BURGER DATASET KEY: both
+[log] BURGER SELECTED DATA: {priority: Array(2), premium: Array(2), additional: Array(4)}
+[log] BURGER PRIORITY: [Object, Object]
+[log] BURGER PREMIUM: [Object, Object]
+[log] BURGER ADDITIONAL: [Object, Object, Object, Object]
+[log] ==========================================
+[log] SYNCING CURRENT SCREEN: recommended_burgers {}
+[log] SYNCING CURRENT SCREEN: recommended_burgers {}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: recommended_burgers, available_controls: Array(5), meal_offer: null}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: recommended_burgers, available_controls: Array(5), meal_offer: null}
+[log] ==========================================
+[log] BURGER SELECTED TYPE: both
+[log] BURGER DATASET KEY: both
+[log] BURGER SELECTED DATA: {priority: Array(2), premium: Array(2), additional: Array(4)}
+[log] BURGER PRIORITY: [Object, Object]
+[log] BURGER PREMIUM: [Object, Object]
+[log] BURGER ADDITIONAL: [Object, Object, Object, Object]
+[log] ==========================================
+[log] ==========================================
+[log] BURGER SELECTED TYPE: both
+[log] BURGER DATASET KEY: both
+[log] BURGER SELECTED DATA: {priority: Array(2), premium: Array(2), additional: Array(4)}
+[log] BURGER PRIORITY: [Object, Object]
+[log] BURGER PREMIUM: [Object, Object]
+[log] BURGER ADDITIONAL: [Object, Object, Object, Object]
+[log] ==========================================
+[log] ==========================================
+[log] BURGER SELECTED TYPE: both
+[log] BURGER DATASET KEY: both
+[log] BURGER SELECTED DATA: {priority: Array(2), premium: Array(2), additional: Array(4)}
+[log] BURGER PRIORITY: [Object, Object]
+[log] BURGER PREMIUM: [Object, Object]
+[log] BURGER ADDITIONAL: [Object, Object, Object, Object]
+[log] ==========================================
+[log] ==========================================
+[log] BURGER SELECTED TYPE: both
+[log] BURGER DATASET KEY: both
+[log] BURGER SELECTED DATA: {priority: Array(2), premium: Array(2), additional: Array(4)}
+[log] BURGER PRIORITY: [Object, Object]
+[log] BURGER PREMIUM: [Object, Object]
+[log] BURGER ADDITIONAL: [Object, Object, Object, Object]
+[log] ==========================================
+[log] TTS AUDIO ENDED
+[log] TTS FINISHED
+[log] STARTING CUSTOMER LISTENING
+[log] PREPARING VOICE LISTENER...
+[log] INITIALIZING SILERO VAD...
+[log] VAD | debug > initializing vad
+[log] VAD | debug > vad is initialized
+[log] VAD | debug > initializing micVAD
+[log] using default audio context
+[log] VAD | debug > started micVAD
+[log] SILERO VAD READY
+[log] VOICE LISTENER READY
+[log] CUSTOMER RECORDER ARMED
+[log] STARTING SILERO VAD
+[log] SILERO LISTENING FOR CUSTOMER
+[log] SYNCING CURRENT SCREEN: burger_menu {}
+[log] SYNCING CURRENT SCREEN: burger_menu {}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: burger_menu, available_controls: Array(0), meal_offer: null}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: burger_menu, available_controls: Array(0), meal_offer: null}
+[02:01:40] Arrived at /burgermenu.
+[log] CLICKED
+[log] /product
+[log] SYNCING CURRENT SCREEN: product {meal_offer: Object}
+[log] SYNCING CURRENT SCREEN: product {meal_offer: Object}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: product, available_controls: Array(3), meal_offer: Object}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: product, available_controls: Array(3), meal_offer: Object}
+[log] SYNC CART {success: true, cart: Array(1), itemCount: 1, subtotal: 59, total: 59}
+[log] Cart: 1 59
+[log] Cart: 1 59
+[log] SYNCING CURRENT SCREEN: burger_menu {}
+[log] SYNCING CURRENT SCREEN: burger_menu {}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: burger_menu, available_controls: Array(0), meal_offer: null}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: burger_menu, available_controls: Array(0), meal_offer: null}
+[log] CLICKED
+[log] /product
+[log] SYNCING CURRENT SCREEN: product {meal_offer: Object}
+[log] SYNCING CURRENT SCREEN: product {meal_offer: Object}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: product, available_controls: Array(3), meal_offer: Object}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: product, available_controls: Array(3), meal_offer: Object}
+[log] SYNC CART {success: true, cart: Array(2), itemCount: 2, subtotal: 138, total: 138}
+[log] Cart: 2 138
+[log] Cart: 2 138
+[log] SYNCING CURRENT SCREEN: burger_menu {}
+[log] SYNCING CURRENT SCREEN: burger_menu {}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: burger_menu, available_controls: Array(0), meal_offer: null}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: burger_menu, available_controls: Array(0), meal_offer: null}
+[log] MAX RECORDING TIME REACHED
+[log] CUSTOMER RECORDING STOPPED
+[log] EMPTY RECORDING
+[log] PAUSING SILERO VAD
+[log] NO HUMAN SPEECH DETECTED
+[log] PAUSING SILERO VAD
+[log] RESTARTING CUSTOMER LISTENER
+[log] PREPARING VOICE LISTENER...
+[log] VOICE LISTENER READY
+[log] CUSTOMER RECORDER ARMED
+[log] STARTING SILERO VAD
+[log] SILERO LISTENING FOR CUSTOMER
+[log] CLICKED
+[log] /product
+[log] SYNCING CURRENT SCREEN: product {meal_offer: Object}
+[log] SYNCING CURRENT SCREEN: product {meal_offer: Object}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: product, available_controls: Array(3), meal_offer: Object}
+[log] SCREEN SYNC RESPONSE: {success: true, screen: product, available_controls: Array(3), meal_offer: Object}
+[02:02:03] Scenario E EXCEPTION: 
+[02:02:03] === RUNNING SCENARIO F: Recommendation badges & dismissal ===
+[error] Failed to load resource: the server responded with a status of 404 (Not Found)
+[02:02:15] Scenario F EXCEPTION: Locator.wait_for: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator(".cart-recommendations-container") to be visible
+
+[02:02:15] === RUNNING SCENARIO G: New-session isolation ===
+[02:02:15] Pre-isolation cart items count: 0
+[02:02:15] Scenario G EXCEPTION: Cart should have items before isolation check

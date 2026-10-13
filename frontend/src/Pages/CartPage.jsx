@@ -9,8 +9,10 @@ import DeleteIcon from "../assets/images/Delete.png";
 import FooterDecoration from "../components/FooterDecoration";
 
 function CartPage() {
-  const { cart, total, syncCart } = useCart();
+  const { cart, displayCart, total, syncCart } = useCart();
   const navigate = useNavigate();
+
+  const [isCartUpdating, setIsCartUpdating] = useState(false);
 
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [checkoutRecs, setCheckoutRecs] = useState([]);
@@ -56,6 +58,58 @@ function CartPage() {
     }
   };
 
+  const getContextualBadge = (item) => {
+    if (!item) return null;
+    const cat = (item.category || "").toLowerCase();
+    const name = (item.name || "").toLowerCase();
+    const rawBadge = (item.badge || "").toLowerCase();
+
+    // Dips and sauces
+    if (
+      cat === "dip" ||
+      cat === "sauce" ||
+      rawBadge.includes("dip") ||
+      rawBadge.includes("sauce") ||
+      name.includes("dip") ||
+      name.includes("sauce")
+    ) {
+      return "Perfect Pairing";
+    }
+
+    // Drinks
+    if (
+      cat === "drink" ||
+      cat === "beverage" ||
+      rawBadge.includes("drink") ||
+      name.includes("shake") ||
+      name.includes("smoothie") ||
+      name.includes("frappe") ||
+      name.includes("coke") ||
+      name.includes("sprite") ||
+      name.includes("latte") ||
+      name.includes("cappuccino")
+    ) {
+      return "Great With Your Meal";
+    }
+
+    // Desserts
+    if (
+      cat === "dessert" ||
+      rawBadge.includes("sweet") ||
+      rawBadge.includes("treat") ||
+      name.includes("sundae") ||
+      name.includes("ice cream") ||
+      name.includes("pie") ||
+      name.includes("cake") ||
+      name.includes("cookie") ||
+      name.includes("brownie")
+    ) {
+      return "Sweet Finish";
+    }
+
+    return null;
+  };
+
   useEffect(() => {
     loadCheckoutRecommendations();
   }, [cart]);
@@ -81,6 +135,8 @@ function CartPage() {
   };
 
   const updateItem = async (itemIndex, action) => {
+    if (isCartUpdating) return;
+    setIsCartUpdating(true);
     try {
       const response = await fetch(
         "/cart/item",
@@ -105,6 +161,8 @@ function CartPage() {
       }
     } catch (error) {
       console.error("Failed to update cart:", error);
+    } finally {
+      setIsCartUpdating(false);
     }
   };
 
@@ -167,8 +225,8 @@ if (data.success) {
       <PreviousButton />
 
       <div className="cart-page-items">
-        {cart.map((item, index) => (
-          <div className="cart-page-item" key={index}>
+        {displayCart.map((item) => (
+          <div className="cart-page-item" key={item._uniqueKey}>
             <div className="cart-page-item-info">
               <h2>{item.name}</h2>
 
@@ -181,7 +239,9 @@ if (data.success) {
 
             <div className="cart-page-item-quantity">
               <button
-                onClick={() => updateItem(index, "decrease")}
+                disabled={isCartUpdating}
+                style={isCartUpdating ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
+                onClick={() => updateItem(item._originalIndex, "decrease")}
               >
                 −
               </button>
@@ -189,7 +249,9 @@ if (data.success) {
               <span>{item.quantity}</span>
 
               <button
-                onClick={() => updateItem(index, "increase")}
+                disabled={isCartUpdating}
+                style={isCartUpdating ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
+                onClick={() => updateItem(item._originalIndex, "increase")}
               >
                 +
               </button>
@@ -201,7 +263,9 @@ if (data.success) {
 
             <button
               className="cart-page-remove"
-              onClick={() => updateItem(index, "remove")}
+              disabled={isCartUpdating}
+              style={isCartUpdating ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
+              onClick={() => updateItem(item._originalIndex, "remove")}
             >
               <img src={DeleteIcon} alt="Remove" />
             </button>
@@ -213,53 +277,46 @@ if (data.success) {
       {checkoutRecs.length > 0 && (
         <div className="cart-recommendations-container">
           <div className="cart-rec-header">
-            <div>
-              <h3>Pairs Well With Your Order</h3>
-              <span className="cart-rec-sub">Complete your tray with customer favourites</span>
-            </div>
+            <h3>Pairs Well With Your Order</h3>
+            <span className="cart-rec-sub">Complete your day with some customer favorites</span>
           </div>
           <div className="cart-rec-grid">
-            {checkoutRecs.map((item) => (
-              <div key={item.id} className="cart-rec-card">
-                <img
-                  src={resolveImageUrl(item.image)}
-                  alt={item.name}
-                  className="cart-rec-image"
-                  onError={(e) => {
-                    e.currentTarget.style.opacity = "0.3";
-                  }}
-                />
-                <div className="cart-rec-details">
-                  <span className="cart-rec-badge">{item.badge || "⭐ Best Match"}</span>
-                  <span className="cart-rec-title" title={item.name}>{item.name}</span>
-                  <span className="cart-rec-cost">₹{item.price}</span>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                  <button
-                    className={`cart-rec-add-btn ${addedIds.has(item.id) ? "added" : ""}`}
-                    onClick={() => handleAddRecommended(item)}
-                  >
-                    {addedIds.has(item.id) ? "✓ Added" : "+ Add"}
-                  </button>
+            {checkoutRecs.map((item) => {
+              const displayBadge = item.badge || getContextualBadge(item) || "⭐ Best Match";
+              return (
+                <div key={item.id} className="cart-rec-card">
                   <button
                     type="button"
                     title="Dismiss"
-                    style={{
-                      border: "none",
-                      background: "transparent",
-                      color: "#999",
-                      cursor: "pointer",
-                      fontSize: "14px",
-                      padding: "2px 6px",
-                      borderRadius: "50%",
-                    }}
+                    className="cart-rec-dismiss-btn"
                     onClick={() => setCheckoutRecs((prev) => prev.filter((r) => r.id !== item.id))}
                   >
                     ✕
                   </button>
+                  <img
+                    src={resolveImageUrl(item.image)}
+                    alt={item.name}
+                    className="cart-rec-image"
+                    onError={(e) => {
+                      e.currentTarget.style.opacity = "0.3";
+                    }}
+                  />
+                  <div className="cart-rec-details">
+                    {displayBadge && <span className="cart-rec-badge">{displayBadge}</span>}
+                    <span className="cart-rec-title" title={item.name}>{item.name}</span>
+                    <div className="cart-rec-bottom-row">
+                      <span className="cart-rec-cost">₹{item.price}</span>
+                      <button
+                        className={`cart-rec-add-btn ${addedIds.has(item.id) ? "added" : ""}`}
+                        onClick={() => handleAddRecommended(item)}
+                      >
+                        {addedIds.has(item.id) ? "✓ Added" : "+ Add"}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
