@@ -373,50 +373,21 @@ class CheckoutSuggestionsRequest(BaseModel):
 
 
 def _build_checkout_recommendations(cart):
-    from services.menu_service import get_category
-    from services.modules.m06_condiment_gating import get_checkout_dip_suggestions
-    all_sides = get_category("side")
-    dips = get_checkout_dip_suggestions(all_sides, cart)
-    recs = []
-    seen_ids = set()
+    from services.menu_service import get_category, get_available
+    from services.modules.m02_m03_basket_completion import build_checkout_3slot_recommendations
 
-    # If cart has finger food (e.g. fries), prioritize sauces then dips first
-    if dips:
-        for d in dips:
-            if d.get("id") not in seen_ids:
-                seen_ids.add(d.get("id"))
-                name_lower = str(d.get("name", "")).lower()
-                badge = "🌶️ Signature Sauce" if "sauce" in name_lower else "🍟 Perfect Dip"
-                recs.append({
-                    "id": d.get("id"),
-                    "name": d.get("name"),
-                    "price": float(d.get("price") or 0),
-                    "image": d.get("image"),
-                    "category": d.get("category", "side"),
-                    "badge": badge,
-                })
+    all_sides = get_category("side") or []
+    all_drinks = get_category("drink") or []
+    all_desserts = get_category("dessert") or []
+    all_items = get_available() or []
 
-    # Complement with drinks / desserts to provide a complete 3-card shelf
-    from services.recommendation import build_recommendations
-    drinks = get_category("drink")
-    desserts = get_category("dessert")
-    p, pr, a = build_recommendations(drinks + desserts, cart=cart)
-    for item in (p + pr + a):
-        if len(recs) >= 3:
-            break
-        if item.get("id") not in seen_ids:
-            seen_ids.add(item.get("id"))
-            cat = str(item.get("category", "")).lower()
-            badge = "🥤 Refreshing Drink" if "drink" in cat else ("🍦 Sweet Treat" if "dessert" in cat else "⭐ Best Match")
-            recs.append({
-                "id": item.get("id"),
-                "name": item.get("name"),
-                "price": float(item.get("price") or 0),
-                "image": item.get("image"),
-                "category": item.get("category"),
-                "badge": badge,
-            })
-    return recs[:3]
+    return build_checkout_3slot_recommendations(
+        cart=cart,
+        all_sides=all_sides,
+        all_drinks=all_drinks,
+        all_desserts=all_desserts,
+        all_items=all_items,
+    )
 
 
 @app.get("/recommendations/checkout")

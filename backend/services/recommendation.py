@@ -317,6 +317,10 @@ def build_recommendations(
     popular_candidates = [i for i in cand_pool if float(i.get("price") or 0) >= popular_floor]
     if not popular_candidates:
         popular_candidates = cand_pool
+
+    # Module A: Apply soft sensory contrast ranking to popular candidate pool
+    from services.modules.m02_m03_basket_completion import rank_candidates_with_sensory
+    popular_candidates = rank_candidates_with_sensory(popular_candidates, cart=cart or [], placement="normal")
     priority_pool = get_priority_items(popular_candidates)
 
     # =====================================================
