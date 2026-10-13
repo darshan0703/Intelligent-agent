@@ -254,15 +254,29 @@ function MealPage({ meal: propMeal } = {}) {
                 "/meal/decline",
                 {
                     method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        item_id: burger?.id,
+                        product_id: burger?.id,
+                    }),
                 }
             );
 
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
             const data = await response.json();
+            if (!data.success) {
+                throw new Error(data.message || "Failed to record meal decline");
+            }
 
             console.log("MEAL DECLINED:", data);
 
         } catch (error) {
-            console.error("Failed to decline meal:", error);
+            console.warn("Failed to decline meal on backend:", error);
         } finally {
             navigate(origin);
         }

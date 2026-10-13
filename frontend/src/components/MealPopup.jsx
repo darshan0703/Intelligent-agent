@@ -1,5 +1,5 @@
 import "./MealPopup.css";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 function MealPopup({
 
@@ -11,18 +11,24 @@ function MealPopup({
 }) {
 
   const [selectedMeal, setSelectedMeal] = useState(null);
+  const [prevOpen, setPrevOpen] = useState(open);
 
-  useEffect(() => {
-
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (open) {
       setSelectedMeal(null);
     }
+  }
 
-  }, [open]);
+  const mediumMeal = meals?.meals?.medium;
+  const largeMeal = meals?.meals?.large;
+
+  const hasMedium = Boolean(mediumMeal);
+  const hasLarge = Boolean(largeMeal);
 
   if (!open) return null;
 
-  if (!meals || !meals.meals || !meals.meals.medium || !meals.meals.large) return null;
+  if (!hasMedium && !hasLarge) return null;
 
   return (
 
@@ -43,59 +49,64 @@ function MealPopup({
         <div className="meal-options">
 
           {/* MEDIUM */}
+          {hasMedium && (
+            <div
+              className={`meal-card ${
+                selectedMeal === "medium"
+                  ? "selected"
+                  : ""
+              }`}
+              onClick={() => setSelectedMeal("medium")}
+            >
 
-          <div
-            className={`meal-card ${
-              selectedMeal === "medium"
-                ? "selected"
-                : ""
-            }`}
-            onClick={() => setSelectedMeal("medium")}
-          >
+              <h2 className="meal-size">
+                Medium Meal
+              </h2>
 
-            <h2 className="meal-size">
-              Medium Meal
-            </h2>
+              {mediumMeal?.burger?.image && (
+                <img
+                  src={mediumMeal.burger.image}
+                  alt="Medium Meal"
+                  className="meal-image"
+                />
+              )}
 
-            <img
-              src={meals.meals.medium.burger.image}
-              alt="Medium Meal"
-              className="meal-image"
-            />
+              <p className="meal-price">
+                +₹{mediumMeal?.upgrade_price}
+              </p>
 
-
-            <p className="meal-price">
-              +₹{meals.meals.medium.upgrade_price}
-            </p>
-
-          </div>
+            </div>
+          )}
 
           {/* LARGE */}
+          {hasLarge && (
+            <div
+              className={`meal-card ${
+                selectedMeal === "large"
+                  ? "selected"
+                  : ""
+              }`}
+              onClick={() => setSelectedMeal("large")}
+            >
 
-          <div
-            className={`meal-card ${
-              selectedMeal === "large"
-                ? "selected"
-                : ""
-            }`}
-            onClick={() => setSelectedMeal("large")}
-          >
+              <h2 className="meal-size">
+                Large Meal
+              </h2>
 
-            <h2 className="meal-size">
-              Large Meal
-            </h2>
+              {largeMeal?.burger?.image && (
+                <img
+                  src={largeMeal.burger.image}
+                  alt="Large Meal"
+                  className="meal-image meal-image-large"
+                />
+              )}
 
-            <img
-              src={meals.meals.large.burger.image}
-              alt="Large Meal"
-              className="meal-image meal-image-large"
-            />
+              <p className="meal-price">
+                +₹{largeMeal?.upgrade_price}
+              </p>
 
-            <p className="meal-price">
-              +₹{meals.meals.large.upgrade_price}
-            </p>
-
-          </div>
+            </div>
+          )}
 
         </div>
 
@@ -112,8 +123,20 @@ function MealPopup({
 
           <button
             className="meal-primary-btn"
-            disabled={!selectedMeal}
-            onClick={() => onContinue(selectedMeal)}
+            disabled={
+              !selectedMeal ||
+              (selectedMeal === "medium" && !hasMedium) ||
+              (selectedMeal === "large" && !hasLarge)
+            }
+            onClick={() => {
+              if (
+                selectedMeal &&
+                ((selectedMeal === "medium" && hasMedium) ||
+                  (selectedMeal === "large" && hasLarge))
+              ) {
+                onContinue(selectedMeal);
+              }
+            }}
           >
             Continue
           </button>

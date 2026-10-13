@@ -1,4 +1,5 @@
 const screenRoutes = {
+  category_selection: "/Categories",
   recommended_burgers: "/burgers",
   recommended_drinks: "/drinks",
   recommended_sides: "/sides",

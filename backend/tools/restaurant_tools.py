@@ -202,9 +202,11 @@ def create_open_category_tool(conversation_context):
 @tool
 def select_product(product_query: str):
     """
-    Resolve a customer's reference to a specific restaurant product.
+    Select and display a specific restaurant product on the kiosk.
 
-    Use this when the customer mentions a particular menu item.
+    Use this whenever the customer requests, asks for, or mentions a specific menu item
+    (e.g., 'Can I get a Chicken Makhani', 'I want Crispy Veg Double Patty', 'switch to Chicken Makhani'),
+    including when selecting a product or switching to a different product from any screen.
     """
 
     result = resolve_product(
@@ -219,6 +221,9 @@ def select_product(product_query: str):
     if result["status"] == "selected":
 
         product = result["product"]
+
+        conversation_context["last_item"] = product.get("name")
+        conversation_context["selected_product_id"] = product.get("id")
 
         # --------------------------------------------------
         # BUILD PRODUCT PAGE RESPONSE
@@ -241,7 +246,55 @@ def select_product(product_query: str):
 
         _sync_screen_state(response)
 
-        return {
+        # --------------------------------------------------
+        # CHECK MEAL OFFER ELIGIBILITY
+        # --------------------------------------------------
+
+        declined_ids = [str(x) for x in conversation_context.get("declined_meal_products", [])]
+        is_already_declined = str(product.get("id")) in declined_ids
+
+        is_meal_eligible = False
+        available_meal_sizes = []
+        if not is_already_declined:
+            try:
+                from services.meal_service import get_meal_options
+                cart = conversation_context.get("cart", [])
+                pref = conversation_context.get("food_preference")
+                offer = get_meal_options(product.get("id"), food_preference=pref, cart=cart)
+                if offer and offer.get("is_meal_available") and isinstance(offer.get("meals"), dict):
+                    for sz in ["medium", "large"]:
+                        if offer["meals"].get(sz):
+                            available_meal_sizes.append(sz)
+                    is_meal_eligible = len(available_meal_sizes) > 0
+            except Exception as e:
+                print(f"Error checking meal options in select_product: {e}")
+
+        if is_meal_eligible:
+            conversation_context["meal_offer"] = {
+                "is_open": True,
+                "product_id": product.get("id"),
+                "product_name": product.get("name"),
+                "available_sizes": available_meal_sizes,
+            }
+            controls = list(conversation_context.get("available_controls", []))
+            for mc in ["select_meal", "decline_meal"]:
+                if mc not in controls:
+                    controls.append(mc)
+            conversation_context["available_controls"] = controls
+        else:
+            conversation_context["meal_offer"] = {
+                "is_open": False,
+                "product_id": product.get("id"),
+                "product_name": product.get("name"),
+                "available_sizes": [],
+            }
+            controls = [
+                c for c in conversation_context.get("available_controls", [])
+                if c not in ["select_meal", "decline_meal", "accept_meal"]
+            ]
+            conversation_context["available_controls"] = controls
+
+        ret = {
             "success": True,
             "status": "selected",
 
@@ -253,6 +306,22 @@ def select_product(product_query: str):
 
             "screen": response.screen,
         }
+
+        if is_meal_eligible:
+            ret["meal_offer"] = {
+                "eligible": True,
+                "available_sizes": available_meal_sizes,
+                "suggested_cashier_prompt": (
+                    "Good choice! Would you like to make that a meal with a side and a drink?"
+                ),
+            }
+        elif is_already_declined:
+            ret["meal_offer"] = {
+                "eligible": False,
+                "already_declined": True,
+            }
+
+        return ret
 
     # ==========================================================
     # MULTIPLE MATCHES

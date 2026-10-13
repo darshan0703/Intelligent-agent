@@ -5,6 +5,7 @@ import subprocess
 import tempfile
 import uuid
 from pathlib import Path
+from typing import Optional
 from services.cashier_agent import run_cashier_agent
 import json
 import numpy as np
@@ -104,9 +105,34 @@ def update_screen(request: dict):
             "message": "screen is required",
         }
     conversation_context["current_screen"] = screen
-    conversation_context["available_controls"] = (
-        get_screen_controls(screen)
-    )
+    controls = list(get_screen_controls(screen))
+
+    meal_offer = request.get("meal_offer")
+    declined_ids = [str(x) for x in conversation_context.get("declined_meal_products", [])]
+    if meal_offer is not None:
+        conversation_context["meal_offer"] = meal_offer
+        prod_id = meal_offer.get("product_id")
+        if meal_offer.get("is_dismissed"):
+            if prod_id is not None:
+                if "declined_meal_products" not in conversation_context:
+                    conversation_context["declined_meal_products"] = []
+                if str(prod_id) not in [str(x) for x in conversation_context["declined_meal_products"]]:
+                    conversation_context["declined_meal_products"].append(prod_id)
+            meal_offer["is_open"] = False
+        elif prod_id is not None and str(prod_id) in declined_ids:
+            meal_offer["is_open"] = False
+
+        if meal_offer.get("is_open"):
+            for mc in ["select_meal", "decline_meal"]:
+                if mc not in controls:
+                    controls.append(mc)
+        else:
+            controls = [c for c in controls if c not in ["select_meal", "decline_meal", "accept_meal"]]
+    elif screen != "product":
+        conversation_context.pop("meal_offer", None)
+        controls = [c for c in controls if c not in ["select_meal", "decline_meal", "accept_meal"]]
+
+    conversation_context["available_controls"] = controls
     print("SCREEN SYNC:", screen)
     print(
         "AVAILABLE CONTROLS:",
@@ -118,6 +144,7 @@ def update_screen(request: dict):
         "available_controls": (
             conversation_context["available_controls"]
         ),
+        "meal_offer": conversation_context.get("meal_offer"),
     }
 @app.post("/session/preference")
 def set_preference(request: dict):
@@ -463,19 +490,47 @@ def meal_options(request: dict):
             "message": "Failed to load meal options.",
         }
 @app.post("/meal/decline")
-def decline_meal():
-    meal_flow = conversation_context.get(
-        "meal_flow"
-    )
-    if not meal_flow:
+def decline_meal(request: Optional[dict] = None):
+    req_dict = request or {}
+    item_id = req_dict.get("item_id") or req_dict.get("product_id")
+
+    meal_flow = conversation_context.get("meal_flow")
+    if not item_id:
+        if meal_flow and meal_flow.get("item_id"):
+            item_id = meal_flow.get("item_id")
+        elif "meal_offer" in conversation_context and isinstance(conversation_context["meal_offer"], dict):
+            item_id = conversation_context["meal_offer"].get("product_id")
+
+    if not meal_flow and not item_id:
         return {
             "success": False,
-            "message": "No active meal flow.",
+            "message": "No active meal flow or product to decline.",
         }
-    meal_flow["status"] = "declined"
+
+    if meal_flow:
+        if item_id is None or str(meal_flow.get("item_id")) == str(item_id):
+            meal_flow["status"] = "declined"
+    if "meal_offer" in conversation_context and isinstance(conversation_context["meal_offer"], dict):
+        offer_prod_id = conversation_context["meal_offer"].get("product_id")
+        if item_id is None or offer_prod_id is None or str(offer_prod_id) == str(item_id):
+            conversation_context["meal_offer"]["is_open"] = False
+            if "available_controls" in conversation_context:
+                conversation_context["available_controls"] = [
+                    c for c in conversation_context["available_controls"]
+                    if c not in ["select_meal", "decline_meal", "accept_meal"]
+                ]
+
+    if item_id is not None:
+        if "declined_meal_products" not in conversation_context:
+            conversation_context["declined_meal_products"] = []
+        if str(item_id) not in [str(x) for x in conversation_context["declined_meal_products"]]:
+            conversation_context["declined_meal_products"].append(item_id)
+
     return {
         "success": True,
         "meal_flow": meal_flow,
+        "declined_product_id": item_id,
+        "declined_meal_products": conversation_context.get("declined_meal_products", []),
     }
 @app.post("/cart/add-meal")
 def cart_add_meal(request: dict):
@@ -494,6 +549,10 @@ def complete_order_endpoint():
     result = complete_order(
         conversation_context.get("cart", [])
     )
+    if isinstance(result, dict) and result.get("success"):
+        conversation_context["declined_meal_products"] = []
+        conversation_context["meal_flow"] = None
+        conversation_context["meal_offer"] = None
     return result
 # ============================================================
 # LOCAL KOKORO TEXT TO SPEECH

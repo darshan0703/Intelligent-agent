@@ -126,9 +126,12 @@ def handle_product(item_name, conversation_context):
     # START A NEW PRODUCT / MEAL INTERACTION
     # ==========================================
 
+    declined_ids = [str(x) for x in conversation_context.get("declined_meal_products", [])]
+    is_declined = str(product["id"]) in declined_ids
+
     conversation_context["meal_flow"] = {
         "item_id": product["id"],
-        "status": "pending"
+        "status": "declined" if is_declined else "pending"
     }
 
     # ==========================================

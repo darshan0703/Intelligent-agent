@@ -138,12 +138,16 @@ def create_ui_action(
     # RETURN UI ACTION + SPOKEN RESPONSE
     # ==========================================
 
+    data = {
+        "ui_action": ui_action
+    }
+    if value is not None:
+        data["value"] = value
+
     return KioskResponse(
         screen=current_screen,
         message=message,
-        data={
-            "ui_action": ui_action
-        }
+        data=data
     )
 
 
@@ -207,6 +211,10 @@ def create_screen_action_tool(conversation_context):
                 "error": "No current kiosk screen is available."
             }
 
+        # Normalize accept_meal with size to select_meal
+        if control == "accept_meal" and value:
+            control = "select_meal"
+
         # ==========================================
         # VALIDATE CONTROL
         # ==========================================
@@ -250,6 +258,59 @@ def create_screen_action_tool(conversation_context):
                         "veg, non_veg, or both."
                     )
                 }
+
+        # ==========================================
+        # VALIDATE MEAL CONTROLS
+        # ==========================================
+
+        if control == "select_meal":
+            if not value:
+                return {
+                    "success": False,
+                    "error": "Customer must choose between 'medium' or 'large' meal size.",
+                }
+
+            val_norm = value.lower().replace(" meal", "").strip()
+            if val_norm not in ["medium", "large"]:
+                return {
+                    "success": False,
+                    "error": f"Invalid meal size '{value}'. Must be 'medium' or 'large'.",
+                }
+            value = val_norm
+
+            meal_offer = conversation_context.get("meal_offer", {})
+            if not meal_offer.get("is_open"):
+                return {
+                    "success": False,
+                    "error": "The meal offer popup is not currently open.",
+                }
+
+            avail = [s.lower() for s in meal_offer.get("available_sizes", [])]
+            if avail and value not in avail:
+                return {
+                    "success": False,
+                    "error": f"Size '{value}' is not available. Available sizes: {', '.join(avail)}.",
+                    "available_sizes": avail,
+                }
+
+        if control == "decline_meal":
+            meal_offer = conversation_context.get("meal_offer", {})
+            meal_flow = conversation_context.get("meal_flow")
+            prod_id = value or meal_offer.get("product_id") or (meal_flow.get("item_id") if meal_flow else None)
+            if prod_id is not None:
+                if "declined_meal_products" not in conversation_context:
+                    conversation_context["declined_meal_products"] = []
+                if str(prod_id) not in [str(x) for x in conversation_context["declined_meal_products"]]:
+                    conversation_context["declined_meal_products"].append(prod_id)
+            if meal_offer and (prod_id is None or meal_offer.get("product_id") is None or str(meal_offer.get("product_id")) == str(prod_id)):
+                meal_offer["is_open"] = False
+                if "available_controls" in conversation_context:
+                    conversation_context["available_controls"] = [
+                        c for c in conversation_context["available_controls"]
+                        if c not in ["select_meal", "decline_meal", "accept_meal"]
+                    ]
+            if meal_flow and (prod_id is None or meal_flow.get("item_id") is None or str(meal_flow.get("item_id")) == str(prod_id)):
+                meal_flow["status"] = "declined"
 
         # ==========================================
         # EXECUTE EXISTING UI BRIDGE

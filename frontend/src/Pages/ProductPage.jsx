@@ -11,6 +11,7 @@ import MealPopup from "../components/MealPopup";
 import FooterDecoration from "../components/FooterDecoration";
 import vegIcon from "../assets/images/veg.png";
 import nonVegIcon from "../assets/images/nonveg.png";
+import { syncScreen } from "../services/screenService";
 
 function ProductPage() {
   const navigate = useNavigate();
@@ -33,7 +34,16 @@ function ProductPage() {
     productData?.data?.recommendations || []
   );
   const refreshTimersRef = useRef({});
+  const isNavigatingRef = useRef(false);
   const [quantity, setQuantity] = useState(1);
+
+  // Reset quantity and sync recommendations when product identity changes
+  useEffect(() => {
+    setQuantity(1);
+    if (productData?.data?.recommendations) {
+      setRecommendations(productData.data.recommendations);
+    }
+  }, [product?.id]);
 
   // Meal upgrades are available only for burger products.
   const isBurger =
@@ -104,6 +114,14 @@ function ProductPage() {
       }
 
       if (data.success && data.is_meal_available) {
+        const hasMedium = Boolean(data.meals?.medium);
+        const hasLarge = Boolean(data.meals?.large);
+
+        if (!hasMedium && !hasLarge) {
+          setMealPopupOpen(false);
+          return;
+        }
+
         if (automatic && isProductDismissed(requestedProductId)) {
           setMealPopupOpen(false);
           return;
@@ -251,32 +269,91 @@ function ProductPage() {
   };
 
   const handleContinue = (mealSize) => {
+    if (isNavigatingRef.current) return;
+    const selectedMeal = mealData?.meals?.[mealSize];
+    if (!selectedMeal) {
+      console.warn(`Meal size ${mealSize} is not available.`);
+      return;
+    }
+    isNavigatingRef.current = true;
     navigate("/mealpage", {
       state: {
-        meal: mealData.meals[mealSize],
+        meal: selectedMeal,
         origin: origin,
       },
     });
   };
 
-  if (!product) {
-    return (
-      <div className="product-page">
-        <Header title="Product Details" />
-        <PreviousButton />
-        <h2
-          style={{
-            textAlign: "center",
-            marginTop: "200px",
-          }}
-        >
-          No product selected.
-        </h2>
-      </div>
-    );
-  }
+  const handleDeclineMeal = async (productId) => {
+    if (!productId) return;
+    dismissProduct(productId);
+    setMealPopupOpen(false);
+
+    const postDecline = async () => {
+      const response = await fetch("/meal/decline", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          item_id: productId,
+          product_id: productId,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.message || "Decline rejected by backend");
+      }
+      return data;
+    };
+
+    try {
+      await postDecline();
+    } catch (err) {
+      console.warn(`Initial decline sync failed for product ${productId}, retrying once...`, err);
+      try {
+        await postDecline();
+      } catch (retryErr) {
+        console.warn(`Decline sync for product ${productId} could not be confirmed by backend:`, retryErr);
+        syncScreen("product", {
+          meal_offer: {
+            is_open: false,
+            product_id: productId,
+            product_name: product?.name,
+            available_sizes: [],
+            is_dismissed: true,
+          },
+        }).catch((syncErr) => {
+          console.error(`Reconciliation screen sync also failed for product ${productId}:`, syncErr);
+        });
+      }
+    }
+  };
+
+  // Synchronize meal popup open/closed state and available sizes to backend
+  useEffect(() => {
+    if (!product) return;
+
+    const availableSizes = [];
+    if (mealPopupOpen && mealData?.meals?.medium) availableSizes.push("medium");
+    if (mealPopupOpen && mealData?.meals?.large) availableSizes.push("large");
+
+    syncScreen("product", {
+      meal_offer: {
+        is_open: mealPopupOpen,
+        product_id: product.id,
+        product_name: product.name,
+        available_sizes: availableSizes,
+        is_dismissed: isProductDismissed(product.id),
+      },
+    }).catch((err) => console.error("Failed to sync screen meal state:", err));
+  }, [mealPopupOpen, mealData, product?.id, product?.name]);
 
   const handleAddToCart = async () => {
+    if (!product?.name) return;
     try {
       const response = await fetch("/cart/add", {
         method: "POST",
@@ -302,10 +379,66 @@ function ProductPage() {
     }
   };
 
+  const handleGoBack = () => {
+    syncScreen("category_selection").catch((err) =>
+      console.error("Failed to sync screen on go_back:", err)
+    );
+    navigate("/Categories");
+  };
+
+  // Voice UI Action Listener for meal selection and screen controls
+  useEffect(() => {
+    const handleVoiceUIAction = (event) => {
+      const { action, value } = event.detail || {};
+
+      if (action === "select_meal_medium" || (action === "select_meal" && value === "medium")) {
+        if (mealPopupOpen && mealData?.meals?.medium) {
+          handleContinue("medium");
+        }
+      } else if (action === "select_meal_large" || (action === "select_meal" && value === "large")) {
+        if (mealPopupOpen && mealData?.meals?.large) {
+          handleContinue("large");
+        }
+      } else if (action === "decline_meal") {
+        if (mealPopupOpen) {
+          handleDeclineMeal(product?.id);
+        }
+      } else if (action === "add_to_cart") {
+        handleAddToCart();
+      } else if (action === "open_cart") {
+        navigate("/cart");
+      } else if (action === "go_back") {
+        handleGoBack();
+      }
+    };
+
+    window.addEventListener("kiosk-ui-action", handleVoiceUIAction);
+    return () => {
+      window.removeEventListener("kiosk-ui-action", handleVoiceUIAction);
+    };
+  }, [mealPopupOpen, mealData, product?.id, product?.name, quantity]);
+
+  if (!product) {
+    return (
+      <div className="product-page">
+        <Header title="Product Details" />
+        <PreviousButton onClick={handleGoBack} />
+        <h2
+          style={{
+            textAlign: "center",
+            marginTop: "200px",
+          }}
+        >
+          No product selected.
+        </h2>
+      </div>
+    );
+  }
+
   return (
     <div className="product-page">
       <Header title="Product Details" />
-      <PreviousButton />
+      <PreviousButton onClick={handleGoBack} />
 
       <img
         src={product.image}
@@ -451,8 +584,7 @@ function ProductPage() {
           open={mealPopupOpen}
           meals={mealData}
           onClose={() => {
-            dismissProduct(product.id);
-            setMealPopupOpen(false);
+            handleDeclineMeal(product.id);
           }}
           onContinue={handleContinue}
         />

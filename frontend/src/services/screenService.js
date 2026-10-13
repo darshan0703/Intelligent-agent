@@ -1,13 +1,14 @@
 const API_URL = "";
 
 
-export async function syncScreen(screen) {
+export async function syncScreen(screen, extra = {}) {
 
   try {
 
     console.log(
       "SYNCING CURRENT SCREEN:",
-      screen
+      screen,
+      extra
     );
 
     const response = await fetch(
@@ -21,6 +22,7 @@ export async function syncScreen(screen) {
 
         body: JSON.stringify({
           screen,
+          ...extra,
         }),
       }
     );

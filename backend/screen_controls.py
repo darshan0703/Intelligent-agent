@@ -113,6 +113,7 @@ SCREEN_CONTROLS = {
     # ==========================================
 
     ScreenTypes.MEAL_CONVERSION: [
+        "select_meal",
         "accept_meal",
         "decline_meal",
         "go_back",
