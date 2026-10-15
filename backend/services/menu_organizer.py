@@ -79,45 +79,10 @@ def _parse_price(item: Dict[str, Any]) -> Optional[float]:
 
 def compute_budget_mindset(cart: Optional[List[Dict[str, Any]]]) -> str:
     """
-    Margin-aware & Recency-driven Customer Context Detection:
-    - 'premium': customer added a premium item (recent >= 140 or max >= 170). Margin expansion mode.
-    - 'upsell': customer added mid-tier items (>= 110) or mixed cart. Moderate margin mode.
-    - 'low_budget': cart contains only cheap entry items (< 100).
-    - 'neutral': cart is empty.
+    Delegates to Dynamic Commercial Engine's canonical budget mindset detector.
     """
-    if not cart:
-        return "neutral"
-
-    prices = []
-    for item in cart:
-        if not isinstance(item, dict):
-            continue
-        p = item.get("unitPrice") or item.get("price")
-        if p is not None:
-            val = _parse_price(item)
-            if val is not None and val > 0:
-                prices.append(val)
-        elif item.get("subtotal") and item.get("quantity"):
-            try:
-                val = float(item["subtotal"]) / max(1, int(item["quantity"]))
-                if val > 0:
-                    prices.append(val)
-            except (ValueError, TypeError):
-                pass
-
-    if not prices:
-        return "neutral"
-
-    recent_price = prices[-1]
-    max_price = max(prices)
-    avg_price = sum(prices) / len(prices)
-
-    if recent_price >= 140.0 or max_price >= 170.0:
-        return "premium"
-    elif max_price >= 110.0 or avg_price >= 105.0:
-        return "upsell"
-    else:
-        return "low_budget"
+    from services.modules.dynamic_commercial_engine import compute_budget_mindset as _central_mindset
+    return _central_mindset(cart)
 
 
 def _arrange_strategic_top4(ranked_products: List[Dict[str, Any]], mindset: str) -> List[Dict[str, Any]]:
@@ -250,23 +215,9 @@ def organize_menu_sections(
             from services.modules.m02_m03_basket_completion import compute_sensory_score
             affinity_score = compute_sensory_score(cart, p)
 
-            # Soft Margin & Budget Fit: Invalid prices (p_price is None) receive 0.0 boost
-            budget_fit_score = 0.0
-            if p_price is not None:
-                if mindset == "premium":
-                    budget_fit_score += (p_price / 100.0) * 0.8
-                    if p_price >= 140.0 or any(k in p_name for k in ["whopper", "royale", "double", "gourmet", "shake"]):
-                        budget_fit_score += 1.0
-                elif mindset == "upsell":
-                    if 100.0 <= p_price <= 180.0:
-                        budget_fit_score += 1.2
-                    elif p_price > 180.0:
-                        budget_fit_score += 0.8
-                else:
-                    if p_price <= 79.0:
-                        budget_fit_score += 0.8
-                    elif 80.0 <= p_price <= 130.0:
-                        budget_fit_score += 0.6
+            # Soft Margin & Budget Fit via Dynamic Commercial Engine
+            from services.modules.dynamic_commercial_engine import compute_commercial_margin_score
+            budget_fit_score = compute_commercial_margin_score(p, cart, mindset=mindset)
 
             # Recency score
             recency_score = 0.0

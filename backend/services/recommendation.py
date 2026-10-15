@@ -318,10 +318,11 @@ def build_recommendations(
     if not popular_candidates:
         popular_candidates = cand_pool
 
-    # Module A: Apply soft sensory contrast ranking to popular candidate pool
-    from services.modules.m02_m03_basket_completion import rank_candidates_with_sensory
-    popular_candidates = rank_candidates_with_sensory(popular_candidates, cart=cart or [], placement="normal")
-    priority_pool = get_priority_items(popular_candidates)
+    # Compute priority scores (stock & days to expiry urgency) before central commercial ranking
+    popular_candidates = get_priority_items(popular_candidates)
+    from services.modules.dynamic_commercial_engine import rank_candidates_commercial
+    popular_candidates = rank_candidates_commercial(popular_candidates, cart=cart or [], placement="product_page")
+    priority_pool = popular_candidates
 
     # =====================================================
     # SINGLE / ALREADY FILTERED TYPE (veg, non_veg, hot, cold)

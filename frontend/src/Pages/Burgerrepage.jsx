@@ -121,8 +121,9 @@ function Burger() {
   // Primary recommendations fetch
   useEffect(() => {
     let cancelled = false;
+    const query = foodPreference ? `?preference=${encodeURIComponent(foodPreference)}` : "";
 
-    fetch("/category/burger/recommendations")
+    fetch(`/category/burger/recommendations${query}`)
       .then((res) => res.json())
       .then((resData) => {
         if (!cancelled && resData?.success && resData?.data) {

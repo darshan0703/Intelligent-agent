@@ -231,6 +231,17 @@ def compute_sensory_score(cart: Optional[List[Dict[str, Any]]], candidate: Dict[
         if cart_tokens and cand_tokens and (cart_tokens & cand_tokens):
             total_sensory += SENSORY_AFFINITY_MATRIX["flavor_harmony"]
 
+        # 6. Specific Product Profile Pairings (e.g. Makhani vs Double Patty vs Cheesy/Royale)
+        if "makhani" in cart_name:
+            if any(k in cand_name for k in ["sprite", "fanta", "pepsi", "coke", "veggie strips"]):
+                total_sensory += 0.25
+        elif "double" in cart_name:
+            if any(k in cand_name for k in ["rings", "nuggets", "coca cola", "coke", "peri peri", "lava"]):
+                total_sensory += 0.25
+        elif "cheese" in cart_name or "cheesy" in cart_name or "royale" in cart_name:
+            if any(k in cand_name for k in ["cheese", "lava", "coffee", "latte", "shake"]):
+                total_sensory += 0.25
+
     # Cap soft score at 1.0
     return min(1.0, round(total_sensory, 2))
 
@@ -324,141 +335,21 @@ def build_checkout_3slot_recommendations(
     all_sides: List[Dict[str, Any]],
     all_drinks: List[Dict[str, Any]],
     all_desserts: List[Dict[str, Any]],
-    all_items: Optional[List[Dict[str, Any]]] = None
+    all_items: Optional[List[Dict[str, Any]]] = None,
+    food_preference: Optional[str] = None
 ) -> List[Dict[str, Any]]:
     """
-    Builds the 3 distinct dynamic recommendation slots for the Checkout Page:
-      Slot 1: Conditional Dip / Sauce (Single highest-ranked dip when finger food is present & no dip in cart;
-              if dip is already added, dip opportunity is completely suppressed;
-              if dip condition does not apply, surfaces a meaningful last-minute side complement ONLY if justified by evidence).
-      Slot 2: Best Match / Context-Aware Drink (Most relevant additional drink/product based on cart sensory & price fit).
-      Slot 3: Sweet Finish (Best eligible true dessert, avoiding items in cart; suppresses unsuitable/forced items).
-      
-    Guarantees:
-      - Dynamic refresh on cart changes.
-      - Candidate deduplication across slots.
-      - Returns 0, 1, 2, or 3 cards dynamically without forcing unnecessary upsells.
+    Builds the 3 distinct dynamic recommendation slots for the Checkout Page.
+    Delegates to Dynamic Commercial Engine.
     """
-    from services.modules.m06_condiment_gating import (
-        get_checkout_dip_suggestions,
-        is_condiment,
-        has_condiment_in_cart,
-        has_side_in_cart,
+    from services.modules.dynamic_commercial_engine import build_dynamic_checkout_shelf
+    return build_dynamic_checkout_shelf(
+        cart=cart,
+        all_sides=all_sides,
+        all_drinks=all_drinks,
+        all_desserts=all_desserts,
+        all_items=all_items,
+        food_preference=food_preference,
     )
-    from services.modules.m07_cart_exclusion import exclude_cart_items
 
-    cart_list = cart or []
-    recommendations: List[Dict[str, Any]] = []
-    seen_keys: Set[Tuple[str, str]] = set()
-
-    def _get_key(item: Dict[str, Any]) -> Tuple[str, str]:
-        item_id = item.get("id")
-        if item_id is not None and str(item_id).strip() != "":
-            return ("id", str(item_id).strip())
-        name = str(item.get("name") or "").strip().lower()
-        return ("name", name)
-
-    # Track items already in cart to prevent recommending duplicates
-    for cart_item in cart_list:
-        if isinstance(cart_item, dict):
-            seen_keys.add(_get_key(cart_item))
-
-    # ---------------------------------------------------------
-    # SLOT 1: CONDITIONAL DIP / SAUCE
-    # ---------------------------------------------------------
-    slot1_item = None
-    dip_already_in_cart = has_condiment_in_cart(cart_list)
-    finger_food_present = has_side_in_cart(cart_list)
-
-    if finger_food_present and not dip_already_in_cart:
-        # Show ONLY the single highest-ranked dip
-        dips = get_checkout_dip_suggestions(all_sides, cart_list)
-        eligible_dips = exclude_cart_items(dips, cart_list)
-        if eligible_dips:
-            ranked_dips = rank_candidates_with_sensory(eligible_dips, cart_list, placement="checkout")
-            for d in ranked_dips:
-                k = _get_key(d)
-                if k not in seen_keys:
-                    slot1_item = dict(d)
-                    name_lower = str(d.get("name") or "").lower()
-                    slot1_item["badge"] = "🌶️ Signature Sauce" if "sauce" in name_lower else "🍟 Perfect Dip"
-                    slot1_item["slot"] = 1
-                    seen_keys.add(k)
-                    break
-    elif not dip_already_in_cart:
-        # If dip condition does not apply (no finger food), show a meaningful side complement ONLY if justified by evidence
-        non_dip_sides = [s for s in (all_sides or []) if not is_condiment(s)]
-        eligible_sides = exclude_cart_items(non_dip_sides, cart_list)
-        if eligible_sides:
-            ranked_sides = rank_candidates_with_sensory(eligible_sides, cart_list, placement="checkout")
-            for s in ranked_sides:
-                k = _get_key(s)
-                if k not in seen_keys:
-                    # Check if evidence justifies recommending this complement (e.g. sensory score > 0 or empty cart baseline)
-                    sensory_score = compute_sensory_score(cart_list, s)
-                    if sensory_score > 0.0 or len(cart_list) == 0:
-                        slot1_item = dict(s)
-                        slot1_item["badge"] = "🍟 Signature Side"
-                        slot1_item["slot"] = 1
-                        seen_keys.add(k)
-                        break
-
-    if slot1_item:
-        recommendations.append(slot1_item)
-
-    # ---------------------------------------------------------
-    # SLOT 2: BEST MATCH / CONTEXT-AWARE DRINK
-    # ---------------------------------------------------------
-    slot2_item = None
-    eligible_drinks = exclude_cart_items(all_drinks or [], cart_list)
-    if eligible_drinks:
-        ranked_drinks = rank_candidates_with_sensory(eligible_drinks, cart_list, placement="checkout")
-        for drink in ranked_drinks:
-            k = _get_key(drink)
-            if k not in seen_keys:
-                slot2_item = dict(drink)
-                slot2_item["badge"] = "🥤 Best Drink"
-                slot2_item["slot"] = 2
-                seen_keys.add(k)
-                break
-
-    # Fallback for Slot 2 if no drink is eligible/available: general non-dessert item with evidence fit
-    if not slot2_item:
-        general_pool = (all_items or (all_sides + all_drinks + all_desserts))
-        non_dessert = [i for i in general_pool if str(i.get("category") or "").lower() != "dessert"]
-        eligible_fb = exclude_cart_items(non_dessert, cart_list)
-        if eligible_fb:
-            ranked_fb = rank_candidates_with_sensory(eligible_fb, cart_list, placement="checkout")
-            for item in ranked_fb:
-                k = _get_key(item)
-                if k not in seen_keys:
-                    slot2_item = dict(item)
-                    slot2_item["badge"] = "⭐ Best Match"
-                    slot2_item["slot"] = 2
-                    seen_keys.add(k)
-                    break
-
-    if slot2_item:
-        recommendations.append(slot2_item)
-
-    # ---------------------------------------------------------
-    # SLOT 3: SWEET FINISH
-    # ---------------------------------------------------------
-    slot3_item = None
-    eligible_desserts = exclude_cart_items(all_desserts or [], cart_list)
-    if eligible_desserts:
-        ranked_desserts = rank_candidates_with_sensory(eligible_desserts, cart_list, placement="checkout")
-        for d in ranked_desserts:
-            k = _get_key(d)
-            if k not in seen_keys:
-                slot3_item = dict(d)
-                slot3_item["badge"] = "🍦 Sweet Finish"
-                slot3_item["slot"] = 3
-                seen_keys.add(k)
-                break
-
-    if slot3_item:
-        recommendations.append(slot3_item)
-
-    return recommendations
 
