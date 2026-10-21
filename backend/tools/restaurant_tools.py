@@ -8,33 +8,7 @@ from services.product_selector import resolve_product
 from services.productservice import handle_product
 from screen_controls import get_screen_controls
 from state import conversation_context
-
-def _sync_screen_state(response):
-    """
-    Synchronize the active kiosk screen and its available controls
-    whenever a tool creates a new KioskResponse.
-
-    This keeps the agent's screen_action tool aligned with the screen
-    currently being displayed by the frontend.
-    """
-
-    if hasattr(response, "screen"):
-
-        conversation_context["current_screen"] = response.screen
-
-        conversation_context["available_controls"] = (
-            get_screen_controls(response.screen)
-        )
-
-        print(
-            "SCREEN STATE SYNC:",
-            conversation_context["current_screen"]
-        )
-
-        print(
-            "AVAILABLE CONTROLS:",
-            conversation_context["available_controls"]
-        )
+from kiosk_service import track_screen
 
 
 # ==========================================================
@@ -107,7 +81,7 @@ def create_open_category_tool(conversation_context):
             # SYNCHRONIZE ACTIVE SCREEN
             # --------------------------------------------------
 
-            _sync_screen_state(response)
+            track_screen(response)
 
             data = response.data or {}
 
@@ -223,6 +197,7 @@ def select_product(product_query: str):
         product = result["product"]
 
         conversation_context["last_item"] = product.get("name")
+        conversation_context["selected_product"] = product.get("name")
         conversation_context["selected_product_id"] = product.get("id")
 
         # --------------------------------------------------
@@ -244,7 +219,7 @@ def select_product(product_query: str):
         # SYNCHRONIZE ACTIVE SCREEN
         # --------------------------------------------------
 
-        _sync_screen_state(response)
+        track_screen(response, extra={"product": product})
 
         # --------------------------------------------------
         # CHECK MEAL OFFER ELIGIBILITY

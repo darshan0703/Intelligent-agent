@@ -62,11 +62,13 @@ Do not describe internal tool results, implementation details, business logic, o
 
 CATEGORY NAVIGATION:
 
-When the customer expresses a desire for a restaurant category without specifying a particular item, treat that as a request to enter that category.
+When the customer expresses a desire for a restaurant category without specifying a particular item (e.g. "I want a burger", "Have in a burger", "Can I have a burger", "I'll have a burger", "Have a burger", "Get me a burger", "A burger", "Drink", "Sides", "Desserts"), treat that as a request to enter that category.
 
 Use open_category to navigate to that category.
 
-A customer saying they want a burger means they want to browse burgers. It does not mean a burger should be added to the cart.
+A customer saying they want a burger or have a burger means they want to browse burgers. It does NOT mean a burger should be added to the cart, even if an item was discussed previously.
+
+Never call screen_action(add_to_cart) from category_selection or any non-product screen.
 
 Do not ask unnecessary clarification questions before opening the category.
 
@@ -90,7 +92,9 @@ Use the select_product tool whenever the customer requests, asks for, or names a
 
 When the customer is currently on a product page:
 - If the customer requests or names a DIFFERENT specific product, call select_product to select and display that product on the kiosk. Do not merely talk about it or ask if they want to add it to the cart.
-- If the customer asks to add the CURRENTLY selected product to the cart (e.g. "add to cart", "add this", "add it", "yes add this to cart"), use screen_action with control="add_to_cart".
+- If the customer asks to add the CURRENTLY selected product to the cart (e.g. "add to cart", "add this", "add it", "yes add this to cart"):
+  Only use screen_action with control="add_to_cart" if you are currently on a product page AND there is an Authoritative Active Selected Product.
+- If the customer says "add it to my cart" when NOT on a product page, do NOT attempt screen_action(add_to_cart). Instead, inform the customer that no item is currently active or offer to open the item they discussed previously.
 
 Do not retrieve the entire menu for a single product question.
 
@@ -98,7 +102,11 @@ SCREEN ACTIONS:
 
 Use screen_action whenever the customer wants to operate or navigate the kiosk using available screen controls.
 
-Only use controls that are currently available on the active kiosk screen.
+Only use controls that are currently available in the Current Available UI Capabilities on the active kiosk screen.
+
+If a tool returns success=False or an error, the action FAILED and was NOT executed.
+- NEVER tell the customer that the action succeeded or that an item was added when the tool failed.
+- NEVER instruct the customer to tap a button or control that is not present on the current screen.
 
 Examples include:
 
@@ -116,6 +124,18 @@ Examples include:
 Never expose internal control names to the customer.
 
 The kiosk UI is responsible for rendering every visual change.
+
+ANSWERING QUESTIONS ABOUT SCREEN OR PRODUCT SELECTION:
+
+When the customer asks about the current screen, page, where they are, or what product is selected:
+- Speak naturally and conversationally, choosing varied phrasing suited to the dialog. Do not repeat a fixed robotic template.
+- Ground your answer strictly in the Authoritative Current Kiosk Screen and Authoritative Active Selected Product provided in context.
+- If asked "What screen am I on?" / "Where am I?":
+  Answer naturally based on the Authoritative Current Kiosk Screen (e.g., if category_selection, tell them they are at the main menu / category selection screen; if on product, tell them they are viewing product details). Never guess from conversation history or claim they are on a product page when the current screen is category_selection.
+- If asked "What product did I select?" or what is currently selected:
+  Answer based on the Authoritative Active Selected Product. If it is None, clarify naturally that no product is currently active or selected on screen, while you may mention the Previously Discussed Item if relevant.
+- If asked what product was discussed earlier or previously:
+  Use the Historical Previously Discussed Item.
 
 SPOKEN RESPONSE RULES:
 
@@ -190,13 +210,38 @@ def build_customer_context(conversation_context):
         context.append(f"Last category discussed: {last_category}")
 
     # ------------------------------------------------------
-    # LAST ITEM
+    # AUTHORITATIVE SCREEN & PRODUCT STATE
     # ------------------------------------------------------
 
+    current_screen = conversation_context.get("current_screen", "category_selection")
+    selected_product = conversation_context.get("selected_product")
     last_item = conversation_context.get("last_item")
 
+    screen_friendly_names = {
+        "category_selection": "Category Selection (Main Welcome Menu)",
+        "product": f"Product Details Page for {selected_product}" if selected_product else "Product Details Page",
+        "recommended_burgers": "Recommended Burgers menu",
+        "burger_menu": "Full Burger Menu",
+        "recommended_drinks": "Recommended Drinks menu",
+        "full_drink_menu": "Full Drinks Menu",
+        "recommended_sides": "Recommended Sides menu",
+        "full_side_menu": "Full Sides Menu",
+        "recommended_desserts": "Recommended Desserts menu",
+        "full_dessert_menu": "Full Desserts Menu",
+        "cart": "Cart page",
+        "payment": "Payment screen",
+        "order_complete": "Order Confirmation screen",
+    }
+    screen_desc = screen_friendly_names.get(current_screen, current_screen)
+    context.append(f"Authoritative Current Kiosk Screen: {current_screen} ({screen_desc})")
+
+    if current_screen == "product" and selected_product:
+        context.append(f"Authoritative Active Selected Product on Screen: {selected_product}")
+    else:
+        context.append("Authoritative Active Selected Product on Screen: None (no product is currently active or displayed on a product page)")
+
     if last_item:
-        context.append(f"Last item discussed: {last_item}")
+        context.append(f"Historical Previously Discussed Item (Past Conversational Memory Only): {last_item}")
 
     # ------------------------------------------------------
     # CART
@@ -210,19 +255,6 @@ def build_customer_context(conversation_context):
         )
 
     # ------------------------------------------------------
-    # CURRENT SCREEN
-    # ------------------------------------------------------
-
-    current_screen = conversation_context.get("current_screen")
-
-    if current_screen:
-        context.append(f"Current kiosk screen: {current_screen}")
-        if current_screen == "product" and last_item:
-            context.append(
-                f"Currently displayed product on screen: {last_item}"
-            )
-
-    # ------------------------------------------------------
     # AVAILABLE UI CONTROLS
     # ------------------------------------------------------
 
@@ -230,7 +262,7 @@ def build_customer_context(conversation_context):
 
     if available_controls:
         context.append(
-            "Current UI capabilities: " + ", ".join(available_controls)
+            "Current Available UI Capabilities: " + ", ".join(available_controls)
         )
 
     # ------------------------------------------------------

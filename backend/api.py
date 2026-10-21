@@ -24,7 +24,7 @@ except Exception:
     KPipeline = None
 from langchain_groq import ChatGroq
 from pydantic import BaseModel
-from kiosk_service import process_message
+from kiosk_service import process_message, track_screen
 from schemas import KioskResponse
 from screen_controls import get_screen_controls
 from services.cart_service import (
@@ -43,6 +43,7 @@ from services.menu_service import (
     get_menu,
     get_product,
 )
+from services.product_selector import resolve_product
 from services.productservice import get_product_recommendations
 from services.modules.m06_condiment_gating import get_checkout_dip_suggestions
 from state import conversation_context, reset_conversation
@@ -104,47 +105,22 @@ def update_screen(request: dict):
             "success": False,
             "message": "screen is required",
         }
-    conversation_context["current_screen"] = screen
-    controls = list(get_screen_controls(screen))
-
-    meal_offer = request.get("meal_offer")
-    declined_ids = [str(x) for x in conversation_context.get("declined_meal_products", [])]
-    if meal_offer is not None:
-        conversation_context["meal_offer"] = meal_offer
-        prod_id = meal_offer.get("product_id")
-        if meal_offer.get("is_dismissed"):
-            if prod_id is not None:
-                if "declined_meal_products" not in conversation_context:
-                    conversation_context["declined_meal_products"] = []
-                if str(prod_id) not in [str(x) for x in conversation_context["declined_meal_products"]]:
-                    conversation_context["declined_meal_products"].append(prod_id)
-            meal_offer["is_open"] = False
-        elif prod_id is not None and str(prod_id) in declined_ids:
-            meal_offer["is_open"] = False
-
-        if meal_offer.get("is_open"):
-            for mc in ["select_meal", "decline_meal"]:
-                if mc not in controls:
-                    controls.append(mc)
-        else:
-            controls = [c for c in controls if c not in ["select_meal", "decline_meal", "accept_meal"]]
-    elif screen != "product":
-        conversation_context.pop("meal_offer", None)
-        controls = [c for c in controls if c not in ["select_meal", "decline_meal", "accept_meal"]]
-
-    conversation_context["available_controls"] = controls
-    print("SCREEN SYNC:", screen)
-    print(
-        "AVAILABLE CONTROLS:",
-        conversation_context["available_controls"],
-    )
+    tracked_res, is_valid = track_screen(screen, extra=request)
+    if not is_valid:
+        return {
+            "success": True,
+            "screen": conversation_context.get("current_screen"),
+            "available_controls": conversation_context.get("available_controls", []),
+            "stale_ignored": True,
+        }
     return {
         "success": True,
-        "screen": screen,
+        "screen": conversation_context.get("current_screen"),
         "available_controls": (
-            conversation_context["available_controls"]
+            conversation_context.get("available_controls", [])
         ),
         "meal_offer": conversation_context.get("meal_offer"),
+        "selected_product": conversation_context.get("selected_product"),
     }
 @app.post("/session/preference")
 def set_preference(request: dict):
@@ -290,6 +266,104 @@ def product_recommendations_post(request: dict):
     return {"recommendations": recs}
 
 
+def resolve_category_request(message: str) -> Optional[str]:
+    """
+    Deterministically detects whether a message is requesting a menu category
+    (e.g., 'I want a burger', 'Have in a burger', 'Can I have a burger', 'I'll have a burger', 'Have a burger', 'Get me a burger')
+    without naming a specific product, item modifier, customization, or cart action.
+    """
+    clean = message.strip().lower()
+    for ch in [".", ",", "!", "?", "'", '"', "-", "_", "/", "\\"]:
+        clean = clean.replace(ch, " ")
+    tokens = clean.split()
+    clean_joined = " ".join(tokens)
+
+    # Guard: Do not treat requests containing modifiers, ingredients, specific product descriptors,
+    # quantities, or cart actions as category browsing.
+    GUARD_TOKENS = {
+        # Modifiers & Prepositions
+        "with", "without", "no", "not", "extra", "add", "adding", "remove", "removing",
+        "less", "more", "plus", "minus", "only", "plain", "custom", "customize",
+        "customized", "substitute", "replace",
+        # Ingredients & Customizations
+        "cheese", "cheesy", "bacon", "onion", "onions", "pickle", "pickles", "tomato",
+        "tomatoes", "lettuce", "mayo", "mayonnaise", "sauce", "sauces", "ketchup",
+        "mustard", "jalapeno", "jalapenos", "patty", "patties", "bun", "buns", "salt",
+        "ice", "sugar", "egg", "eggs", "sesame",
+        # Product Descriptors & Specific Menu Items
+        "veg", "nonveg", "crispy", "whopper", "makhani", "paneer", "chicken", "peri",
+        "fiery", "spicy", "double", "triple", "coke", "pepsi", "sprite", "fanta", "shake",
+        "fries", "dip", "dips", "sundae", "cone", "cup", "chocolate", "choco", "mango",
+        "vanilla", "latte", "coffee", "tea", "water", "king", "combo", "meal", "grill",
+        "grilled", "fried", "royale", "wrap", "wraps", "taco", "tacos", "puff", "puffs",
+        "softie", "waffle", "nugget", "nuggets", "wing", "wings", "boneless", "strip",
+        "strips", "hashbrown", "hashbrowns", "frappe", "espresso", "americano", "cappuccino",
+        "pie", "lava", "mousse", "currant", "kitkat", "float", "thums", "up", "fizz",
+        "saucy", "chilli", "oregano", "fish", "beef", "mutton", "tandoori", "bbq",
+        "avocado", "truffle", "mushroom", "garlic",
+        # Sizes & Quantities
+        "medium", "large", "small", "regular", "single", "size", "upsize", "one", "two",
+        "three", "four", "1", "2", "3", "4",
+        # Cart & Ordering Actions
+        "cart", "checkout", "pay", "payment", "bill", "order", "ordering", "cancel",
+        "clear", "delete", "buy",
+    }
+    if any(t in GUARD_TOKENS for t in tokens):
+        return None
+
+    # Strip trailing polite expressions
+    for polite in ["please", "thanks", "thank you"]:
+        if clean_joined.endswith(f" {polite}"):
+            clean_joined = clean_joined[:-len(polite) - 1].strip()
+
+    category_targets = {
+        "burger": {"burger", "burgers", "burger menu", "burgers menu"},
+        "drink": {"drink", "drinks", "beverage", "beverages", "something to drink", "drink menu", "drinks menu"},
+        "side": {"side", "sides", "side menu", "sides menu"},
+        "dessert": {"dessert", "desserts", "sweet", "sweets", "dessert menu", "desserts menu"},
+    }
+
+    # Direct match on standalone category expressions
+    for cat, targets in category_targets.items():
+        if clean_joined in targets:
+            return cat
+        if clean_joined in {f"a {t}" for t in targets} or clean_joined in {f"some {t}" for t in targets} or clean_joined in {f"the {t}" for t in targets}:
+            return cat
+
+    # Common request phrasing prefixes
+    prefixes = [
+        "have in a ", "have in an ", "have in some ", "have in the ", "have in ",
+        "have a ", "have an ", "have some ", "have the ", "have ",
+        "ill have a ", "ill have an ", "ill have some ", "ill have the ", "ill have ",
+        "i will have a ", "i will have an ", "i will have some ", "i will have the ", "i will have ",
+        "can i have a ", "can i have an ", "can i have some ", "can i have the ", "can i have ",
+        "can i get a ", "can i get an ", "can i get some ", "can i get the ", "can i get ",
+        "can i see the ", "can i see a ", "can i see some ", "can i see ",
+        "could i have a ", "could i have an ", "could i have some ", "could i have the ", "could i have ",
+        "could i get a ", "could i get an ", "could i get some ", "could i get the ", "could i get ",
+        "could i see the ", "could i see a ", "could i see some ", "could i see ",
+        "get me a ", "get me an ", "get me some ", "get me the ", "get me ",
+        "give me a ", "give me an ", "give me some ", "give me the ", "give me ",
+        "i want a ", "i want an ", "i want some ", "i want the ", "i want ",
+        "show me the ", "show me some ", "show me a ", "show me ", "show ",
+        "show the ",
+        "lets have a ", "lets have an ", "lets have some ", "lets have ",
+        "browse the ", "browse a ", "browse some ", "browse ",
+        "explore the ", "explore a ", "explore some ", "explore ",
+        "open the ", "open a ", "open ",
+        "take me to the ", "take me to ",
+    ]
+
+    for p in prefixes:
+        if clean_joined.startswith(p):
+            rem = clean_joined[len(p):].strip()
+            for cat, targets in category_targets.items():
+                if rem in targets:
+                    return cat
+
+    return None
+
+
 @app.post("/message")
 def message(request: MessageRequest):
     print("USER MESSAGE:", request.message)
@@ -298,39 +372,26 @@ def message(request: MessageRequest):
         "_last_kiosk_response",
         None,
     )
+    conversation_context.pop(
+        "_last_action_rejected",
+        None,
+    )
+
     # ==========================================================
     # FAST-PATH FOR DIRECT CATEGORY REQUESTS
     # ==========================================================
-    # Avoid an unnecessary LLM round trip for simple, unambiguous
-    # category requests while keeping the existing KioskResponse
-    # and backend category/recommendation pipeline.
-    msg_clean = request.message.strip().lower()
-    cat_map = {
-        "i want a burger": "burger",
-        "i want burger": "burger",
-        "burger": "burger",
-        "burgers": "burger",
-        "i want a drink": "drink",
-        "i want drink": "drink",
-        "drink": "drink",
-        "drinks": "drink",
-        "i want a side": "side",
-        "i want side": "side",
-        "i want sides": "side",
-        "side": "side",
-        "sides": "side",
-        "i want a dessert": "dessert",
-        "i want dessert": "dessert",
-        "dessert": "dessert",
-        "desserts": "dessert",
-    }
-    if msg_clean in cat_map:
-        from services.menuservice import handle_category
-        target_cat = cat_map[msg_clean]
-        kiosk_response = handle_category(target_cat, conversation_context)
-        if kiosk_response is not None:
-            conversation_context["current_screen"] = kiosk_response.screen
-            return kiosk_response.model_dump()
+    # Only route as a generic category request if it does NOT match
+    # a specific menu item (selected or ambiguous).
+    prod_resolution = resolve_product(request.message, conversation_context)
+    if prod_resolution.get("status") not in ["selected", "ambiguous"]:
+        target_cat = resolve_category_request(request.message)
+        if target_cat:
+            from services.menuservice import handle_category
+            kiosk_response = handle_category(target_cat, conversation_context)
+            if kiosk_response is not None:
+                track_screen(kiosk_response)
+                return kiosk_response.model_dump()
+
     # ==========================================================
     # CASHIER AGENT (with resilient error handling)
     # ==========================================================
@@ -342,6 +403,7 @@ def message(request: MessageRequest):
     except Exception as e:
         print(f"Agent execution error (falling back to processor): {e}")
         agent_response = None
+
     # ==========================================================
     # CHECK WHETHER THE AGENT PERFORMED A KIOSK ACTION
     # ==========================================================
@@ -349,20 +411,47 @@ def message(request: MessageRequest):
         "_last_kiosk_response",
         None,
     )
+    last_rejected = conversation_context.pop(
+        "_last_action_rejected",
+        None,
+    )
+
     if kiosk_response is not None:
+        track_screen(kiosk_response)
         kiosk_response.message = agent_response
         frontend_response = kiosk_response.model_dump()
         return frontend_response
+
+    # ==========================================================
+    # SAFEGUARDS: ACTION REJECTION & FACTUAL GROUNDING
+    # ==========================================================
+    if last_rejected is not None and agent_response:
+        resp_lower = agent_response.lower()
+        if last_rejected.get("control") == "add_to_cart":
+            if any(w in resp_lower for w in ["added", "add to cart", "tap add", "cart now"]):
+                curr = conversation_context.get("current_screen", "category_selection")
+                if curr == "category_selection":
+                    agent_response = "We're currently at the main menu. Would you like to explore our burgers or select an item first?"
+                else:
+                    agent_response = "To add an item to your cart, please select the product first."
+        elif last_rejected.get("control") in ["select_meal", "decline_meal"]:
+            if "meal" in resp_lower and "added" in resp_lower:
+                agent_response = "The meal option is not currently open. Would you like to browse our menu?"
+
+    # Guard: Factual consistency on screen queries
+    current_screen = conversation_context.get("current_screen", "category_selection")
+    msg_clean = request.message.strip().lower()
+    is_asking_screen = any(q in msg_clean for q in ["what screen", "which screen", "where am i", "what page"])
+    if is_asking_screen and agent_response:
+        resp_lower = agent_response.lower()
+        if current_screen == "category_selection" and ("product page" in resp_lower or "product screen" in resp_lower or "product details" in resp_lower):
+            agent_response = "We're currently on the category selection screen—the main menu. What can I get for you today?"
+        elif current_screen == "product" and ("category" in resp_lower or "main menu" in resp_lower):
+            active_p = conversation_context.get("selected_product") or "this item"
+            agent_response = f"You are currently on the product details page for {active_p}."
+
     # ==========================================================
     # AGENT-ONLY CONVERSATION
-    # ==========================================================
-    #
-    # The agent may handle a request conversationally without
-    # performing a kiosk action. In that case there is no
-    # _last_kiosk_response, but the agent response is still valid.
-    #
-    # Do NOT send the same request to the legacy system, otherwise
-    # the old intent router can execute an unintended action.
     # ==========================================================
     if agent_response and agent_response.strip():
         return {

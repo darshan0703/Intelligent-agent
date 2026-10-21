@@ -39,27 +39,166 @@ from langchain_core.tools import tool
 # SCREEN TRACKING
 # ==========================================
 
-def track_screen(response):
+def track_screen(screen_or_response, extra=None):
+    """
+    Authoritative central synchronization point for kiosk UI state.
+    Handles KioskResponse objects, direct screen strings, controls,
+    active product selection, meal offers, and monotonic sequence validation.
+    """
+    if isinstance(screen_or_response, KioskResponse):
+        screen = screen_or_response.screen
+        data = screen_or_response.data or {}
+    elif isinstance(screen_or_response, str):
+        screen = screen_or_response
+        data = extra or {}
+    else:
+        return screen_or_response
 
-    if isinstance(response, KioskResponse):
+    # Verify that screen is a recognized kiosk screen identifier
+    valid_screens = {
+        ScreenTypes.HOME, ScreenTypes.CATEGORY_SELECTION,
+        ScreenTypes.BURGER_TYPE_SELECTION,
+        ScreenTypes.RECOMMENDED_BURGERS, ScreenTypes.FULL_BURGER_MENU, ScreenTypes.BURGER_MENU,
+        ScreenTypes.RECOMMENDED_DRINKS, ScreenTypes.FULL_DRINK_MENU, ScreenTypes.DRINK_MENU,
+        ScreenTypes.RECOMMENDED_SIDES, ScreenTypes.FULL_SIDE_MENU, ScreenTypes.SIDE_MENU,
+        ScreenTypes.RECOMMENDED_DESSERTS, ScreenTypes.FULL_DESSERT_MENU, ScreenTypes.DESSERT_MENU,
+        ScreenTypes.PRODUCT, ScreenTypes.MEAL_CONVERSION,
+        ScreenTypes.UPSELL, ScreenTypes.CART, ScreenTypes.CHECKOUT,
+        ScreenTypes.PAYMENT, ScreenTypes.ORDER_COMPLETE,
+    }
+    if screen not in valid_screens:
+        if isinstance(screen_or_response, KioskResponse):
+            return screen_or_response
+        return screen_or_response, True
 
-        conversation_context["current_screen"] = response.screen
+    # 1. Session & Monotonic sequence validation to prevent stale overwrites
+    incoming_session_id = data.get("session_id")
+    current_session_id = conversation_context.get("session_id")
 
-        conversation_context["available_controls"] = (
-            get_screen_controls(response.screen)
-        )
-
+    # If incoming session is specified and current session is active,
+    # reject updates belonging to a different/previous session.
+    # For client screen syncs (screen_or_response is str), if an active session exists,
+    # reject updates lacking or mismatching the active session.
+    if isinstance(screen_or_response, str) and current_session_id:
+        if not incoming_session_id or incoming_session_id != current_session_id:
+            print(
+                f"[track_screen] Stale/mismatched session update ignored: {incoming_session_id} != {current_session_id}"
+            )
+            return screen_or_response, False
+    elif incoming_session_id and current_session_id and incoming_session_id != current_session_id:
         print(
-            "Current Screen:",
-            response.screen
+            f"[track_screen] Stale/mismatched session update ignored: {incoming_session_id} != {current_session_id}"
         )
+        if isinstance(screen_or_response, KioskResponse):
+            return screen_or_response
+        return screen_or_response, False
 
-        print(
-            "Available Controls:",
-            conversation_context["available_controls"]
-        )
+    if incoming_session_id and not current_session_id:
+        conversation_context["session_id"] = incoming_session_id
 
-    return response
+    incoming_seq = data.get("seq")
+    if incoming_seq is not None:
+        current_seq = conversation_context.get("_screen_seq", 0)
+        if incoming_seq <= current_seq:
+            print(
+                f"[track_screen] Stale screen sync ignored: incoming seq {incoming_seq} <= current {current_seq} (screen: {screen})"
+            )
+            if isinstance(screen_or_response, KioskResponse):
+                return screen_or_response
+            return screen_or_response, False
+        conversation_context["_screen_seq"] = incoming_seq
+
+    # 2. Update Current Screen & Available Controls
+    conversation_context["current_screen"] = screen
+    controls = list(get_screen_controls(screen))
+
+    # Track last category screen for smart back navigation
+    if screen in [
+        ScreenTypes.RECOMMENDED_BURGERS,
+        ScreenTypes.FULL_BURGER_MENU,
+        ScreenTypes.RECOMMENDED_DRINKS,
+        ScreenTypes.FULL_DRINK_MENU,
+        ScreenTypes.RECOMMENDED_SIDES,
+        ScreenTypes.FULL_SIDE_MENU,
+        ScreenTypes.RECOMMENDED_DESSERTS,
+        ScreenTypes.FULL_DESSERT_MENU,
+    ]:
+        conversation_context["last_category_screen"] = screen
+
+    # 3. Authoritative Active Product Selection
+    if screen == ScreenTypes.PRODUCT:
+        prod = data.get("product")
+        if not prod and data.get("meal_offer"):
+            mo = data.get("meal_offer")
+            if mo.get("product_name") or mo.get("product_id"):
+                prod = {"id": mo.get("product_id"), "name": mo.get("product_name")}
+        if prod:
+            if isinstance(prod, dict):
+                p_name = prod.get("name")
+                p_id = prod.get("id")
+            else:
+                p_name = str(prod)
+                p_id = conversation_context.get("selected_product_id")
+            conversation_context["selected_product"] = p_name
+            if p_id is not None:
+                conversation_context["selected_product_id"] = p_id
+            conversation_context["last_item"] = p_name
+        else:
+            # Only establish selected_product when current response explicitly identifies the active product.
+            # Missing active selection must NOT be inferred or restored from historical memory (last_item).
+            conversation_context["selected_product"] = None
+            conversation_context["selected_product_id"] = None
+    else:
+        # Non-product screen: clear active product selection!
+        # Do NOT clear last_item: last_item is historical conversational memory!
+        conversation_context["selected_product"] = None
+        conversation_context["selected_product_id"] = None
+
+    # 4. Meal Offer Synchronization
+    if screen == ScreenTypes.PRODUCT:
+        meal_offer = data.get("meal_offer")
+        declined_ids = [str(x) for x in conversation_context.get("declined_meal_products", [])]
+        if meal_offer is not None:
+            conversation_context["meal_offer"] = meal_offer
+            prod_id = meal_offer.get("product_id")
+            if meal_offer.get("is_dismissed"):
+                if prod_id is not None:
+                    if "declined_meal_products" not in conversation_context:
+                        conversation_context["declined_meal_products"] = []
+                    if str(prod_id) not in [str(x) for x in conversation_context["declined_meal_products"]]:
+                        conversation_context["declined_meal_products"].append(prod_id)
+                meal_offer["is_open"] = False
+            elif prod_id is not None and str(prod_id) in declined_ids:
+                meal_offer["is_open"] = False
+
+            if meal_offer.get("is_open"):
+                for mc in ["select_meal", "decline_meal"]:
+                    if mc not in controls:
+                        controls.append(mc)
+            else:
+                controls = [c for c in controls if c not in ["select_meal", "decline_meal", "accept_meal"]]
+        elif "meal_offer" in conversation_context and conversation_context["meal_offer"]:
+            mo = conversation_context["meal_offer"]
+            if mo.get("is_open"):
+                for mc in ["select_meal", "decline_meal"]:
+                    if mc not in controls:
+                        controls.append(mc)
+            else:
+                controls = [c for c in controls if c not in ["select_meal", "decline_meal", "accept_meal"]]
+    else:
+        conversation_context.pop("meal_offer", None)
+        controls = [c for c in controls if c not in ["select_meal", "decline_meal", "accept_meal"]]
+
+    conversation_context["available_controls"] = controls
+
+    print(
+        f"[track_screen] Screen: {screen} (seq: {conversation_context.get('_screen_seq')}), "
+        f"Active Product: {conversation_context.get('selected_product')}, Controls: {controls}"
+    )
+
+    if isinstance(screen_or_response, KioskResponse):
+        return screen_or_response
+    return screen_or_response, True
 
 
 # ==========================================
@@ -74,7 +213,8 @@ def create_ui_action(
 ):
 
     current_screen = conversation_context.get(
-        "current_screen"
+        "current_screen",
+        ScreenTypes.CATEGORY_SELECTION
     )
 
     available_controls = conversation_context.get(
@@ -83,6 +223,18 @@ def create_ui_action(
     )
 
     ui_action = control
+
+    # Target screen calculation
+    target_screen = current_screen
+    if control == "go_back":
+        target_screen = ScreenTypes.CATEGORY_SELECTION
+    elif control == "open_cart":
+        target_screen = ScreenTypes.CART
+    elif control == "select_product":
+        target_screen = ScreenTypes.PRODUCT
+        if value:
+            conversation_context["selected_product"] = value
+            conversation_context["last_item"] = value
 
     # ==========================================
     # SEMANTIC FILTER → FRONTEND ACTION
@@ -143,12 +295,16 @@ def create_ui_action(
     }
     if value is not None:
         data["value"] = value
+    if control == "select_product" and value is not None:
+        data["product"] = {"name": value}
 
-    return KioskResponse(
-        screen=current_screen,
+    reply = KioskResponse(
+        screen=target_screen,
         message=message,
         data=data
     )
+    track_screen(reply)
+    return reply
 
 
 # ==========================================
@@ -192,7 +348,8 @@ def create_screen_action_tool(conversation_context):
         """
 
         current_screen = conversation_context.get(
-            "current_screen"
+            "current_screen",
+            ScreenTypes.CATEGORY_SELECTION
         )
 
         available_controls = conversation_context.get(
@@ -205,10 +362,14 @@ def create_screen_action_tool(conversation_context):
         # ==========================================
 
         if not current_screen:
-
+            err = "No current kiosk screen is available."
+            conversation_context["_last_action_rejected"] = {
+                "control": control,
+                "error": err
+            }
             return {
                 "success": False,
-                "error": "No current kiosk screen is available."
+                "error": err
             }
 
         # Normalize accept_meal with size to select_meal
@@ -216,17 +377,43 @@ def create_screen_action_tool(conversation_context):
             control = "select_meal"
 
         # ==========================================
+        # VALIDATE ADD TO CART
+        # ==========================================
+        if control == "add_to_cart":
+            active_product = conversation_context.get("selected_product")
+            if current_screen != ScreenTypes.PRODUCT or not active_product:
+                err = (
+                    f"Action 'add_to_cart' cannot be performed because current screen is '{current_screen}' "
+                    f"and no product is actively selected on screen. The action was NOT executed. "
+                    "Do NOT tell the customer an item was added to the cart."
+                )
+                conversation_context["_last_action_rejected"] = {
+                    "control": control,
+                    "error": err,
+                }
+                return {
+                    "success": False,
+                    "error": err,
+                    "available_controls": available_controls,
+                }
+
+        # ==========================================
         # VALIDATE CONTROL
         # ==========================================
 
         if control not in available_controls:
-
+            err = (
+                f"Control '{control}' is not available on the current screen '{current_screen}'. "
+                f"Available controls on this screen: {available_controls}. "
+                "The action was NOT executed. Do NOT tell the customer this action was completed or to tap an unavailable button."
+            )
+            conversation_context["_last_action_rejected"] = {
+                "control": control,
+                "error": err,
+            }
             return {
                 "success": False,
-                "error": (
-                    f"Control '{control}' is not available "
-                    f"on the current screen."
-                ),
+                "error": err,
                 "available_controls": available_controls
             }
 
@@ -250,13 +437,14 @@ def create_screen_action_tool(conversation_context):
                 "non_veg",
                 "both"
             ]:
-
+                err = "Filter value must be veg, non_veg, or both."
+                conversation_context["_last_action_rejected"] = {
+                    "control": control,
+                    "error": err,
+                }
                 return {
                     "success": False,
-                    "error": (
-                        "Filter value must be "
-                        "veg, non_veg, or both."
-                    )
+                    "error": err
                 }
 
         # ==========================================
@@ -265,31 +453,51 @@ def create_screen_action_tool(conversation_context):
 
         if control == "select_meal":
             if not value:
+                err = "Customer must choose between 'medium' or 'large' meal size."
+                conversation_context["_last_action_rejected"] = {
+                    "control": control,
+                    "error": err,
+                }
                 return {
                     "success": False,
-                    "error": "Customer must choose between 'medium' or 'large' meal size.",
+                    "error": err,
                 }
 
             val_norm = value.lower().replace(" meal", "").strip()
             if val_norm not in ["medium", "large"]:
+                err = f"Invalid meal size '{value}'. Must be 'medium' or 'large'."
+                conversation_context["_last_action_rejected"] = {
+                    "control": control,
+                    "error": err,
+                }
                 return {
                     "success": False,
-                    "error": f"Invalid meal size '{value}'. Must be 'medium' or 'large'.",
+                    "error": err,
                 }
             value = val_norm
 
             meal_offer = conversation_context.get("meal_offer", {})
             if not meal_offer.get("is_open"):
+                err = "The meal offer popup is not currently open."
+                conversation_context["_last_action_rejected"] = {
+                    "control": control,
+                    "error": err,
+                }
                 return {
                     "success": False,
-                    "error": "The meal offer popup is not currently open.",
+                    "error": err,
                 }
 
             avail = [s.lower() for s in meal_offer.get("available_sizes", [])]
             if avail and value not in avail:
+                err = f"Size '{value}' is not available. Available sizes: {', '.join(avail)}."
+                conversation_context["_last_action_rejected"] = {
+                    "control": control,
+                    "error": err,
+                }
                 return {
                     "success": False,
-                    "error": f"Size '{value}' is not available. Available sizes: {', '.join(avail)}.",
+                    "error": err,
                     "available_sizes": avail,
                 }
 
@@ -322,11 +530,18 @@ def create_screen_action_tool(conversation_context):
         )
 
         if response is None:
-
+            err = "The kiosk could not perform this action."
+            conversation_context["_last_action_rejected"] = {
+                "control": control,
+                "error": err,
+            }
             return {
                 "success": False,
-                "error": "The kiosk could not perform this action."
+                "error": err
             }
+
+        # Clear rejected flag on successful execution
+        conversation_context["_last_action_rejected"] = None
 
         # ==========================================
         # KEEP FULL RESPONSE INSIDE APPLICATION
@@ -342,7 +557,7 @@ def create_screen_action_tool(conversation_context):
 
         return {
             "success": True,
-            "screen": current_screen,
+            "screen": response.screen,
             "control": control,
             "value": value
         }
