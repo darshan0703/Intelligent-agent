@@ -1,319 +1,210 @@
-/* ==========================================
-   HEADER CONTAINER
-   ========================================== */
 
 .header-container {
   position: absolute;
-
-  left: 0;
   top: 0;
-
-  width: 1080px;
+  left: 0;
+  width: 100%;
   height: 350px;
-
   pointer-events: none;
-
   z-index: 10;
 }
 
-
-/* ==========================================
-   ORANGE BACKGROUND
-   TWO CONNECTED OVALS
-   ========================================== */
-
 .header-orange-bg {
   position: absolute;
-
-  left: 0;
   top: 0;
-
-  width: 1080px;
+  left: 0;
+  width: 100%;
   height: 300px;
-
   overflow: hidden;
-
   pointer-events: none;
-
-  z-index: 0;
 }
-
-
-/* Individual oval */
 
 .orange-oval {
   position: absolute;
-
   top: 88px;
-
-  width: 570px;
+  width: 53%;
+  max-width: 570px;
   height: 175px;
-
   border-radius: 50%;
-
-  background:
-    radial-gradient(
-      ellipse at center,
-      rgba(255, 145, 55, 0.15) 0%,
-      rgba(255, 166, 90, 0.10) 45%,
-      rgba(255, 190, 120, 0.04) 70%,
-      rgba(255, 190, 120, 0) 100%
-    );
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 145, 55, 0.15) 0%,
+    rgba(255, 166, 90, 0.10) 45%,
+    rgba(255, 190, 120, 0.04) 70%,
+    rgba(255, 190, 120, 0) 100%
+  );
 }
-
-
-/* Left oval */
 
 .oval-left {
-  left: 20px;
+  left: 2%;
 }
-
-
-/* Right oval */
 
 .oval-right {
-  right: 20px;
+  right: 2%;
 }
-
-
-/* ==========================================
-   CONTENT ABOVE ORANGE BACKGROUND
-   ========================================== */
 
 .ai-image,
 .logo-image,
 .lang-image,
 .page-title,
-.wave-container,
-.listening-text,
+.voice-indicator,
+.voice-status-text,
 .thin-line {
   z-index: 1;
 }
 
-
-/* ==========================================
-   AI
-   ========================================== */
-
 .ai-image {
   position: absolute;
-
-  left: 20px;
+  left: 2%;
   top: 10px;
-
-  width: 130px;
+  width: 12%;
+  max-width: 130px;
   height: auto;
 }
-
-
-/* ==========================================
-   LOGO
-   ========================================== */
 
 .logo-image {
   position: absolute;
-
-  left: 421px;
+  left: 50%;
   top: 10px;
-
-  width: 238px;
+  width: 22%;
+  max-width: 238px;
   height: auto;
+  transform: translateX(-50%);
 }
-
-
-/* ==========================================
-   LANGUAGE
-   ========================================== */
 
 .lang-image {
   position: absolute;
-
-  left: 900px;
+  right: 2%;
   top: 15px;
-
-  width: 140px;
+  width: 13%;
+  max-width: 140px;
   height: auto;
 }
 
-
-/* ==========================================
-   TITLE
-   ========================================== */
-
 .page-title {
   position: absolute;
-
-  left: 0;
   top: 125px;
-
-  width: 1080px;
-
+  left: 0;
+  width: 100%;
+  padding: 0 10px;
+  box-sizing: border-box;
   text-align: center;
-
   color: #5B2B11;
-
   font-family: "Flame", sans-serif;
-
-  font-size: 48px;
+  font-size: clamp(22px, 4.5vw, 48px);
   font-weight: 700;
-
   margin: 0;
 }
 
-
-/* ==========================================
-   VOICE WAVE
-   ========================================== */
-
-.wave-container {
+.voice-indicator {
   position: absolute;
-
-  left: 390px;
-  top: 210px;
-
-  width: 120px;
-  height: 60px;
-
+  top: 205px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
-
-  justify-content: center;
   align-items: center;
-
-  gap: 6px;
+  justify-content: center;
+  gap: 10px;
+  width: max-content;
+  max-width: 96%;
 }
 
+.wave-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 70px;
+  height: 50px;
+}
 
 .bar {
-  width: 8px;
+  width: 6px;
   height: 10px;
-
+  flex-shrink: 0;
   border-radius: 999px;
-
-  background: linear-gradient(
-    to top,
-    #D62300,
-    #FF8732
-  );
-
+  background: linear-gradient(to top, #D62300, #FF8732);
   animation: wave 1s infinite ease-in-out;
 }
 
-
-.bar:nth-child(1) {
-  animation-delay: 0s;
-}
-
-.bar:nth-child(2) {
-  animation-delay: 0.15s;
-}
-
-.bar:nth-child(3) {
-  animation-delay: 0.3s;
-}
-
-.bar:nth-child(4) {
-  animation-delay: 0.45s;
-}
-
-.bar:nth-child(5) {
-  animation-delay: 0.6s;
-}
-
-
-/* ==========================================
-   WAVE ANIMATION
-   ========================================== */
+.bar:nth-child(1) { animation-delay: 0s; }
+.bar:nth-child(2) { animation-delay: 0.15s; }
+.bar:nth-child(3) { animation-delay: 0.3s; }
+.bar:nth-child(4) { animation-delay: 0.45s; }
+.bar:nth-child(5) { animation-delay: 0.6s; }
 
 @keyframes wave {
-  0% {
-    height: 10px;
-  }
-
-  50% {
-    height: 40px;
-  }
-
-  100% {
-    height: 10px;
-  }
+  0%, 100% { height: 10px; }
+  50% { height: 35px; }
 }
 
-
-/* ==========================================
-   LISTENING
-   ========================================== */
-
-.listening-text {
+.voice-status-text {
   position: absolute;
-
-  left: 520px;
   top: 212px;
-
-  color: var(--bk-orange);
-
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--bk-orange, #D62300);
   font-family: "Flame", sans-serif;
-
-  font-size: 28px;
+  font-size: clamp(18px, 3vw, 28px);
   font-weight: 700;
-
+  white-space: nowrap;
   margin: 0;
-
   display: flex;
   align-items: center;
 }
 
+.voice-indicator .voice-status-text {
+  position: static;
+  transform: none;
+}
 
-/* ==========================================
-   LISTENING DOTS
-   ========================================== */
+.speaking-text {
+  top: 218px;
+}
 
 .dots::after {
   content: "";
-
   animation: dots 1.5s infinite;
 }
 
-
 @keyframes dots {
-  0% {
-    content: "";
-  }
-
-  25% {
-    content: ".";
-  }
-
-  50% {
-    content: "..";
-  }
-
-  75% {
-    content: "...";
-  }
-
-  100% {
-    content: "";
-  }
+  0%, 100% { content: ""; }
+  25% { content: "."; }
+  50% { content: ".."; }
+  75% { content: "..."; }
 }
-
-
-/* ==========================================
-   HEADER LINE
-   ========================================== */
 
 .thin-line {
   position: absolute;
-
-  left: 40px;
   top: 320px;
-
-  width: 1000px;
+  left: 4%;
+  width: 92%;
   height: 2px;
-
   background: linear-gradient(
     to right,
     transparent,
     rgba(91, 43, 17, 0.35),
     transparent
   );
+}
+
+@media (max-width: 600px) {
+  .ai-image { width: 18%; }
+  .logo-image { width: 32%; }
+  .lang-image { width: 19%; }
+
+  .voice-indicator {
+    top: 205px;
+    gap: 6px;
+  }
+
+  .wave-container {
+    width: 55px;
+    gap: 4px;
+  }
+
+  .bar { width: 5px; }
+
+  .voice-status-text { font-size: 20px; }
+  .speaking-text { top: 218px; }
 }
