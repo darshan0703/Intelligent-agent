@@ -5,6 +5,7 @@ from services.modules.m01_dietary_lock import apply_dietary_lock
 from services.modules.m07_cart_exclusion import exclude_cart_items
 from services.modules.m05_budget_ceiling import apply_price_ceiling
 from services.modules.m06_condiment_gating import filter_for_recommendation_page
+from perf import get_current_tracer
 
 
 # =========================================================
@@ -357,8 +358,9 @@ def build_recommendations(
 
         premium = prem_items[:2]
         if len(premium) < 2:
+            prem_ids = {p.get("id") or p.get("name") for p in premium}
             rem_by_price = sorted(
-                [item for item in candidates if (item.get("id") or item.get("name")) not in used_ids and (item.get("id") or item.get("name")) not in {p.get("id") or p.get("name") for p in premium}],
+                [item for item in candidates if (item.get("id") or item.get("name")) not in used_ids and (item.get("id") or item.get("name")) not in prem_ids],
                 key=lambda x: float(x.get("price") or 0),
                 reverse=True
             )
@@ -408,8 +410,9 @@ def build_recommendations(
 
         premium = prem_items[:2]
         if len(premium) < 2:
+            prem_ids = {p.get("id") or p.get("name") for p in premium}
             rem_by_price = sorted(
-                [item for item in candidates if (item.get("id") or item.get("name")) not in used_ids and (item.get("id") or item.get("name")) not in {p.get("id") or p.get("name") for p in premium}],
+                [item for item in candidates if (item.get("id") or item.get("name")) not in used_ids and (item.get("id") or item.get("name")) not in prem_ids],
                 key=lambda x: float(x.get("price") or 0),
                 reverse=True
             )
@@ -507,6 +510,18 @@ def build_recommendations(
 # =========================================================
 
 def get_agent_recommendations(
+    category=None,
+    food_type=None,
+    cart=None
+):
+    tracer = get_current_tracer()
+    if tracer:
+        with tracer.measure("backend_recommendation_generation", category=str(category or "")):
+            return _compute_agent_recommendations(category=category, food_type=food_type, cart=cart)
+    return _compute_agent_recommendations(category=category, food_type=food_type, cart=cart)
+
+
+def _compute_agent_recommendations(
     category=None,
     food_type=None,
     cart=None

@@ -18,7 +18,12 @@ Dynamic Menu Organization for 'View All' Screens:
 from datetime import date
 from typing import List, Dict, Any, Optional
 from services.modules.m06_condiment_gating import has_finger_food_in_cart, is_meal_only_item
-from services.modules.m07_cart_exclusion import exclude_cart_items, _normalize_name
+from services.modules.m07_cart_exclusion import (
+    exclude_cart_items,
+    _normalize_name,
+    get_cart_exclusion_sets,
+    is_candidate_excluded,
+)
 from services.modules.m01_dietary_lock import apply_dietary_lock, normalize_food_type
 from services.recommendation import _is_stock_eligible, _is_expiry_eligible
 
@@ -47,7 +52,9 @@ def is_item_in_cart(item: Dict[str, Any], cart: Optional[List[Dict[str, Any]]]) 
     """
     if not cart or not item:
         return False
-    return len(exclude_cart_items([item], cart)) == 0
+    cart_ids, cart_names = get_cart_exclusion_sets(cart)
+    return is_candidate_excluded(item, cart_ids, cart_names)
+
 
 
 def _parse_price(item: Dict[str, Any]) -> Optional[float]:

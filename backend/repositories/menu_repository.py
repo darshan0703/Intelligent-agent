@@ -1,3 +1,5 @@
+import threading
+import time
 from database import supabase
 
 BRANCH_ID = 1
@@ -38,72 +40,193 @@ def serialize_menu_item(row):
 
 
 # ==========================================================
-# BASE QUERY
+# IN-MEMORY TTL CACHE CONFIGURATION & STATE
 # ==========================================================
 
+DEFAULT_CACHE_TTL = 60.0  # seconds
+
+# Process-local in-memory cache keyed by branch_id:
+# {
+#     branch_id: {
+#         "rows": list[dict],
+#         "cached_at": float,
+#         "expires_at": float,
+#     }
+# }
+_CACHE = {}
+_CACHE_LOCK = threading.RLock()
+_STATS_LOCK = threading.Lock()
+
+_CACHE_STATS = {
+    "hits": 0,
+    "misses": 0,
+    "refreshes": 0,
+    "errors": 0,
+}
+
+# Retained for backwards compatibility with any existing diagnostics
 _MENU_ROWS_CACHE = []
 
-def fetch_menu_rows():
+
+# Version counter for cache invalidation across dependent indexes
+_MENU_VERSION = 1
+
+
+def get_menu_version() -> int:
+    """Return current menu cache epoch/version counter."""
+    with _CACHE_LOCK:
+        return _MENU_VERSION
+
+
+def get_menu_cache_stats() -> dict:
+    """Return a snapshot of cache performance metrics."""
+    with _STATS_LOCK:
+        return dict(_CACHE_STATS)
+
+
+def clear_menu_cache() -> None:
+    """
+    Clear all cached menu data and reset cache statistics.
+    Useful for testing and explicit cache invalidation.
+    """
+    global _MENU_ROWS_CACHE, _MENU_VERSION, _AVAILABLE_CACHE
+    with _CACHE_LOCK:
+        _CACHE.clear()
+        _MENU_ROWS_CACHE = []
+        _AVAILABLE_CACHE = None
+        _MENU_VERSION += 1
+    with _STATS_LOCK:
+        _CACHE_STATS["hits"] = 0
+        _CACHE_STATS["misses"] = 0
+        _CACHE_STATS["refreshes"] = 0
+        _CACHE_STATS["errors"] = 0
+
+
+
+
+# ==========================================================
+# BASE QUERY WITH TTL CACHING
+# ==========================================================
+
+def fetch_menu_rows(
+    branch_id: int = BRANCH_ID,
+    force_refresh: bool = False,
+    ttl: float = DEFAULT_CACHE_TTL,
+):
+    """
+    Fetch available menu rows for a branch with positive stock.
+    Results are cached in-memory with a configurable TTL (default 60s) to avoid
+    repeated round-trips to Supabase.
+    Thread-safe and coalesces concurrent requests to prevent duplicate fetches.
+    """
     global _MENU_ROWS_CACHE
-    last_err = None
-    for attempt in range(2):
-        try:
-            response = (
-                supabase.table("inventory")
-                .select(
-                    """
-                    stock,
-                    expiry_date,
-                    menu_items!inner(
-                        id,
-                        name,
-                        short_description,
-                        long_description,
-                        price,
-                        image,
-                        meal_image,
-                        category,
-                        food_type,
-                        serving_type,
-                        section,
-                        section_order,
-                        display_order,
-                        meal_role,
-                        is_meal_only,
-                        is_meal_available,
-                        is_available
+
+    # 1. Fast-path: Check valid cache outside lock
+    if not force_refresh:
+        now = time.monotonic()
+        entry = _CACHE.get(branch_id)
+        if entry is not None and now < entry["expires_at"]:
+            with _STATS_LOCK:
+                _CACHE_STATS["hits"] += 1
+            return [dict(r) for r in entry["rows"]]
+
+    # 2. Synchronized fetch / request coalescing under lock
+    with _CACHE_LOCK:
+        global _MENU_ROWS_CACHE, _MENU_VERSION
+        now = time.monotonic()
+
+        entry = _CACHE.get(branch_id)
+        if not force_refresh and entry is not None and now < entry["expires_at"]:
+            with _STATS_LOCK:
+                _CACHE_STATS["hits"] += 1
+            return [dict(r) for r in entry["rows"]]
+
+        with _STATS_LOCK:
+            _CACHE_STATS["misses"] += 1
+        last_err = None
+
+        for attempt in range(2):
+            try:
+                response = (
+                    supabase.table("inventory")
+                    .select(
+                        """
+                        stock,
+                        expiry_date,
+                        menu_items!inner(
+                            id,
+                            name,
+                            short_description,
+                            long_description,
+                            price,
+                            image,
+                            meal_image,
+                            category,
+                            food_type,
+                            serving_type,
+                            section,
+                            section_order,
+                            display_order,
+                            meal_role,
+                            is_meal_only,
+                            is_meal_available,
+                            is_available
+                        )
+                        """
                     )
-                    """
+                    .eq("branch_id", branch_id)
+                    .gt("stock", 0)
+                    .execute()
                 )
-                .eq("branch_id", BRANCH_ID)
-                .gt("stock", 0)
-                .execute()
+
+                rows = []
+                for item in response.data or []:
+                    menu = item["menu_items"]
+
+                    if not menu["is_available"]:
+                        continue
+
+                    merged = {**menu}
+                    merged["stock"] = item["stock"]
+                    merged["expiry_date"] = item["expiry_date"]
+
+                    rows.append(merged)
+
+                if rows:
+                    _MENU_ROWS_CACHE = rows
+                    _CACHE[branch_id] = {
+                        "rows": rows,
+                        "cached_at": now,
+                        "expires_at": now + ttl,
+                    }
+                    _MENU_VERSION += 1
+                    with _STATS_LOCK:
+                        _CACHE_STATS["refreshes"] += 1
+                return [dict(r) for r in rows]
+
+            except Exception as e:
+                last_err = e
+
+        with _STATS_LOCK:
+            _CACHE_STATS["errors"] += 1
+
+        # Explicit fallback handling:
+        # If a prior cached entry exists, log an explicit warning that stale cached
+        # data is being served as a fallback due to Supabase query failure.
+        if entry is not None and entry.get("rows"):
+            print(
+                f"[WARN] fetch_menu_rows Supabase query failed ({last_err}), "
+                f"using expired cached rows for branch {branch_id}."
             )
+            return [dict(r) for r in entry["rows"]]
+        elif _MENU_ROWS_CACHE:
+            print(
+                f"[WARN] fetch_menu_rows Supabase query failed ({last_err}), "
+                f"using cached menu rows."
+            )
+            return [dict(r) for r in _MENU_ROWS_CACHE]
 
-            rows = []
-            for item in response.data or []:
-                menu = item["menu_items"]
-
-                if not menu["is_available"]:
-                    continue
-
-                merged = {**menu}
-                merged["stock"] = item["stock"]
-                merged["expiry_date"] = item["expiry_date"]
-
-                rows.append(merged)
-
-            if rows:
-                _MENU_ROWS_CACHE = rows
-            return rows
-        except Exception as e:
-            last_err = e
-
-    if _MENU_ROWS_CACHE:
-        print(f"[WARN] fetch_menu_rows Supabase query failed ({last_err}), using cached menu rows.")
-        return _MENU_ROWS_CACHE
-
-    raise last_err
+        raise last_err
 
 
 # ==========================================================
@@ -163,12 +286,23 @@ def get_menu_sections(category, preference=None):
     return list(sections.values())
 
 
-# ==========================================================
-# AVAILABLE ITEMS
-# ==========================================================
+_AVAILABLE_CACHE = None
+_AVAILABLE_VERSION = -1
+
 
 def get_available():
-    return [serialize_menu_item(r) for r in fetch_menu_rows()]
+    global _AVAILABLE_CACHE, _AVAILABLE_VERSION
+    ver = _MENU_VERSION
+    if _AVAILABLE_CACHE is not None and _AVAILABLE_VERSION == ver:
+        return _AVAILABLE_CACHE
+    rows = fetch_menu_rows()
+    serialized = [serialize_menu_item(r) for r in rows]
+    with _CACHE_LOCK:
+        _AVAILABLE_CACHE = serialized
+        _AVAILABLE_VERSION = _MENU_VERSION
+        return _AVAILABLE_CACHE
+
+
 
 
 # ==========================================================

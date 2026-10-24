@@ -23,6 +23,9 @@ MEAL_UPGRADE_PRICES = {
     "large": 145,
 }
 
+DEFAULT_MAX_EXTRA_PRICE = 9999.0
+DEFAULT_MEAL_UPGRADE_PRICE = 140.0
+
 
 def _parse_price(val):
     """
@@ -98,6 +101,7 @@ def serialize_meal_option(item, extra_price, is_default=False):
         "is_default": is_default,
         "section": item.get("section"),
         "foodType": item.get("food_type"),
+        "display_order": item.get("display_order") or item.get("section_order") or 0,
     }
 
 
@@ -118,29 +122,29 @@ def organize_meal_options(options, food_preference=None, cart=None, main_product
     - Cart Exclusion: items already in cart are moved to the VERY LAST!
     - Within each group: default first, then higher sensory affinity, then lower extra_price first.
     """
-    from services.menu_organizer import is_item_in_cart
+    from services.modules.m07_cart_exclusion import get_cart_exclusion_sets, is_candidate_excluded
     from services.modules.m02_m03_basket_completion import compute_sensory_score
 
     cart_ctx = (cart or []) + ([main_product] if main_product else [])
     pref = str(food_preference or "veg").lower().strip()
+    is_veg_preferred = (pref == "veg" or "non" not in pref)
+
+    # Hoist exclusion set extraction out of the comparator loop
+    cart_ids, cart_names = get_cart_exclusion_sets(cart or [])
 
     def option_key(item):
-        in_cart = 1 if is_item_in_cart(item, cart) else 0
+        in_cart = 1 if is_candidate_excluded(item, cart_ids, cart_names) else 0
         is_veg = is_veg_meal_item(item)
-
-        if pref == "veg":
-            diet_pri = 0 if is_veg else 1
-        elif "non" in pref:
-            diet_pri = 1 if is_veg else 0
-        else:
-            diet_pri = 0 if is_veg else 1
+        diet_pri = 0 if (is_veg == is_veg_preferred) else 1
 
         is_def = 0 if item.get("is_default") else 1
         sensory = compute_sensory_score(cart_ctx, item)
         extra = _parse_price(item.get("extra_price"))
         if extra is None:
-            extra = 9999.0
-        return (in_cart, diet_pri, -round(sensory, 2), is_def, extra)
+            extra = DEFAULT_MAX_EXTRA_PRICE
+        disp_order = item.get("display_order") or item.get("section_order") or 0
+        item_id = str(item.get("id") or "")
+        return (in_cart, diet_pri, -round(sensory, 2), is_def, extra, disp_order, item_id)
 
     return sorted(options, key=option_key)
 
@@ -194,6 +198,26 @@ def get_default_meal(meal_size):
         return None
 
 
+def _parse_upgrade_option(row, role, today):
+    """Parses and validates a single meal upgrade row."""
+    item = row.get("menu_items")
+    if not item or (role is not None and item.get("meal_role") != role):
+        return None
+    if not item.get("is_available") or not _is_item_eligible(item, today):
+        return None
+    parsed_extra = _parse_price(row.get("extra_price"))
+    if parsed_extra is None:
+        return None
+    parsed_price = _parse_price(item.get("price"))
+    if parsed_price is None:
+        return None
+    return {
+        **item,
+        "price": parsed_price,
+        "extra_price": parsed_extra,
+    }
+
+
 def get_upgrade_options(meal_size, role=None):
     try:
         response = (
@@ -208,6 +232,7 @@ def get_upgrade_options(meal_size, role=None):
                     section,
                     meal_role,
                     food_type,
+                    display_order,
                     is_available,
                     inventory (
                         stock,
@@ -220,43 +245,16 @@ def get_upgrade_options(meal_size, role=None):
             .execute()
         )
 
-        options = []
         today = date.today()
-
-        for row in response.data or []:
-            item = row.get("menu_items")
-
-            if not item:
-                continue
-
-            if role is not None and item.get("meal_role") != role:
-                continue
-
-            if not item.get("is_available"):
-                continue
-
-            if not _is_item_eligible(item, today):
-                continue
-
-            # Never silently interpret an invalid extra_price as a valid zero-price upgrade
-            parsed_extra = _parse_price(row.get("extra_price"))
-            if parsed_extra is None:
-                continue
-
-            parsed_price = _parse_price(item.get("price"))
-            if parsed_price is None:
-                continue
-
-            options.append({
-                **item,
-                "price": parsed_price,
-                "extra_price": parsed_extra,
-            })
-
-        return options
+        parsed_options = (
+            _parse_upgrade_option(row, role, today)
+            for row in (response.data or [])
+        )
+        return [opt for opt in parsed_options if opt is not None]
     except Exception as e:
         print(f"[WARN] Error fetching upgrade options: {_sanitize_error(e)}")
         return []
+
 
 
 def build_meal(item_id, meal_size, food_preference=None, cart=None):
@@ -328,9 +326,9 @@ def build_meal(item_id, meal_size, food_preference=None, cart=None):
         side_options = organize_meal_options(side_options, food_preference=effective_pref, cart=cart, main_product=burger_data)
         drink_options = organize_meal_options(drink_options, food_preference=effective_pref, cart=cart, main_product=burger_data)
 
-        upgrade_price = _parse_price(MEAL_UPGRADE_PRICES.get(meal_size, 140))
+        upgrade_price = _parse_price(MEAL_UPGRADE_PRICES.get(meal_size, DEFAULT_MEAL_UPGRADE_PRICE))
         if upgrade_price is None:
-            upgrade_price = 140.0
+            upgrade_price = DEFAULT_MEAL_UPGRADE_PRICE
 
         side_price = _parse_price(side_default.get("price")) or 0.0
         drink_price = _parse_price(drink_default.get("price")) or 0.0

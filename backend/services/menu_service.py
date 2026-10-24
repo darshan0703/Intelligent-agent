@@ -5,7 +5,15 @@ from repositories.menu_repository import (
     get_category as repo_get_category,
     add_to_cart,
     get_product as repo_get_product,
+    clear_menu_cache,
+    get_menu_cache_stats,
+    get_menu_version as repo_get_menu_version,
 )
+
+
+def get_menu_version():
+    return repo_get_menu_version()
+
 
 
 def get_menu(category, preference=None, cart=None):
