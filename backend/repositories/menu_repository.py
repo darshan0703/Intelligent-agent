@@ -89,11 +89,10 @@ def clear_menu_cache() -> None:
     Clear all cached menu data and reset cache statistics.
     Useful for testing and explicit cache invalidation.
     """
-    global _MENU_ROWS_CACHE, _MENU_VERSION, _AVAILABLE_CACHE
+    global _MENU_ROWS_CACHE, _MENU_VERSION
     with _CACHE_LOCK:
         _CACHE.clear()
         _MENU_ROWS_CACHE = []
-        _AVAILABLE_CACHE = None
         _MENU_VERSION += 1
     with _STATS_LOCK:
         _CACHE_STATS["hits"] = 0
@@ -196,6 +195,7 @@ def fetch_menu_rows(
                     _MENU_ROWS_CACHE = rows
                     _CACHE[branch_id] = {
                         "rows": rows,
+                        "serialized": [serialize_menu_item(r) for r in rows],
                         "cached_at": now,
                         "expires_at": now + ttl,
                     }
@@ -286,21 +286,23 @@ def get_menu_sections(category, preference=None):
     return list(sections.values())
 
 
-_AVAILABLE_CACHE = None
-_AVAILABLE_VERSION = -1
+def get_available(branch_id: int = BRANCH_ID):
+    """
+    Return available serialized menu items with defensive copying.
+    Guarantees:
+    - Cache freshness: shares TTL and invalidation lifecycle with fetch_menu_rows().
+    - Mutation safety: returns fresh dict copies so caller mutations cannot corrupt cache.
+    - Consistency: reflects the authoritative database source of truth.
+    """
+    now = time.monotonic()
+    entry = _CACHE.get(branch_id)
+    if entry is None or now >= entry.get("expires_at", 0) or "serialized" not in entry:
+        rows = fetch_menu_rows(branch_id=branch_id)
+        entry = _CACHE.get(branch_id)
+        if entry is None or "serialized" not in entry:
+            return [serialize_menu_item(r) for r in rows]
 
-
-def get_available():
-    global _AVAILABLE_CACHE, _AVAILABLE_VERSION
-    ver = _MENU_VERSION
-    if _AVAILABLE_CACHE is not None and _AVAILABLE_VERSION == ver:
-        return _AVAILABLE_CACHE
-    rows = fetch_menu_rows()
-    serialized = [serialize_menu_item(r) for r in rows]
-    with _CACHE_LOCK:
-        _AVAILABLE_CACHE = serialized
-        _AVAILABLE_VERSION = _MENU_VERSION
-        return _AVAILABLE_CACHE
+    return [dict(item) for item in entry["serialized"]]
 
 
 

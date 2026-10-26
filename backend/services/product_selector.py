@@ -2,8 +2,7 @@ import threading
 from services.menu_service import get_available, get_menu_version
 from perf import get_current_tracer
 
-_INDEX_LOCK = threading.Lock()
-_CACHED_ID = None
+_INDEX_LOCK = threading.RLock()
 _FAST_INDEX = None
 
 
@@ -28,40 +27,70 @@ def tokenize(value):
 
 class _ProductIndex:
     """
-    Pre-tokenized in-memory index for O(1) exact lookup and rapid token-subset matching.
+    Pre-tokenized in-memory index mapping normalized names and token sets
+    to positional indices within the authoritative products list.
     """
-    __slots__ = ("exact_map", "token_list", "category_token_list")
+    __slots__ = ("exact_indices_map", "token_indices", "category_indices", "signature")
 
-    def __init__(self, products):
-        self.exact_map = {}
-        self.token_list = []
-        self.category_token_list = []
+    def __init__(self, products, signature):
+        self.signature = signature
+        self.exact_indices_map = {}
+        self.token_indices = []
+        self.category_indices = []
 
-        for p in products:
+        for idx, p in enumerate(products):
+            if not isinstance(p, dict):
+                continue
             raw_name = p.get("name")
             norm_name = normalize(raw_name)
             if norm_name:
-                self.exact_map.setdefault(norm_name, []).append(p)
-            name_tokens = tokenize(raw_name)
+                self.exact_indices_map.setdefault(norm_name, []).append(idx)
+            name_tokens = frozenset(tokenize(raw_name))
             if name_tokens:
-                self.token_list.append((name_tokens, p))
+                self.token_indices.append((name_tokens, idx))
                 cat = normalize(p.get("category"))
                 if cat:
-                    self.category_token_list.append((name_tokens, cat, p))
+                    self.category_indices.append((name_tokens, cat, idx))
+
+
+def _compute_snapshot_signature(products):
+    """
+    Computes a snapshot signature of the products list.
+    Guarantees invalidation if menu version, item count, or item names/categories change.
+    """
+    version = get_menu_version()
+    items_sig = tuple(
+        (p.get("id"), p.get("name"), p.get("category"))
+        for p in products
+        if isinstance(p, dict)
+    )
+    return (version, len(products), items_sig)
+
+
+def invalidate_product_index():
+    """
+    Safely reset the product index cache.
+    """
+    global _FAST_INDEX
+    with _INDEX_LOCK:
+        _FAST_INDEX = None
 
 
 def _get_or_build_index(products):
-    global _CACHED_ID, _FAST_INDEX
-    current_id = id(products)
-    if _FAST_INDEX is not None and _CACHED_ID == current_id:
-        return _FAST_INDEX
+    global _FAST_INDEX
+    sig = _compute_snapshot_signature(products)
+
+    current = _FAST_INDEX
+    if current is not None and current.signature == sig:
+        return current
 
     with _INDEX_LOCK:
-        if _FAST_INDEX is not None and _CACHED_ID == current_id:
-            return _FAST_INDEX
-        _FAST_INDEX = _ProductIndex(products)
-        _CACHED_ID = current_id
-        return _FAST_INDEX
+        current = _FAST_INDEX
+        if current is not None and current.signature == sig:
+            return current
+        new_index = _ProductIndex(products, sig)
+        _FAST_INDEX = new_index
+        return new_index
 
 
 def resolve_product(product_query, conversation_context):
@@ -106,8 +135,9 @@ def _resolve_product_internal(product_query, conversation_context):
     # ==========================================================
     # 1. EXACT PRODUCT NAME (O(1))
     # ==========================================================
-    exact_matches = index.exact_map.get(query)
-    if exact_matches:
+    exact_indices = index.exact_indices_map.get(query)
+    if exact_indices:
+        exact_matches = [available_products[i] for i in exact_indices]
         if len(exact_matches) == 1:
             return {
                 "status": "selected",
@@ -130,8 +160,8 @@ def _resolve_product_internal(product_query, conversation_context):
         }
 
     candidates = [
-        product
-        for name_tokens, product in index.token_list
+        available_products[idx]
+        for name_tokens, idx in index.token_indices
         if name_tokens.issubset(query_tokens)
     ]
 
@@ -140,8 +170,8 @@ def _resolve_product_internal(product_query, conversation_context):
     # ==========================================================
     if not candidates:
         candidates = [
-            product
-            for name_tokens, cat, product in index.category_token_list
+            available_products[idx]
+            for name_tokens, cat, idx in index.category_indices
             if (name_tokens | {cat}).issubset(query_tokens) or name_tokens.issubset(query_tokens)
         ]
 
