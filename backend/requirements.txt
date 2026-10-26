@@ -20,6 +20,7 @@ langchain==0.3.28
 langchain-core==0.3.84
 langchain-groq==0.3.8
 langchain-ollama==0.3.10
+langchain-openai<1.0.0
 langchain-text-splitters==0.3.11
 langsmith==0.4.37
 ollama==0.6.1

@@ -1,12 +1,17 @@
 import logging
 import os
+import time
 from pathlib import Path
 from typing import Any, Optional
 
 from dotenv import load_dotenv
+from google.api_core.exceptions import ResourceExhausted
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
+from langchain_openai import ChatOpenAI
+from debugging.context_capture import capture_standalone_call
+
 
 # ==============================================================================
 # Environment Configuration
@@ -21,8 +26,12 @@ else:
 # ==============================================================================
 # Model Constants
 # ==============================================================================
-GROQ_MODEL = "openai/gpt-oss-20b"
+CEREBRAS_MODEL = os.getenv("CEREBRAS_MODEL", "qwen-3.8-27b")
+CEREBRAS_API_BASE = os.getenv("CEREBRAS_API_BASE", "https://api.cerebras.ai/v1")
+CEREBRAS_TIMEOUT = float(os.getenv("CEREBRAS_TIMEOUT", "10.0"))
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
+GEMINI_TIMEOUT = float(os.getenv("GEMINI_TIMEOUT", "5.0"))
+GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
 
 logger = logging.getLogger("model")
 
@@ -65,7 +74,9 @@ def is_transient_error(exc: Exception) -> bool:
         "tpm",
         "rpm",
         "timeout",
+        "timed out",
         "connection error",
+        "connection",
         "service unavailable",
         "overloaded",
     ]):
@@ -171,24 +182,32 @@ class FallbackToolBinding:
 
 class ModelAdapter:
     """
-    Simplified LLM model adapter:
-    - Primary provider: Groq (GROQ_API_KEY)
+    LLM model adapter:
+    - Primary provider: Cerebras (CEREBRAS_API_KEY) with qwen-3.8-27b
     - Fallback provider: Google Gemini (GEMINI_API_KEY) on transient/rate-limit failures
     - Supports both direct invoke and tool binding
     """
 
     def __init__(self):
-        self.groq_key = (os.getenv("GROQ_API_KEY") or "").strip()
+        self.cerebras_key = (os.getenv("CEREBRAS_API_KEY") or "").strip()
         self.gemini_key = (os.getenv("GEMINI_API_KEY") or "").strip()
+        self.groq_key = (os.getenv("GROQ_API_KEY") or "").strip()
 
-        if not self.groq_key:
-            raise ValueError("GROQ_API_KEY is not set in environment or .env file.")
+        if not self.cerebras_key:
+            raise ValueError("CEREBRAS_API_KEY is not set in environment or .env file.")
 
-        self.primary_model = ChatGroq(
-            model=GROQ_MODEL,
+        self.primary_model = ChatOpenAI(
+            model=CEREBRAS_MODEL,
             temperature=0,
-            api_key=self.groq_key,
+            max_retries=0,
+            timeout=CEREBRAS_TIMEOUT,
+            api_key=self.cerebras_key,
+            base_url=CEREBRAS_API_BASE,
         )
+
+    @property
+    def model_name(self) -> str:
+        return getattr(self.primary_model, "model_name", CEREBRAS_MODEL)
 
     def bind_tools(self, tools: Any, **kwargs: Any) -> FallbackToolBinding:
         """Binds tools with automatic Gemini fallback on transient failures."""
@@ -199,28 +218,40 @@ class ModelAdapter:
         return self._invoke_with_fallback(messages, tools=None, **kwargs)
 
     def _invoke_with_fallback(self, messages: Any, tools: Optional[Any] = None, **kwargs: Any) -> Any:
-        # 1. Attempt using primary provider (Groq)
+        t0 = time.perf_counter()
+        # 1. Attempt using primary provider (Cerebras)
         try:
             if tools:
-                return self.primary_model.bind_tools(tools, **kwargs).invoke(messages)
-            return self.primary_model.invoke(messages, **kwargs)
-        except Exception as groq_exc:
+                resp = self.primary_model.bind_tools(tools, **kwargs).invoke(messages)
+            else:
+                resp = self.primary_model.invoke(messages, **kwargs)
+            duration = time.perf_counter() - t0
+            capture_standalone_call(
+                prompt_or_messages=messages,
+                response=resp,
+                tools=tools,
+                model_name=CEREBRAS_MODEL,
+                provider="cerebras",
+                duration_seconds=duration,
+            )
+            return resp
+        except Exception as cerebras_exc:
             # 2. Check if the error is an eligible transient failure
-            if not is_transient_error(groq_exc):
-                raise groq_exc
+            if not is_transient_error(cerebras_exc):
+                raise cerebras_exc
 
             logger.warning(
-                "Groq encountered transient error (%s). Falling back to Gemini...",
-                type(groq_exc).__name__,
+                "Cerebras encountered transient error (%s). Falling back to Gemini...",
+                type(cerebras_exc).__name__,
             )
 
             # Check fallback key availability
             gemini_key = self.gemini_key or (os.getenv("GEMINI_API_KEY") or "").strip()
             if not gemini_key:
                 raise RuntimeError(
-                    f"Groq failed with transient error: {groq_exc}. "
+                    f"Cerebras failed with transient error: {cerebras_exc}. "
                     "Cannot fall back to Gemini because GEMINI_API_KEY is not configured."
-                ) from groq_exc
+                ) from cerebras_exc
 
             # 3. Attempt request using fallback provider (Gemini)
             try:
@@ -229,16 +260,43 @@ class ModelAdapter:
                     temperature=0,
                     google_api_key=gemini_key,
                     transport="rest",
-                    max_retries=1,
+                    timeout=GEMINI_TIMEOUT,
+                    max_retries=0,
                 )
+                # Suppress hidden ResourceExhausted time.sleep backoff in langchain_google_genai
+                orig_generate = getattr(getattr(fallback_model, "client", None), "generate_content", None)
+                if callable(orig_generate):
+                    def _fail_fast_generate(*args: Any, **kwargs: Any) -> Any:
+                        try:
+                            return orig_generate(*args, **kwargs)
+                        except ResourceExhausted as exc:
+                            if hasattr(exc, "retry_after"):
+                                try:
+                                    del exc.retry_after
+                                except (AttributeError, TypeError):
+                                    exc.retry_after = 0
+                            raise
+                    fallback_model.client.generate_content = _fail_fast_generate
+
                 gemini_messages = sanitize_messages_for_gemini(messages)
                 if tools:
-                    return fallback_model.bind_tools(tools, **kwargs).invoke(gemini_messages)
-                return fallback_model.invoke(gemini_messages, **kwargs)
+                    resp = fallback_model.bind_tools(tools, **kwargs).invoke(gemini_messages)
+                else:
+                    resp = fallback_model.invoke(gemini_messages, **kwargs)
+                duration = time.perf_counter() - t0
+                capture_standalone_call(
+                    prompt_or_messages=gemini_messages,
+                    response=resp,
+                    tools=tools,
+                    model_name=GEMINI_MODEL,
+                    provider="gemini",
+                    duration_seconds=duration,
+                )
+                return resp
             except Exception as gemini_exc:
                 # 4. If fallback also fails, raise meaningful error
                 raise RuntimeError(
-                    f"Primary provider (Groq) failed with transient error: {groq_exc}. "
+                    f"Primary provider (Cerebras) failed with transient error: {cerebras_exc}. "
                     f"Fallback provider (Gemini) also failed: {gemini_exc}."
                 ) from gemini_exc
 

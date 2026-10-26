@@ -3,6 +3,9 @@ const BASE_URL = "";
 // ---------- Session ----------
 
 export async function startSession() {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("session_start_perf", String(performance.now()));
+  }
   const response = await fetch(`${BASE_URL}/session/start`, {
     method: "POST",
   });
@@ -16,15 +19,24 @@ export async function startSession() {
 
 // ---------- Conversation ----------
 
-export async function sendMessage(message) {
+export async function sendMessage(message, options = {}) {
+  const interactionId =
+    typeof options === "string" ? options : options?.interactionId;
+  const headers = {
+    "Content-Type": "application/json",
+  };
+  if (interactionId) {
+    headers["X-Interaction-ID"] = interactionId;
+  }
+  const body = { message };
+  if (interactionId) {
+    body.interaction_id = interactionId;
+  }
+
   const response = await fetch(`${BASE_URL}/message`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      message,
-    }),
+    headers,
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {

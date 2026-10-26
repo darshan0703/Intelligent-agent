@@ -2,6 +2,7 @@ import time
 
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
+from debugging.context_capture import wrap_llm_for_capture
 
 from kiosk_service import process_message
 from state import conversation_context
@@ -11,10 +12,13 @@ load_dotenv()
 
 
 # LLM used by the legacy process_message() flow
-llm = ChatGroq(
-    model="openai/gpt-oss-20b",
-    temperature=0
+llm = wrap_llm_for_capture(
+    ChatGroq(
+        model="openai/gpt-oss-20b",
+        temperature=0
+    )
 )
+
 
 
 print("Cashier: Welcome to Burger King India! What can I get for you today?")

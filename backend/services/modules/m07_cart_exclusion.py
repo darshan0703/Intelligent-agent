@@ -3,22 +3,30 @@ Module 7: Absolute Cart Exclusion (Phase 1 Hard Gate)
 Permanently drops candidates that are already present in the customer's cart,
 matching by both item ID and normalized item name.
 """
-from typing import Dict, Any, List, Set
+from typing import Dict, Any, List, Set, Tuple
+
+STANDARD_MEAL_SUFFIXES = (" regular meal", " medium meal", " large meal", " meal")
+COMPOSITE_KEYS = ("main_item", "burger", "side", "drink")
+
 
 def _normalize_name(name: Any) -> str:
     return str(name or "").strip().lower().replace("-", " ").replace("_", " ")
 
-def exclude_cart_items(
-    candidates: List[Dict[str, Any]],
-    cart: List[Dict[str, Any]]
-) -> List[Dict[str, Any]]:
-    if not cart:
-        return candidates
 
+def get_cart_exclusion_sets(cart: List[Dict[str, Any]]) -> Tuple[Set[Any], Set[str]]:
+    """
+    Extracts normalized ID and name sets from the active cart for O(1) exclusion lookups.
+    """
     cart_ids: Set[Any] = set()
     cart_names: Set[str] = set()
 
+    if not cart:
+        return cart_ids, cart_names
+
     for item in cart:
+        if not isinstance(item, dict):
+            continue
+
         item_id = item.get("id")
         if item_id is not None:
             cart_ids.add(item_id)
@@ -27,15 +35,18 @@ def exclude_cart_items(
         raw_name = item.get("name")
         if raw_name:
             norm_name = _normalize_name(raw_name)
-            cart_names.add(norm_name)
+            if norm_name:
+                cart_names.add(norm_name)
 
-            # Strip standard meal suffixes to catch base burger/item
-            for suffix in [" regular meal", " medium meal", " large meal", " meal"]:
-                if norm_name.endswith(suffix):
-                    cart_names.add(norm_name[:-len(suffix)].strip())
+                # Strip standard meal suffixes to catch base burger/item
+                for suffix in STANDARD_MEAL_SUFFIXES:
+                    if norm_name.endswith(suffix):
+                        base_name = norm_name[:-len(suffix)].strip()
+                        if base_name:
+                            cart_names.add(base_name)
 
         # Unpack composite meal components if present
-        for comp_key in ("main_item", "burger", "side", "drink"):
+        for comp_key in COMPOSITE_KEYS:
             comp = item.get(comp_key)
             if isinstance(comp, dict):
                 comp_id = comp.get("id")
@@ -44,18 +55,34 @@ def exclude_cart_items(
                     cart_ids.add(str(comp_id))
                 comp_name = comp.get("name")
                 if comp_name:
-                    cart_names.add(_normalize_name(comp_name))
+                    norm_comp = _normalize_name(comp_name)
+                    if norm_comp:
+                        cart_names.add(norm_comp)
 
-    survivors = []
-    for cand in candidates:
-        cand_id = cand.get("id")
-        cand_name = _normalize_name(cand.get("name"))
+    return cart_ids, cart_names
 
-        if cand_id is not None and (cand_id in cart_ids or str(cand_id) in cart_ids):
-            continue
-        if cand_name in cart_names:
-            continue
 
-        survivors.append(cand)
+def is_candidate_excluded(cand: Dict[str, Any], cart_ids: Set[Any], cart_names: Set[str]) -> bool:
+    """O(1) check if a candidate matches any excluded ID or name."""
+    if not cand or not isinstance(cand, dict):
+        return False
+    cand_id = cand.get("id")
+    if cand_id is not None and (cand_id in cart_ids or str(cand_id) in cart_ids):
+        return True
+    cand_name = _normalize_name(cand.get("name"))
+    return bool(cand_name and cand_name in cart_names)
 
-    return survivors
+
+def exclude_cart_items(
+    candidates: List[Dict[str, Any]],
+    cart: List[Dict[str, Any]]
+) -> List[Dict[str, Any]]:
+    if not cart or not candidates:
+        return candidates
+
+    cart_ids, cart_names = get_cart_exclusion_sets(cart)
+    return [
+        cand for cand in candidates
+        if not is_candidate_excluded(cand, cart_ids, cart_names)
+    ]
+

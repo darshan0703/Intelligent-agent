@@ -3,10 +3,13 @@ import "./OrderCompletePage.css";
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import FooterDecoration from "../components/FooterDecoration";
+import { syncScreen } from "../services/screenService";
+import { useVoiceConversation } from "../context/VoiceConversationProvider";
 
 function OrderCompletePage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { stopVoiceConversation } = useVoiceConversation();
 
   const paymentMethod =
     location.state?.paymentMethod || "";
@@ -17,12 +20,27 @@ function OrderCompletePage() {
     Math.floor(1000 + Math.random() * 9000);
 
   useEffect(() => {
+    // 1. Authoritatively synchronize the kiosk screen state to order_complete
+    syncScreen("order_complete").catch((err) =>
+      console.error("Failed to sync screen on OrderCompletePage:", err)
+    );
+
+    // 2. Stop voice conversation so background noise is not processed
+    stopVoiceConversation?.();
+
+    // 3. Clear session timing markers and retire completed session data
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("session_start_perf");
+      localStorage.removeItem("session_id");
+      sessionStorage.clear();
+    }
+
     const timer = setTimeout(() => {
       navigate("/", { replace: true });
     }, 10000);
 
     return () => clearTimeout(timer);
-  }, [navigate]);
+  }, [navigate, stopVoiceConversation]);
 
   return (
     <div className="order-complete-page">

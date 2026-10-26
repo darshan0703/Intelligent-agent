@@ -105,7 +105,7 @@ function CartContainer() {
     if (count === 0) {
       return;
     }
-    navigate("/Cart");
+    navigate("/cart");
   };
 
   return (

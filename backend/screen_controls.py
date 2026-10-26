@@ -102,7 +102,11 @@ SCREEN_CONTROLS = {
     # ==========================================
 
     ScreenTypes.PRODUCT: [
+        "upgrade_to_meal",
         "add_to_cart",
+        "set_quantity",
+        "increase_quantity",
+        "decrease_quantity",
         "open_cart",
         "go_back",
     ],
@@ -113,6 +117,8 @@ SCREEN_CONTROLS = {
     # ==========================================
 
     ScreenTypes.MEAL_CONVERSION: [
+        "swap_meal_item",
+        "add_to_cart",
         "select_meal",
         "accept_meal",
         "decline_meal",
@@ -128,6 +134,9 @@ SCREEN_CONTROLS = {
         "increase_quantity",
         "decrease_quantity",
         "remove_item",
+        "add_recommended",
+        "select_payment",
+        "confirm_order",
         "checkout",
         "go_back",
     ],

@@ -8,7 +8,7 @@ const UIActionContext = createContext(null);
 
 export function UIActionProvider({ children }) {
 
-  const executeUIAction = useCallback((action, value) => {
+  const executeUIAction = useCallback((action, value, extra) => {
 
     console.log(
       "EXECUTING UI ACTION:",
@@ -20,6 +20,9 @@ export function UIActionProvider({ children }) {
         detail: {
           action,
           value,
+          extra,
+          meal: extra?.meal || (typeof value === "object" ? value?.meal : null),
+          ...(typeof extra === "object" ? extra : {}),
         },
       })
     );
