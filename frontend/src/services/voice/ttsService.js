@@ -40,6 +40,7 @@ export async function speakText(
   {
     onComplete,
     onStart,
+    tracker = null,
   } = {}
 ) {
   if (!text) {
@@ -58,14 +59,21 @@ export async function speakText(
       text
     );
 
+    tracker?.log("tts_request_started", { endpoint: "/tts" });
+    const endTts = tracker?.startStage("tts_request", { endpoint: "/tts" });
+
+    const headers = {
+      "Content-Type": "application/json",
+    };
+    if (tracker?.id) {
+      headers["X-Interaction-ID"] = tracker.id;
+    }
+
     const response = await fetch(
       "/tts",
       {
         method: "POST",
-        headers: {
-          "Content-Type":
-            "application/json",
-        },
+        headers,
         body: JSON.stringify({
           text,
         }),
@@ -77,6 +85,9 @@ export async function speakText(
         `TTS request failed: ${response.status}`
       );
     }
+
+    endTts?.();
+    tracker?.log("tts_request_completed");
 
     const audioBlob =
       await response.blob();
@@ -144,6 +155,11 @@ export async function speakText(
     };
 
     await audio.play();
+
+    tracker?.log("first_audio_playback");
+    tracker?.log("milestone_first_audio_playback", {
+      duration_ms: (performance.now() - tracker.startTime).toFixed(2),
+    });
 
     console.log(
       "TTS PLAYING"

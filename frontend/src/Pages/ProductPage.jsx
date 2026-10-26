@@ -12,11 +12,11 @@ import FooterDecoration from "../components/FooterDecoration";
 import vegIcon from "../assets/images/veg.png";
 import nonVegIcon from "../assets/images/nonveg.png";
 import { syncScreen } from "../services/screenService";
+import { createPerfTracker, measureScreenRender } from "../services/perf";
 
 function ProductPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const origin = location.state?.origin || "/";
 
   const {
     productData,
@@ -28,22 +28,38 @@ function ProductPage() {
     foodPreference,
   } = useKiosk();
 
-  const { cart, syncCart, notifyCartItemAdded } = useCart();
   const product = productData?.data?.product;
+
+  const getCategoryFallback = (category) => {
+    const cat = String(category || "").toLowerCase().trim();
+    if (cat.includes("burger")) return "/burgers";
+    if (cat.includes("drink") || cat.includes("beverage")) return "/drinks";
+    if (cat.includes("side")) return "/sides";
+    if (cat.includes("dessert")) return "/desserts";
+    return "/Categories";
+  };
+
+  const rawOrigin = location.state?.origin;
+  const origin = (rawOrigin && rawOrigin !== "/")
+    ? rawOrigin
+    : getCategoryFallback(product?.category);
+
+  const { cart, syncCart, notifyCartItemAdded } = useCart();
   const [recommendations, setRecommendations] = useState(
     productData?.data?.recommendations || []
   );
   const refreshTimersRef = useRef({});
   const isNavigatingRef = useRef(false);
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState(productData?.data?.quantity || 1);
 
   // Reset quantity and sync recommendations when product identity changes
   useEffect(() => {
-    setQuantity(1);
+    setQuantity(productData?.data?.quantity || 1);
+    isNavigatingRef.current = false;
     if (productData?.data?.recommendations) {
       setRecommendations(productData.data.recommendations);
     }
-  }, [product?.id]);
+  }, [product?.id, productData?.data?.quantity]);
 
   // Meal upgrades are available only for burger products.
   const isBurger =
@@ -276,10 +292,13 @@ function ProductPage() {
       return;
     }
     isNavigatingRef.current = true;
+    const destinationOrigin = (origin && origin !== "/")
+      ? origin
+      : getCategoryFallback(product?.category);
     navigate("/mealpage", {
       state: {
         meal: selectedMeal,
-        origin: origin,
+        origin: destinationOrigin,
       },
     });
   };
@@ -342,6 +361,8 @@ function ProductPage() {
     if (mealPopupOpen && mealData?.meals?.large) availableSizes.push("large");
 
     syncScreen("product", {
+      product: { id: product.id, name: product.name },
+      quantity: quantity,
       meal_offer: {
         is_open: mealPopupOpen,
         product_id: product.id,
@@ -350,15 +371,22 @@ function ProductPage() {
         is_dismissed: isProductDismissed(product.id),
       },
     }).catch((err) => console.error("Failed to sync screen meal state:", err));
-  }, [mealPopupOpen, mealData, product?.id, product?.name]);
+  }, [mealPopupOpen, mealData, product?.id, product?.name, quantity]);
 
   const handleAddToCart = async () => {
-    if (!product?.name) return;
+    if (!product?.name || isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
+
+    const tracker = createPerfTracker("touch");
+    tracker.log("touch_action_initiated", { action: "add_to_cart", item: product.name });
+
     try {
+      const endBackend = tracker.startStage("backend_request", { endpoint: "/cart/add" });
       const response = await fetch("/cart/add", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "X-Interaction-ID": tracker.id,
         },
         body: JSON.stringify({
           item_name: product.name,
@@ -367,12 +395,19 @@ function ProductPage() {
       });
 
       const data = await response.json();
+      endBackend();
+      tracker.log("milestone_backend_response_received", {
+        duration_ms: (performance.now() - tracker.startTime).toFixed(2),
+        endpoint: "/cart/add",
+      });
 
       if (data.success) {
         syncCart(data);
         notifyCartItemAdded();
         // Navigate back smoothly without full page refresh
+        tracker.log("navigation_initiated", { destination: origin });
         navigate(origin);
+        measureScreenRender(tracker, origin);
       }
     } catch (error) {
       console.error(error);
@@ -391,20 +426,84 @@ function ProductPage() {
     const handleVoiceUIAction = (event) => {
       const { action, value } = event.detail || {};
 
-      if (action === "select_meal_medium" || (action === "select_meal" && value === "medium")) {
-        if (mealPopupOpen && mealData?.meals?.medium) {
-          handleContinue("medium");
+      if (action === "select_meal_medium" || (action === "select_meal" && (value === "medium" || value?.size === "medium"))) {
+        const selectedMeal = event.detail?.meal || mealData?.meals?.medium;
+        if (selectedMeal) {
+          if (!isNavigatingRef.current) {
+            isNavigatingRef.current = true;
+            const destinationOrigin = (origin && origin !== "/")
+              ? origin
+              : getCategoryFallback(product?.category);
+            navigate("/mealpage", {
+              state: {
+                meal: selectedMeal,
+                origin: destinationOrigin,
+              },
+            });
+          }
         }
-      } else if (action === "select_meal_large" || (action === "select_meal" && value === "large")) {
-        if (mealPopupOpen && mealData?.meals?.large) {
-          handleContinue("large");
+      } else if (action === "select_meal_large" || (action === "select_meal" && (value === "large" || value?.size === "large"))) {
+        const selectedMeal = event.detail?.meal || mealData?.meals?.large;
+        if (selectedMeal) {
+          if (!isNavigatingRef.current) {
+            isNavigatingRef.current = true;
+            const destinationOrigin = (origin && origin !== "/")
+              ? origin
+              : getCategoryFallback(product?.category);
+            navigate("/mealpage", {
+              state: {
+                meal: selectedMeal,
+                origin: destinationOrigin,
+              },
+            });
+          }
+        }
+      } else if (action === "upgrade_to_meal") {
+        if (event.detail?.meals) {
+          setMealData({
+            success: true,
+            is_meal_available: true,
+            meals: event.detail.meals,
+          });
+          setMealPopupOpen(true);
+        } else {
+          handleMealButtonClick();
         }
       } else if (action === "decline_meal") {
         if (mealPopupOpen) {
           handleDeclineMeal(product?.id);
         }
       } else if (action === "add_to_cart") {
-        handleAddToCart();
+        if (isNavigatingRef.current) return;
+        if (event.detail?.cart) {
+          isNavigatingRef.current = true;
+          syncCart(event.detail);
+          notifyCartItemAdded();
+          navigate(origin);
+        } else {
+          handleAddToCart();
+        }
+      } else if (action === "set_quantity") {
+        const newQty = Number(event.detail?.quantity ?? event.detail?.value);
+        if (newQty && newQty > 0) {
+          setQuantity(newQty);
+        }
+      } else if (action === "increase_quantity") {
+        const explicitQty = event.detail?.quantity;
+        if (explicitQty !== undefined && explicitQty !== null) {
+          setQuantity(Number(explicitQty));
+        } else {
+          const delta = Number(event.detail?.delta ?? event.detail?.value) || 1;
+          setQuantity((prev) => prev + delta);
+        }
+      } else if (action === "decrease_quantity") {
+        const explicitQty = event.detail?.quantity;
+        if (explicitQty !== undefined && explicitQty !== null) {
+          setQuantity(Number(explicitQty));
+        } else {
+          const delta = Number(event.detail?.delta ?? event.detail?.value) || 1;
+          setQuantity((prev) => Math.max(1, prev - delta));
+        }
       } else if (action === "open_cart") {
         navigate("/cart");
       } else if (action === "go_back") {
@@ -561,7 +660,9 @@ function ProductPage() {
         <button
           className="qty-btn"
           onClick={() =>
-            setQuantity((prev) => prev + 1)
+            setQuantity((prev) =>
+              product?.stock ? Math.min(product.stock, prev + 1) : prev + 1
+            )
           }
         >
           +

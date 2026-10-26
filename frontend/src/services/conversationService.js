@@ -1,10 +1,13 @@
-import { sendMessage } from "./api";
+import { sendMessage } from "./api.js";
+import { waitForLatestScreenSync } from "./screenService.js";
 
-export async function processCustomerMessage(message) {
+export async function processCustomerMessage(message, options = {}) {
   try {
     console.log("CUSTOMER MESSAGE:", message);
 
-    const data = await sendMessage(message);
+    await waitForLatestScreenSync();
+
+    const data = await sendMessage(message, options);
 
     console.log("BACKEND RESPONSE:", data);
 

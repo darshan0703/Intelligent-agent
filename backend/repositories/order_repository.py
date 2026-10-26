@@ -1,4 +1,5 @@
 from database import supabase
+from repositories.menu_repository import clear_menu_cache
 
 BRANCH_ID = 1
 
@@ -59,6 +60,9 @@ def complete_order(cart):
                 .eq("branch_id", BRANCH_ID)
                 .execute()
             )
+
+        # Invalidate the menu cache after stock deductions succeed
+        clear_menu_cache()
 
         return {
             "success": True,

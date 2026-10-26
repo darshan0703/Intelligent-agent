@@ -209,7 +209,6 @@ def organize_menu_sections(
     mindset = compute_budget_mindset(cart)
     cat_lower = category.lower().strip()
 
-    cart_names = [(item.get("name") or "").lower() for item in cart]
     recent_cart_item = cart[-1] if cart else None
     has_fries = has_finger_food_in_cart(cart)
 

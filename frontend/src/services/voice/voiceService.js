@@ -42,6 +42,12 @@ import {
   setInterruptionHandler as setInterruptionHandlerInternal,
 } from "./interruptionService";
 
+import {
+  createPerfTracker,
+  setActiveVoiceTracker,
+  getActiveVoiceTracker,
+} from "../perf";
+
 
 let stopping = false;
 let transcriptCallback = null;
@@ -293,6 +299,9 @@ function handleSileroSpeechEnd() {
     "SILERO: CUSTOMER TURN ENDED"
   );
 
+  const tracker = createPerfTracker("voice");
+  setActiveVoiceTracker(tracker);
+  tracker.log("speech_ended");
 
   pauseSileroVAD();
 
@@ -310,20 +319,30 @@ async function processRecording(recording) {
     return;
   }
 
+  const tracker = getActiveVoiceTracker() || createPerfTracker("voice");
+  setActiveVoiceTracker(tracker);
 
   try {
+    tracker.log("final_audio_capture", {
+      bytes: recording?.blob?.size,
+    });
 
     console.log(
       "SENDING AUDIO TO WHISPER..."
     );
 
+    tracker.log("stt_request_started", { endpoint: "/stt" });
+    const endStt = tracker.startStage("stt_request");
 
     const result =
       await sendAudioToWhisper(
         recording.blob,
-        recording.mimeType
+        recording.mimeType,
+        tracker.id
       );
 
+    endStt();
+    tracker.log("stt_request_completed");
 
     if (stopping) {
       return;
@@ -355,6 +374,9 @@ async function processRecording(recording) {
       return;
     }
 
+    tracker.log("transcript_ready", {
+      length: transcript?.length,
+    });
 
     console.log(
       "VALID CUSTOMER TRANSCRIPT:",
@@ -363,7 +385,8 @@ async function processRecording(recording) {
 
 
     transcriptCallback?.(
-      transcript
+      transcript,
+      tracker
     );
 
 
@@ -464,7 +487,8 @@ export function stopListening() {
 
 export function speak(
   text,
-  onComplete
+  onComplete,
+  options = {}
 ) {
 
   pauseSileroVAD();
@@ -475,10 +499,12 @@ export function speak(
 
   speechTriggered = false;
 
+  const tracker = options?.tracker || getActiveVoiceTracker();
 
   speakText(
     text,
     {
+      tracker,
       onStart: () => {
 
         if (!stopping) {
@@ -586,3 +612,5 @@ export function setInterruptionHandler(
     }
   );
 }
+
+export { stopSpeaking };

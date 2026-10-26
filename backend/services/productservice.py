@@ -3,9 +3,18 @@ from services.menu_service import get_product, get_category
 from services.modules.m01_dietary_lock import get_item_food_type, normalize_food_type
 from services.modules.m07_cart_exclusion import exclude_cart_items
 from services.modules.m06_condiment_gating import filter_for_recommendation_page
+from perf import get_current_tracer
 
 
 def get_product_recommendations(product, cart=None, limit=3, preference=None):
+    tracer = get_current_tracer()
+    if tracer and product:
+        with tracer.measure("backend_recommendation_generation", category=str(product.get("category") or "")):
+            return _compute_product_recommendations(product, cart=cart, limit=limit, preference=preference)
+    return _compute_product_recommendations(product, cart=cart, limit=limit, preference=preference)
+
+
+def _compute_product_recommendations(product, cart=None, limit=3, preference=None):
     """
     Generate cross-category recommendations for a given product.
     - For Burger  -> pick Sides, Drinks, Desserts
@@ -77,35 +86,36 @@ def get_product_recommendations(product, cart=None, limit=3, preference=None):
         cart_ctx = (cart or []) + ([product] if product else [])
         return rank_candidates_with_sensory(filtered, cart=cart_ctx, placement="normal")
 
+    def try_add(item):
+        item_id = item.get("id")
+        item_name = str(item.get("name", "")).strip().lower()
+        if item_id not in seen_ids and item_name not in seen_names:
+            recommendations.append(item)
+            seen_ids.add(item_id)
+            seen_names.add(item_name)
+            return True
+        return False
+
+    category_candidates = [
+        filter_and_sort_candidates(get_category(cat) or [])
+        for cat in target_cats
+    ]
+
     # Pick 1 item from each target category
-    for target_cat in target_cats:
-        cat_items = get_category(target_cat) or []
-        candidates = filter_and_sort_candidates(cat_items)
+    for candidates in category_candidates:
         for item in candidates:
-            item_id = item.get("id")
-            item_name = str(item.get("name", "")).strip().lower()
-            if item_id not in seen_ids and item_name not in seen_names:
-                recommendations.append(item)
-                seen_ids.add(item_id)
-                seen_names.add(item_name)
+            if try_add(item):
                 break
         if len(recommendations) >= limit:
             break
 
     # If limit is not reached (e.g. fewer categories available), backfill
     if len(recommendations) < limit:
-        for target_cat in target_cats:
-            cat_items = get_category(target_cat) or []
-            candidates = filter_and_sort_candidates(cat_items)
+        for candidates in category_candidates:
             for item in candidates:
-                item_id = item.get("id")
-                item_name = str(item.get("name", "")).strip().lower()
-                if item_id not in seen_ids and item_name not in seen_names:
-                    recommendations.append(item)
-                    seen_ids.add(item_id)
-                    seen_names.add(item_name)
-                    if len(recommendations) >= limit:
-                        break
+                if len(recommendations) >= limit:
+                    break
+                try_add(item)
             if len(recommendations) >= limit:
                 break
 

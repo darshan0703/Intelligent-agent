@@ -49,7 +49,14 @@ SCREEN_CAPABILITIES = {
     ),
 
     "add_to_cart": (
-        "Add the currently selected product to the cart."
+        "Add the currently selected product to the cart. "
+        "Value can optionally specify the requested quantity to add (e.g. '3'). "
+        "If omitted, adds the current on-screen quantity."
+    ),
+
+    "upgrade_to_meal": (
+        "Open meal conversion options for the currently selected product on the product screen. "
+        "Triggers the 'Upgrade to a Meal' button action."
     ),
 
     "accept_meal": (
@@ -62,14 +69,19 @@ SCREEN_CAPABILITIES = {
         "currently being offered."
     ),
 
+    "set_quantity": (
+        "Set the quantity of the currently selected product on the product screen "
+        "or an item on the screen. The value must be the target quantity number."
+    ),
+
     "increase_quantity": (
-        "Increase the quantity of an item currently "
-        "being managed on the screen."
+        "Increase the quantity of an item currently being managed on the screen. "
+        "On the product page, increments the quantity selector (e.g. by 1 for 'add one more')."
     ),
 
     "decrease_quantity": (
-        "Decrease the quantity of an item currently "
-        "being managed on the screen."
+        "Decrease the quantity of an item currently being managed on the screen. "
+        "On the product page, decrements the quantity selector."
     ),
 
     "remove_item": (
@@ -77,7 +89,28 @@ SCREEN_CAPABILITIES = {
     ),
 
     "checkout": (
-        "Proceed from the current cart state to checkout."
+        "Direct the customer to the payment options (UPI, card, cash) on the cart screen."
+    ),
+
+    "swap_meal_item": (
+        "Swap or upgrade the side or drink component of the meal "
+        "currently being customized on the meal builder screen. "
+        "Value is the requested item name."
+    ),
+
+    "add_recommended": (
+        "Add a complementary recommendation displayed on the cart screen "
+        "shelf to the cart. Value is the recommended item name."
+    ),
+
+    "select_payment": (
+        "Select the customer's desired payment method on the cart screen. "
+        "Value must be one of: upi, card, or cash."
+    ),
+
+    "confirm_order": (
+        "Place and confirm the order after reviewing the cart and selecting "
+        "a payment method."
     ),
 }
 

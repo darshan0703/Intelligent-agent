@@ -7,6 +7,8 @@ import Header from "../components/Header";
 import PreviousButton from "../components/PreviousButton";
 import CartContainer from "../components/CartContainer";
 import FooterDecoration from "../components/FooterDecoration";
+import { syncScreen } from "../services/screenService";
+import { createPerfTracker, measureScreenRender } from "../services/perf";
 
 import vegIcon from "../assets/images/veg.png";
 import nonVegIcon from "../assets/images/nonveg.png";
@@ -14,8 +16,16 @@ import nonVegIcon from "../assets/images/nonveg.png";
 function MealPage({ meal: propMeal } = {}) {
     const { state } = useLocation();
     const navigate = useNavigate();
-    const origin = state?.origin || "/";
-    const meal = propMeal || state?.meal;
+    const rawOrigin = state?.origin;
+    const origin = (rawOrigin && rawOrigin !== "/") ? rawOrigin : "/burgers";
+    const [meal, setMeal] = useState(propMeal || state?.meal);
+
+    useEffect(() => {
+        const nextMeal = propMeal || state?.meal;
+        if (nextMeal) {
+            setMeal(nextMeal);
+        }
+    }, [propMeal, state?.meal]);
 
     const burger = meal?.burger;
     const side = meal?.side;
@@ -73,34 +83,7 @@ function MealPage({ meal: propMeal } = {}) {
         });
     };
 
-    const sortedSideOptions = useMemo(() => {
-        const options = meal?.side_options ?? [];
-        return [...options].sort((a, b) => {
-            const aInCart = isItemInCart(a) ? 1 : 0;
-            const bInCart = isItemInCart(b) ? 1 : 0;
-            if (aInCart !== bInCart) return aInCart - bInCart; // cart exclusion at last
-
-            const aIsVeg = isVegItem(a);
-            const bIsVeg = isVegItem(b);
-
-            if (effectivePref === "veg") {
-                const aPri = aIsVeg ? 0 : 1;
-                const bPri = bIsVeg ? 0 : 1;
-                if (aPri !== bPri) return aPri - bPri; // Veg first, non-veg after
-            } else if (effectivePref === "non_veg") {
-                const aPri = aIsVeg ? 1 : 0;
-                const bPri = bIsVeg ? 1 : 0;
-                if (aPri !== bPri) return aPri - bPri; // Non-veg first, veg after
-            }
-
-            // Default first
-            const aDef = a.id === side?.id ? 0 : 1;
-            const bDef = b.id === side?.id ? 0 : 1;
-            if (aDef !== bDef) return aDef - bDef;
-
-            return (Number(a.extra_price) || 0) - (Number(b.extra_price) || 0);
-        });
-    }, [meal?.side_options, effectivePref, cart, side]);
+    const sideOptions = meal?.side_options ?? [];
 
     const drinkSections = useMemo(() => [
         ...new Set(
@@ -111,7 +94,7 @@ function MealPage({ meal: propMeal } = {}) {
     ], [meal?.drink_options]);
 
     const defaultDrinkSection =
-        (meal?.drink_options ?? []).find(d => d.id === drink?.id)?.section ||
+        (meal?.drink_options ?? []).find(d => String(d.id) === String(drink?.id))?.section ||
         drink?.section ||
         drinkSections[0] ||
         "";
@@ -122,12 +105,13 @@ function MealPage({ meal: propMeal } = {}) {
     const [selectedDrink, setSelectedDrink] =
         useState(drink);
 
-    const visibleDrinks =
-        (meal?.drink_options ?? []).filter(
-            item =>
-                item.section ===
-                selectedDrinkSection
+    const visibleDrinks = useMemo(() => {
+        const options = meal?.drink_options ?? [];
+        if (!selectedDrinkSection) return options;
+        return options.filter(
+            item => item.section === selectedDrinkSection
         );
+    }, [meal?.drink_options, selectedDrinkSection]);
 
     const mealKey = meal
         ? `${meal.burger?.id || meal.id || ""}_${meal.size || ""}_${meal.side?.id || ""}_${meal.drink?.id || ""}`
@@ -136,6 +120,59 @@ function MealPage({ meal: propMeal } = {}) {
     const userSelectedSideRef = useRef(false);
     const userSelectedDrinkRef = useRef(false);
     const userSelectedSectionRef = useRef(false);
+    const isNavigatingRef = useRef(false);
+
+    // Sequence tracking refs to eliminate touch-voice race conditions
+    const lastSideTouchSeqRef = useRef(0);
+    const lastDrinkTouchSeqRef = useRef(0);
+    const selectedSideRef = useRef(selectedSide);
+    const selectedDrinkRef = useRef(selectedDrink);
+    selectedSideRef.current = selectedSide;
+    selectedDrinkRef.current = selectedDrink;
+
+    useEffect(() => {
+        isNavigatingRef.current = false;
+    }, [burger?.id, meal?.id]);
+
+    const triggerMealSync = (sideItem, drinkItem) => {
+        const sessionId =
+            (typeof localStorage !== "undefined" &&
+                localStorage.getItem("session_id")) ||
+            "default";
+        return syncScreen("meal_conversion", {
+            session_id: sessionId,
+            meal_customization: {
+                meal_id: meal?.id,
+                burger: burger,
+                size: mealSize,
+                selected_side: sideItem,
+                selected_drink: drinkItem,
+                side_options: meal?.side_options || [],
+                drink_options: meal?.drink_options || [],
+                meal_price: meal?.meal_price || 0,
+            },
+        });
+    };
+
+    const handleSideSelect = (item) => {
+        userSelectedSideRef.current = true;
+        setSelectedSide(item);
+        selectedSideRef.current = item;
+        const syncRes = triggerMealSync(item, selectedDrinkRef.current);
+        if (syncRes && syncRes.seq) {
+            lastSideTouchSeqRef.current = syncRes.seq;
+        }
+    };
+
+    const handleDrinkSelect = (item) => {
+        userSelectedDrinkRef.current = true;
+        setSelectedDrink(item);
+        selectedDrinkRef.current = item;
+        const syncRes = triggerMealSync(selectedSideRef.current, item);
+        if (syncRes && syncRes.seq) {
+            lastDrinkTouchSeqRef.current = syncRes.seq;
+        }
+    };
 
     useEffect(() => {
         if (!meal) return;
@@ -143,49 +180,41 @@ function MealPage({ meal: propMeal } = {}) {
         const isNewMeal = mealKey && mealKey !== initializedMealKeyRef.current;
         if (isNewMeal) {
             initializedMealKeyRef.current = mealKey;
-            userSelectedSideRef.current = false;
-            userSelectedDrinkRef.current = false;
-            userSelectedSectionRef.current = false;
 
-            // Initialize side strictly from included default side (never pick a recommendation)
-            if (meal.side) {
-                setSelectedSide(meal.side);
-            } else {
-                setSelectedSide(null);
+            // Only initialize side strictly from included default side if user has NOT chosen one
+            if (!userSelectedSideRef.current) {
+                const initialSide = meal.side ? meal.side : null;
+                setSelectedSide(initialSide);
+                selectedSideRef.current = initialSide;
             }
 
-            // Initialize drink strictly from included default drink (never pick a recommendation)
-            if (meal.drink) {
-                setSelectedDrink(meal.drink);
-            } else {
-                setSelectedDrink(null);
+            // Only initialize drink strictly from included default drink if user has NOT chosen one
+            if (!userSelectedDrinkRef.current) {
+                const initialDrink = meal.drink ? meal.drink : null;
+                setSelectedDrink(initialDrink);
+                selectedDrinkRef.current = initialDrink;
             }
 
-            // Initialize drink category to default drink's category
-            const initialSection =
-                (meal.drink_options ?? []).find((d) => d.id === meal.drink?.id)?.section ||
-                meal.drink?.section ||
-                (meal.drink_options && meal.drink_options[0]?.section) ||
-                "";
-            if (initialSection) {
-                setSelectedDrinkSection(initialSection);
+            // Initialize drink category to default drink's category if user has not changed section
+            if (!userSelectedSectionRef.current) {
+                const initialSection =
+                    (meal.drink_options ?? []).find((d) => String(d.id) === String(meal.drink?.id))?.section ||
+                    meal.drink?.section ||
+                    (meal.drink_options && meal.drink_options[0]?.section) ||
+                    "";
+                if (initialSection) {
+                    setSelectedDrinkSection(initialSection);
+                }
+            }
+
+            // Immediately synchronize initial meal state so voice observes current state
+            const syncRes = triggerMealSync(selectedSideRef.current, selectedDrinkRef.current);
+            if (syncRes && syncRes.seq) {
+                lastSideTouchSeqRef.current = syncRes.seq;
+                lastDrinkTouchSeqRef.current = syncRes.seq;
             }
         }
     }, [meal, mealKey]);
-
-    const sortedVisibleDrinks = useMemo(() => {
-        return [...visibleDrinks].sort((a, b) => {
-            const aInCart = isItemInCart(a) ? 1 : 0;
-            const bInCart = isItemInCart(b) ? 1 : 0;
-            if (aInCart !== bInCart) return aInCart - bInCart; // cart exclusion at last
-
-            const aDef = a.id === drink?.id ? 0 : 1;
-            const bDef = b.id === drink?.id ? 0 : 1;
-            if (aDef !== bDef) return aDef - bDef;
-
-            return (Number(a.extra_price) || 0) - (Number(b.extra_price) || 0);
-        });
-    }, [visibleDrinks, cart, drink]);
 
     const mealPrice =
         meal?.meal_price ?? 0;
@@ -203,13 +232,20 @@ function MealPage({ meal: propMeal } = {}) {
 
     console.log("Burger:", burger);
     const handleAddMeal = async () => {
-        if (!selectedSide || !selectedDrink) {
+        if (isNavigatingRef.current) return;
+        const sideToUse = selectedSideRef.current || selectedSide;
+        const drinkToUse = selectedDrinkRef.current || selectedDrink;
+        if (!sideToUse || !drinkToUse) {
             alert("Please select both a side and a drink to complete your meal.");
             return;
         }
+        isNavigatingRef.current = true;
+
+        const tracker = createPerfTracker("touch");
+        tracker.log("touch_action_initiated", { action: "add_meal" });
 
         try {
-
+            const endBackend = tracker.startStage("backend_request", { endpoint: "/cart/add-meal" });
             const response = await fetch(
                 "/cart/add-meal",
                 {
@@ -217,13 +253,14 @@ function MealPage({ meal: propMeal } = {}) {
 
                     headers: {
                         "Content-Type": "application/json",
+                        "X-Interaction-ID": tracker.id,
                     },
 
                     body: JSON.stringify({
                         meal: {
                             ...meal,
-                            side: selectedSide,
-                            drink: selectedDrink
+                            side: sideToUse,
+                            drink: drinkToUse
                         },
                         quantity
                     })
@@ -232,13 +269,20 @@ function MealPage({ meal: propMeal } = {}) {
             );
 
             const data = await response.json();
+            endBackend();
+            tracker.log("milestone_backend_response_received", {
+                duration_ms: (performance.now() - tracker.startTime).toFixed(2),
+                endpoint: "/cart/add-meal",
+            });
 
             console.log("ADD MEAL:", data);
 
             if (data.success) {
                 syncCart(data);
                 notifyCartItemAdded();
+                tracker.log("navigation_initiated", { destination: origin });
                 navigate(origin);
+                measureScreenRender(tracker, origin);
             }
 
         } catch (error) {
@@ -249,13 +293,19 @@ function MealPage({ meal: propMeal } = {}) {
 
     };
     const handleDeclineMeal = async () => {
+        if (isNavigatingRef.current) return;
+        isNavigatingRef.current = true;
+        const tracker = createPerfTracker("touch");
+        tracker.log("touch_action_initiated", { action: "decline_meal" });
         try {
+            const endBackend = tracker.startStage("backend_request", { endpoint: "/meal/decline" });
             const response = await fetch(
                 "/meal/decline",
                 {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
+                        "X-Interaction-ID": tracker.id,
                     },
                     body: JSON.stringify({
                         item_id: burger?.id,
@@ -269,6 +319,12 @@ function MealPage({ meal: propMeal } = {}) {
             }
 
             const data = await response.json();
+            endBackend();
+            tracker.log("milestone_backend_response_received", {
+                duration_ms: (performance.now() - tracker.startTime).toFixed(2),
+                endpoint: "/meal/decline",
+            });
+
             if (!data.success) {
                 throw new Error(data.message || "Failed to record meal decline");
             }
@@ -278,9 +334,154 @@ function MealPage({ meal: propMeal } = {}) {
         } catch (error) {
             console.warn("Failed to decline meal on backend:", error);
         } finally {
+            tracker.log("navigation_initiated", { destination: origin });
             navigate(origin);
+            measureScreenRender(tracker, origin);
         }
     };
+
+    // Voice UI Action Listener for meal swaps, add-to-cart, decline, and go-back
+    useEffect(() => {
+        const handleVoiceUIAction = (event) => {
+            const { action, value } = event.detail || {};
+
+            if (action === "select_meal" || action === "select_meal_large" || action === "select_meal_medium") {
+                const targetSize = (action === "select_meal_large" ? "large" : action === "select_meal_medium" ? "medium" : (typeof value === "string" ? value : value?.size || "large")).toLowerCase();
+                const newMeal = event.detail?.meal || (typeof value === "object" ? value?.meal : null);
+                const currentSide = selectedSideRef.current;
+                const currentDrink = selectedDrinkRef.current;
+                const hadUserSide = userSelectedSideRef.current;
+                const hadUserDrink = userSelectedDrinkRef.current;
+
+                const applyUpgradedMeal = (upgradedMeal) => {
+                    let sideToApply = upgradedMeal.side;
+                    if (hadUserSide && currentSide) {
+                        const matched = (upgradedMeal.side_options ?? []).find(
+                            (s) =>
+                                String(s.id) === String(currentSide.id) ||
+                                String(s.name || "").toLowerCase() === String(currentSide.name || "").toLowerCase()
+                        );
+                        if (matched) sideToApply = matched;
+                        else sideToApply = currentSide;
+                    }
+
+                    let drinkToApply = upgradedMeal.drink;
+                    if (hadUserDrink && currentDrink) {
+                        const matched = (upgradedMeal.drink_options ?? []).find(
+                            (d) =>
+                                String(d.id) === String(currentDrink.id) ||
+                                String(d.name || "").toLowerCase() === String(currentDrink.name || "").toLowerCase()
+                        );
+                        if (matched) drinkToApply = matched;
+                        else drinkToApply = currentDrink;
+                    }
+
+                    setSelectedSide(sideToApply);
+                    selectedSideRef.current = sideToApply;
+                    setSelectedDrink(drinkToApply);
+                    selectedDrinkRef.current = drinkToApply;
+                    setMeal(upgradedMeal);
+                    triggerMealSync(sideToApply, drinkToApply);
+                };
+
+                if (newMeal) {
+                    applyUpgradedMeal(newMeal);
+                } else if (meal?.burger?.id) {
+                    fetch("/meal/options", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ item_id: meal.burger.id }),
+                    })
+                    .then((r) => r.json())
+                    .then((data) => {
+                        if (data.success && data.meals?.[targetSize]) {
+                            applyUpgradedMeal(data.meals[targetSize]);
+                        }
+                    })
+                    .catch((err) => console.error("Error updating meal size on MealPage:", err));
+                }
+            } else if (action === "swap_meal_item") {
+                const { role, item, seq, session_id } = value || {};
+                const currentSessionId =
+                    (typeof localStorage !== "undefined" &&
+                        localStorage.getItem("session_id")) ||
+                    "default";
+
+                // Check session validity
+                if (session_id && session_id !== currentSessionId) {
+                    console.log("Ignored swap_meal_item from previous session:", session_id);
+                    return;
+                }
+
+                if (role === "drink" && item) {
+                    // Check against newer touch sequence for drink
+                    if (seq && seq < lastDrinkTouchSeqRef.current) {
+                        console.log("Ignored stale voice drink action:", seq, "vs", lastDrinkTouchSeqRef.current);
+                        return;
+                    }
+
+                    const matchedDrink =
+                        (meal?.drink_options ?? []).find(
+                            (d) =>
+                                String(d.id) === String(item.id) ||
+                                String(d.name || "").toLowerCase() === String(item.name || "").toLowerCase()
+                        ) || item;
+
+                    setSelectedDrink(matchedDrink);
+                    selectedDrinkRef.current = matchedDrink;
+
+                    if (matchedDrink.section && matchedDrink.section !== selectedDrinkSection) {
+                        setSelectedDrinkSection(matchedDrink.section);
+                    }
+
+                    const syncRes = triggerMealSync(selectedSideRef.current, matchedDrink);
+                    if (syncRes && syncRes.seq) {
+                        lastDrinkTouchSeqRef.current = syncRes.seq;
+                    }
+                } else if (role === "side" && item) {
+                    // Check against newer touch sequence for side
+                    if (seq && seq < lastSideTouchSeqRef.current) {
+                        console.log("Ignored stale voice side action:", seq, "vs", lastSideTouchSeqRef.current);
+                        return;
+                    }
+
+                    const matchedSide =
+                        (meal?.side_options ?? []).find(
+                            (s) =>
+                                String(s.id) === String(item.id) ||
+                                String(s.name || "").toLowerCase() === String(item.name || "").toLowerCase()
+                        ) || item;
+
+                    setSelectedSide(matchedSide);
+                    selectedSideRef.current = matchedSide;
+
+                    const syncRes = triggerMealSync(matchedSide, selectedDrinkRef.current);
+                    if (syncRes && syncRes.seq) {
+                        lastSideTouchSeqRef.current = syncRes.seq;
+                    }
+                }
+            } else if (action === "add_to_cart") {
+                if (isNavigatingRef.current) return;
+                if (event.detail?.cart) {
+                    isNavigatingRef.current = true;
+                    syncCart(event.detail);
+                    notifyCartItemAdded();
+                    navigate(origin);
+                } else {
+                    handleAddMeal();
+                }
+            } else if (action === "decline_meal" || action === "go_back") {
+                if (isNavigatingRef.current) return;
+                isNavigatingRef.current = true;
+                handleDeclineMeal();
+            }
+        };
+
+        window.addEventListener("kiosk-ui-action", handleVoiceUIAction);
+        return () => {
+            window.removeEventListener("kiosk-ui-action", handleVoiceUIAction);
+        };
+    }, [meal, mealSize, burger, selectedDrinkSection]);
     return (
 
         <div className="meal-page">
@@ -444,21 +645,21 @@ function MealPage({ meal: propMeal } = {}) {
 
                         <div className="meal-grid">
 
-                            {sortedSideOptions.map((item) => (
+                            {sideOptions.map((item) => (
 
                                 <div
 
                                     key={item.id}
 
-                                    className={`meal-card ${selectedSide?.id === item.id
-                                            ? "active"
-                                            : ""
-                                        }`}
+                                    className={`meal-card ${
+                                        Boolean(
+                                            selectedSide &&
+                                            (String(selectedSide.id) === String(item.id) ||
+                                             (selectedSide.name && item.name && selectedSide.name.toLowerCase() === item.name.toLowerCase()))
+                                        ) ? "active" : ""
+                                    }`}
 
-                                    onClick={() => {
-                                        userSelectedSideRef.current = true;
-                                        setSelectedSide(item);
-                                    }}
+                                    onClick={() => handleSideSelect(item)}
 
                                 >
 
@@ -545,21 +746,21 @@ function MealPage({ meal: propMeal } = {}) {
 
                         <div className="drink-grid">
 
-                            {sortedVisibleDrinks.map((item) => (
+                            {visibleDrinks.map((item) => (
 
                                 <div
 
                                     key={item.id}
 
-                                    className={`drink-card ${selectedDrink?.id === item.id
-                                            ? "active"
-                                            : ""
-                                        }`}
+                                    className={`drink-card ${
+                                        Boolean(
+                                            selectedDrink &&
+                                            (String(selectedDrink.id) === String(item.id) ||
+                                             (selectedDrink.name && item.name && selectedDrink.name.toLowerCase() === item.name.toLowerCase()))
+                                        ) ? "active" : ""
+                                    }`}
 
-                                    onClick={() => {
-                                        userSelectedDrinkRef.current = true;
-                                        setSelectedDrink(item);
-                                    }}
+                                    onClick={() => handleDrinkSelect(item)}
 
                                 >
 

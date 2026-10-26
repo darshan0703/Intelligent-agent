@@ -3,7 +3,8 @@ const STT_URL =
 
 export async function sendAudioToWhisper(
   blob,
-  mimeType
+  mimeType,
+  interactionId = null
 ) {
   const formData = new FormData();
 
@@ -23,10 +24,16 @@ export async function sendAudioToWhisper(
     `voice.${extension}`
   );
 
+  const headers = {};
+  if (interactionId) {
+    headers["X-Interaction-ID"] = interactionId;
+  }
+
   const response = await fetch(
     STT_URL,
     {
       method: "POST",
+      headers,
       body: formData,
     }
   );

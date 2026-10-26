@@ -7,15 +7,17 @@ import {
   useState,
 } from "react";
 
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 import { useKiosk } from "./KioskContext";
 import { useUIAction } from "./UIActionContext";
+import { useCart } from "./CartContext";
 
 import {
   startListening,
   stopListening,
   speak,
+  stopSpeaking,
   prepareVoiceInput,
   setInterruptionHandler,
 } from "../services/voice/voiceService";
@@ -28,6 +30,10 @@ import {
   handleKioskResponse,
 } from "../services/responseHandler";
 
+import {
+  getActiveVoiceTracker,
+} from "../services/perf";
+
 
 const VoiceConversationContext =
   createContext(null);
@@ -38,6 +44,9 @@ export function VoiceConversationProvider({
 }) {
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const locationRef = useRef(location);
+  locationRef.current = location;
 
 
   const {
@@ -49,6 +58,10 @@ export function VoiceConversationProvider({
   const {
     executeUIAction,
   } = useUIAction();
+
+  const {
+    syncCart,
+  } = useCart();
 
 
   const [
@@ -92,7 +105,7 @@ export function VoiceConversationProvider({
 
 
       startListening(
-        async (transcript) => {
+        async (transcript, trackerParam) => {
 
           if (
             !voiceEnabledRef.current ||
@@ -103,7 +116,7 @@ export function VoiceConversationProvider({
 
 
           processingRef.current = true;
-
+          const tracker = trackerParam || getActiveVoiceTracker?.();
 
           try {
 
@@ -121,17 +134,57 @@ export function VoiceConversationProvider({
             // Send the customer message through
             // the existing conversation pipeline.
 
+            tracker?.log("message_request_started", { endpoint: "/message" });
+            const endMsg = tracker?.startStage("message_request", { endpoint: "/message" });
+
+            const reqSessionId =
+              typeof localStorage !== "undefined"
+                ? localStorage.getItem("session_id")
+                : null;
+
             const data =
               await processCustomerMessage(
-                transcript
+                transcript,
+                { interactionId: tracker?.id }
               );
 
+            endMsg?.();
+            tracker?.log("message_request_completed");
+            tracker?.log("milestone_backend_response_received", {
+              duration_ms: tracker ? (performance.now() - tracker.startTime).toFixed(2) : undefined,
+              endpoint: "/message",
+            });
+
+            if (!voiceEnabledRef.current) {
+              console.log("Ignoring voice response: voice conversation was disabled while awaiting response.");
+              processingRef.current = false;
+              return;
+            }
+
+            const currentSessionId =
+              typeof localStorage !== "undefined"
+                ? localStorage.getItem("session_id")
+                : null;
+            if (reqSessionId && currentSessionId && reqSessionId !== currentSessionId) {
+              console.log("Ignoring voice response: session changed during request processing.");
+              processingRef.current = false;
+              return;
+            }
 
             console.log(
               "VOICE BACKEND RESPONSE:",
               data
             );
 
+            // Synchronize cart state if updated cart data is returned
+            if (data?.cart) {
+              const cartList = data.cart;
+              const total = cartList.reduce((sum, item) => sum + (item.subtotal || 0), 0);
+              const itemCount = cartList.reduce((sum, item) => sum + (item.quantity || 1), 0);
+              syncCart({ cart: cartList, total, itemCount });
+            } else if (data?.data?.value?.cart?.cart) {
+              syncCart(data.data.value.cart);
+            }
 
             // Apply the normal kiosk UI response.
 
@@ -139,9 +192,11 @@ export function VoiceConversationProvider({
               data,
               {
                 navigate,
+                location: locationRef.current,
                 setRecommendationData,
                 setProductData,
                 executeUIAction,
+                tracker,
               }
             );
 
@@ -176,7 +231,8 @@ export function VoiceConversationProvider({
 
                   }
 
-                }
+                },
+                { tracker }
               );
 
             } else {
@@ -307,6 +363,10 @@ export function VoiceConversationProvider({
         setVoiceEnabled(true);
 
 
+        if (typeof window !== "undefined" && !localStorage.getItem("session_start_perf")) {
+          localStorage.setItem("session_start_perf", String(performance.now()));
+        }
+
         console.log(
           "VOICE INTERFACE ENABLED"
         );
@@ -399,7 +459,7 @@ export function VoiceConversationProvider({
 
 
       stopListening();
-
+      stopSpeaking();
 
       setVoiceEnabled(false);
 

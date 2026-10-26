@@ -27,3 +27,8 @@ backend/test.vtt
 
 # Python tooling
 .python-version
+
+# Debug captures, reports, and scratch
+backend/debugging/captures/
+backend/latest_llm_report.zip
+scratch/

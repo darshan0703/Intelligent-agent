@@ -86,8 +86,9 @@ def get_menu_cache_stats() -> dict:
 
 def clear_menu_cache() -> None:
     """
-    Clear all cached menu data and reset cache statistics.
-    Useful for testing and explicit cache invalidation.
+    Clear all cached menu data, increment menu version, reset cache statistics,
+    and invalidate any dependent product index.
+    Useful for testing, explicit cache invalidation, and post-inventory mutation updates.
     """
     global _MENU_ROWS_CACHE, _MENU_VERSION
     with _CACHE_LOCK:
@@ -99,6 +100,11 @@ def clear_menu_cache() -> None:
         _CACHE_STATS["misses"] = 0
         _CACHE_STATS["refreshes"] = 0
         _CACHE_STATS["errors"] = 0
+    try:
+        from services.product_selector import invalidate_product_index
+        invalidate_product_index()
+    except Exception:
+        pass
 
 
 
@@ -180,14 +186,17 @@ def fetch_menu_rows(
 
                 rows = []
                 for item in response.data or []:
-                    menu = item["menu_items"]
+                    menu = item.get("menu_items")
+                    if not menu or not menu.get("is_available", True):
+                        continue
 
-                    if not menu["is_available"]:
+                    stock = item.get("stock")
+                    if stock is not None and stock <= 0:
                         continue
 
                     merged = {**menu}
-                    merged["stock"] = item["stock"]
-                    merged["expiry_date"] = item["expiry_date"]
+                    merged["stock"] = stock
+                    merged["expiry_date"] = item.get("expiry_date")
 
                     rows.append(merged)
 

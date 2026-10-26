@@ -219,43 +219,6 @@ def handle_burger_selection(
         )
     )
 
- 
-    print("BURGER MASTER RECOMMENDATION DATA")
-   
-
-    total = (
-        len(recommendation_data["priority"])
-        + len(recommendation_data["premium"])
-        + len(recommendation_data["additional"])
-    )
-
-    print(
-        "PRIORITY:",
-        [
-            item["name"]
-            for item in recommendation_data["priority"]
-        ]
-    )
-
-    print(
-        "PREMIUM:",
-        [
-            item["name"]
-            for item in recommendation_data["premium"]
-        ]
-    )
-
-    print(
-        "ADDITIONAL:",
-        [
-            item["name"]
-            for item in recommendation_data["additional"]
-        ]
-    )
-
-    print("TOTAL:", total)
-
-    print("==============================\n")
 
     # -----------------------------------------------------
     # SELECT DATASET ACCORDING TO USER'S ACTIVE PREFERENCE

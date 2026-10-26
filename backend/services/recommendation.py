@@ -1,7 +1,7 @@
 from datetime import date, datetime
 
 from services.menu_service import get_available, get_category
-from services.modules.m01_dietary_lock import apply_dietary_lock
+from services.modules.m01_dietary_lock import apply_dietary_lock, normalize_food_type as _m01_normalize_food_type
 from services.modules.m07_cart_exclusion import exclude_cart_items
 from services.modules.m05_budget_ceiling import apply_price_ceiling
 from services.modules.m06_condiment_gating import filter_for_recommendation_page
@@ -147,32 +147,17 @@ def get_priority_items(menu):
         reverse=True
     )
 
-
 # =========================================================
 # FOOD TYPE NORMALIZATION
 # =========================================================
 
 def normalize_food_type(food_type):
-    normalized = (
-        str(food_type or "")
-        .lower()
-        .replace("-", "_")
-        .strip()
-    )
+    """
+    Normalizes food type for recommendation filtering while preserving whitespace handling.
+    Delegates to M01 dietary lock normalization after stripping leading/trailing whitespace.
+    """
+    return _m01_normalize_food_type(str(food_type or "").strip())
 
-    if normalized in ("non_veg", "non veg"):
-        return "non_veg"
-
-    if normalized == "veg":
-        return "veg"
-
-    if normalized in ("hot", "cold"):
-        return normalized
-
-    if normalized == "both":
-        return "both"
-
-    return normalized
 
 # =========================================================
 # RECOMMENDATION ENGINE

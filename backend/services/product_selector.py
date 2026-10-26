@@ -101,6 +101,23 @@ def resolve_product(product_query, conversation_context):
     return _resolve_product_internal(product_query, conversation_context)
 
 
+def _is_eligible_product(product):
+    """
+    Enforces business rules for product eligibility:
+    - Products must be valid dictionaries.
+    - Explicitly unavailable products (is_available is False) are ineligible.
+    - Explicitly out-of-stock products (stock is not None and stock <= 0) are ineligible.
+    """
+    if not isinstance(product, dict):
+        return False
+    if product.get("is_available") is False:
+        return False
+    stock = product.get("stock")
+    if stock is not None and stock <= 0:
+        return False
+    return True
+
+
 def _resolve_product_internal(product_query, conversation_context):
     """
     Resolve a customer's product reference against the real
@@ -110,8 +127,9 @@ def _resolve_product_internal(product_query, conversation_context):
     1. Exact product-name match (O(1) hash map lookup).
     2. Token-based product-name matching (pre-tokenized list comprehension).
     3. Use database category information when relevant.
-    4. Return selected only when the result is unambiguous.
+    4. Return selected only when the result is unambiguous and eligible.
     5. Return ambiguous when multiple real products match.
+    6. Return not_found when no eligible products match.
     """
     query = normalize(product_query)
 
@@ -130,23 +148,31 @@ def _resolve_product_internal(product_query, conversation_context):
 
     index = _get_or_build_index(available_products)
 
-
-
     # ==========================================================
     # 1. EXACT PRODUCT NAME (O(1))
     # ==========================================================
     exact_indices = index.exact_indices_map.get(query)
     if exact_indices:
-        exact_matches = [available_products[i] for i in exact_indices]
+        exact_matches = [
+            available_products[i] for i in exact_indices
+            if _is_eligible_product(available_products[i])
+        ]
         if len(exact_matches) == 1:
             return {
                 "status": "selected",
                 "product": exact_matches[0],
                 "matches": exact_matches,
             }
+        if len(exact_matches) > 1:
+            return {
+                "status": "ambiguous",
+                "matches": exact_matches,
+            }
+        # If all exact candidates are ineligible (out of stock/unavailable),
+        # return not_found. Established business rule prevents selecting unavailable items.
         return {
-            "status": "ambiguous",
-            "matches": exact_matches,
+            "status": "not_found",
+            "matches": [],
         }
 
     # ==========================================================
@@ -162,7 +188,7 @@ def _resolve_product_internal(product_query, conversation_context):
     candidates = [
         available_products[idx]
         for name_tokens, idx in index.token_indices
-        if name_tokens.issubset(query_tokens)
+        if name_tokens.issubset(query_tokens) and _is_eligible_product(available_products[idx])
     ]
 
     # ==========================================================
@@ -172,7 +198,8 @@ def _resolve_product_internal(product_query, conversation_context):
         candidates = [
             available_products[idx]
             for name_tokens, cat, idx in index.category_indices
-            if (name_tokens | {cat}).issubset(query_tokens) or name_tokens.issubset(query_tokens)
+            if ((name_tokens | {cat}).issubset(query_tokens) or name_tokens.issubset(query_tokens))
+            and _is_eligible_product(available_products[idx])
         ]
 
     # ==========================================================
