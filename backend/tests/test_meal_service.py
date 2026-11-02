@@ -549,6 +549,355 @@ def test_unavailable_default_does_not_silently_trigger_paid_upgrade():
     print("PASS: test_unavailable_default_does_not_silently_trigger_paid_upgrade")
 
 
+def test_cart_meal_customization_atomic_replacement():
+    """
+    Req: In-place atomic meal replacement via /cart/add-meal with replace_index.
+    Ensures that when editing a meal in the cart, the original item is atomically updated
+    without temporary loss or separate removal steps.
+    """
+    reset_conversation("test-customization-replacement")
+    try:
+        meal = build_meal(item_id=7, meal_size="medium")
+        assert meal is not None
+
+        # 1. Add initial meal to cart
+        initial_res = client.post("/cart/add-meal", json={"meal": meal, "quantity": 1})
+        assert initial_res.status_code == 200
+        initial_cart = initial_res.json()
+        assert len(initial_cart["cart"]) == 1
+        assert initial_cart["cart"][0]["side"]["id"] == meal["side"]["id"]
+        assert initial_cart["cart"][0]["drink"]["id"] == meal["drink"]["id"]
+
+        # 2. Prepare customized selection
+        alt_side = meal["side_options"][-1]
+        alt_drink = meal["drink_options"][-1]
+        customized_meal = {
+            **meal,
+            "side": alt_side,
+            "drink": alt_drink,
+        }
+
+        # 3. Atomically replace at index 0 with quantity 2
+        replace_res = client.post(
+            "/cart/add-meal",
+            json={"meal": customized_meal, "quantity": 2, "replace_index": 0},
+        )
+        assert replace_res.status_code == 200
+        updated_cart = replace_res.json()
+
+        # Must still be exactly 1 item in cart (in-place replacement)
+        assert len(updated_cart["cart"]) == 1
+        replaced_item = updated_cart["cart"][0]
+        assert replaced_item["side"]["id"] == alt_side["id"]
+        assert replaced_item["drink"]["id"] == alt_drink["id"]
+        assert replaced_item["quantity"] == 2
+        expected_unit_price = (
+            meal["meal_price"]
+            + alt_side.get("extra_price", 0)
+            + alt_drink.get("extra_price", 0)
+        )
+        assert replaced_item["unitPrice"] == expected_unit_price
+        assert replaced_item["subtotal"] == expected_unit_price * 2
+    finally:
+        reset_conversation()
+
+    print("PASS: test_cart_meal_customization_atomic_replacement")
+
+
+def test_cart_meal_customization_invalid_replace_index_preserves_cart():
+    """
+    Req: Robustness & safe rollback guarantee.
+    If an invalid replace_index is provided, the operation must fail safely
+    and the existing cart contents must survive untouched.
+    """
+    reset_conversation("test-customization-rollback")
+    try:
+        meal = build_meal(item_id=7, meal_size="medium")
+        assert meal is not None
+
+        initial_res = client.post("/cart/add-meal", json={"meal": meal, "quantity": 1})
+        assert initial_res.status_code == 200
+        initial_cart = initial_res.json()
+        assert len(initial_cart["cart"]) == 1
+
+        # Attempt atomic replace with out-of-bounds index 99
+        fail_res = client.post(
+            "/cart/add-meal",
+            json={"meal": meal, "quantity": 1, "replace_index": 99},
+        )
+        assert fail_res.status_code == 200
+        fail_data = fail_res.json()
+        assert fail_data["success"] is False
+        assert "Invalid cart item index" in fail_data["message"]
+
+        # Ensure the original cart item survived completely intact
+        cart_res = client.get("/cart")
+        assert cart_res.status_code == 200
+        current_cart = cart_res.json()
+        assert len(current_cart["cart"]) == 1
+        assert current_cart["cart"][0]["side"]["id"] == meal["side"]["id"]
+    finally:
+        reset_conversation()
+
+    print("PASS: test_cart_meal_customization_invalid_replace_index_preserves_cart")
+
+
+def test_cart_meal_customization_stale_index_mismatch_rejected():
+    """
+    Req: Protect against stale cart indexes.
+    If the cart changes while the customer is customizing (e.g., items shifted/removed),
+    and replace_index points to a different meal, the backend must detect the mismatch,
+    reject the update, and leave the cart completely unchanged.
+    """
+    reset_conversation("test-stale-index-mismatch")
+    try:
+        whopper_meal = build_meal(item_id=7, meal_size="medium")
+        chicken_meal = build_meal(item_id=1, meal_size="medium")
+        assert whopper_meal is not None
+        assert chicken_meal is not None
+
+        # 1. Add Whopper meal (item_id=7) at index 0, then Chicken meal at index 1
+        res1 = client.post("/cart/add-meal", json={"meal": whopper_meal, "quantity": 1})
+        assert res1.status_code == 200
+        res2 = client.post("/cart/add-meal", json={"meal": chicken_meal, "quantity": 1})
+        assert res2.status_code == 200
+        assert len(res2.json()["cart"]) == 2
+
+        # 2. Simulate cart shifting while customer is customizing Whopper:
+        # Whopper at index 0 is deleted, so Chicken meal is now at index 0
+        del_res = client.patch("/cart/item", json={"item_index": 0, "action": "remove"})
+        assert del_res.status_code == 200
+        cart_after_shift = del_res.json()["cart"]
+        assert len(cart_after_shift) == 1
+        # Chicken meal is now at index 0
+        assert cart_after_shift[0]["main_item"]["id"] == chicken_meal["burger"]["id"]
+
+        # 3. Customer submits customized Whopper with stale replace_index=0 and expected_item_id=7
+        alt_side = whopper_meal["side_options"][-1]
+        customized_whopper = {
+            **whopper_meal,
+            "side": alt_side,
+        }
+        update_res = client.post(
+            "/cart/add-meal",
+            json={
+                "meal": customized_whopper,
+                "quantity": 1,
+                "replace_index": 0,
+                "expected_item_id": whopper_meal["burger"]["id"],
+            },
+        )
+        assert update_res.status_code == 200
+        data = update_res.json()
+
+        # Update must be rejected!
+        assert data["success"] is False
+        assert "no longer matches" in data["message"]
+
+        # 4. Verify cart is COMPLETELY UNCHANGED (Chicken meal is intact, Whopper was not overwritten)
+        cart_check = client.get("/cart").json()["cart"]
+        assert len(cart_check) == 1
+        assert cart_check[0]["main_item"]["id"] == chicken_meal["burger"]["id"]
+        assert cart_check[0]["side"]["id"] == chicken_meal["side"]["id"]
+    finally:
+        reset_conversation()
+
+    print("PASS: test_cart_meal_customization_stale_index_mismatch_rejected")
+
+
+def test_cart_meal_customization_non_meal_index_rejected():
+    """
+    Req: Protect against stale cart indexes where index now points to a non-meal item.
+    """
+    reset_conversation("test-non-meal-index-rejected")
+    try:
+        # Add a standalone item (e.g. Fries)
+        client.post("/cart/add", json={"item_name": "Fries (Medium)", "quantity": 1})
+        cart_before = client.get("/cart").json()["cart"]
+        assert len(cart_before) == 1
+        assert cart_before[0]["type"] == "item"
+
+        # Attempt to replace index 0 with a meal
+        meal = build_meal(item_id=7, meal_size="medium")
+        res = client.post(
+            "/cart/add-meal",
+            json={
+                "meal": meal,
+                "quantity": 1,
+                "replace_index": 0,
+                "expected_item_id": 7,
+            },
+        )
+        assert res.status_code == 200
+        data = res.json()
+        assert data["success"] is False
+        assert "not a meal" in data["message"]
+
+        # Original standalone item must remain unchanged
+        cart_after = client.get("/cart").json()["cart"]
+        assert len(cart_after) == 1
+        assert cart_after[0]["type"] == "item"
+        assert cart_after[0]["name"] == "Fries (Medium)"
+    finally:
+        reset_conversation()
+
+    print("PASS: test_cart_meal_customization_non_meal_index_rejected")
+
+
+def test_cart_meal_customization_missing_target_identifier_rejected():
+    """
+    Req: If an expected burger/side/drink ID is supplied, require the current cart item's
+    corresponding ID to exist and match. If any required identifier is missing from the target
+    cart item, reject the replacement and leave the cart completely unchanged.
+    """
+    reset_conversation("test-missing-target-identifier-rejected")
+    try:
+        control_item = {"type": "item", "id": 99, "name": "Control Dessert", "price": 50.0, "quantity": 1, "subtotal": 50.0}
+        new_meal = build_meal(item_id=7, meal_size="medium")
+        assert new_meal is not None
+
+        # Case 1: Target meal has NO burger id in main_item
+        cart_missing_burger_id = [
+            {
+                "type": "meal",
+                "name": "Veg Whopper Meal",
+                "main_item": {"name": "Veg Whopper"},  # Missing 'id'
+                "side": {"id": 65, "name": "Fries (Medium)"},
+                "drink": {"id": 80, "name": "Coke (Medium)"},
+                "quantity": 1,
+                "subtotal": 329.0,
+            },
+            control_item,
+        ]
+        conversation_context["cart"] = [dict(item) for item in cart_missing_burger_id]
+
+        res = client.post(
+            "/cart/add-meal",
+            json={
+                "meal": new_meal,
+                "quantity": 1,
+                "replace_index": 0,
+                "expected_item_id": 7,
+                "expected_side_id": 65,
+                "expected_drink_id": 80,
+            },
+        )
+        assert res.status_code == 200
+        data = res.json()
+        assert data["success"] is False
+        assert "no longer matches" in data["message"]
+        # Verify cart was NOT touched
+        assert len(conversation_context["cart"]) == 2
+        assert conversation_context["cart"][0]["main_item"] == {"name": "Veg Whopper"}
+        assert conversation_context["cart"][1]["name"] == "Control Dessert"
+
+        # Case 2: Target meal has burger id and drink id, but NO side id
+        cart_missing_side_id = [
+            {
+                "type": "meal",
+                "name": "Veg Whopper Meal",
+                "main_item": {"id": 7, "name": "Veg Whopper"},
+                "side": {"name": "Fries (Medium)"},  # Missing 'id'
+                "drink": {"id": 80, "name": "Coke (Medium)"},
+                "quantity": 1,
+                "subtotal": 329.0,
+            },
+            control_item,
+        ]
+        conversation_context["cart"] = [dict(item) for item in cart_missing_side_id]
+
+        res = client.post(
+            "/cart/add-meal",
+            json={
+                "meal": new_meal,
+                "quantity": 1,
+                "replace_index": 0,
+                "expected_item_id": 7,
+                "expected_side_id": 65,
+                "expected_drink_id": 80,
+            },
+        )
+        assert res.status_code == 200
+        data = res.json()
+        assert data["success"] is False
+        assert "no longer matches" in data["message"]
+        # Cart untouched
+        assert len(conversation_context["cart"]) == 2
+        assert "id" not in conversation_context["cart"][0]["side"]
+
+        # Case 3: Target meal has burger id and side id, but NO drink id
+        cart_missing_drink_id = [
+            {
+                "type": "meal",
+                "name": "Veg Whopper Meal",
+                "main_item": {"id": 7, "name": "Veg Whopper"},
+                "side": {"id": 65, "name": "Fries (Medium)"},
+                "drink": {"name": "Coke (Medium)"},  # Missing 'id'
+                "quantity": 1,
+                "subtotal": 329.0,
+            },
+            control_item,
+        ]
+        conversation_context["cart"] = [dict(item) for item in cart_missing_drink_id]
+
+        res = client.post(
+            "/cart/add-meal",
+            json={
+                "meal": new_meal,
+                "quantity": 1,
+                "replace_index": 0,
+                "expected_item_id": 7,
+                "expected_side_id": 65,
+                "expected_drink_id": 80,
+            },
+        )
+        assert res.status_code == 200
+        data = res.json()
+        assert data["success"] is False
+        assert "no longer matches" in data["message"]
+        # Cart untouched
+        assert len(conversation_context["cart"]) == 2
+        assert "id" not in conversation_context["cart"][0]["drink"]
+
+        # Case 4: Target meal has all matching IDs -> replacement succeeds
+        cart_valid = [
+            {
+                "type": "meal",
+                "name": "Veg Whopper Meal",
+                "main_item": {"id": 7, "name": "Veg Whopper"},
+                "side": {"id": 65, "name": "Fries (Medium)"},
+                "drink": {"id": 80, "name": "Coke (Medium)"},
+                "quantity": 1,
+                "subtotal": 329.0,
+            },
+            control_item,
+        ]
+        conversation_context["cart"] = [dict(item) for item in cart_valid]
+
+        res = client.post(
+            "/cart/add-meal",
+            json={
+                "meal": new_meal,
+                "quantity": 2,
+                "replace_index": 0,
+                "expected_item_id": 7,
+                "expected_side_id": 65,
+                "expected_drink_id": 80,
+            },
+        )
+        assert res.status_code == 200
+        data = res.json()
+        assert data["success"] is True
+        assert len(data["cart"]) == 2
+        assert data["cart"][0]["quantity"] == 2
+        assert data["cart"][1]["name"] == "Control Dessert"
+
+    finally:
+        reset_conversation()
+
+    print("PASS: test_cart_meal_customization_missing_target_identifier_rejected")
+
+
 if __name__ == "__main__":
     test_is_veg_meal_item_canonical()
     test_parse_price_safety()
@@ -566,5 +915,10 @@ if __name__ == "__main__":
     test_explicit_selection_and_cart_submission()
     test_submitted_meal_uses_selected_ids_not_first_ranked()
     test_unavailable_default_does_not_silently_trigger_paid_upgrade()
+    test_cart_meal_customization_atomic_replacement()
+    test_cart_meal_customization_invalid_replace_index_preserves_cart()
+    test_cart_meal_customization_stale_index_mismatch_rejected()
+    test_cart_meal_customization_non_meal_index_rejected()
+    test_cart_meal_customization_missing_target_identifier_rejected()
 
     print("\nALL MEAL SERVICE UNIT & API REGRESSION TESTS PASSED SUCCESSFULLY!")

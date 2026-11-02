@@ -24,6 +24,7 @@ import FooterDecoration from "../components/FooterDecoration";
 
 import { useKiosk } from "../context/KioskContext";
 import { useCart } from "../context/CartContext";
+import { getOrderedProductIds, getOrderedProductNames } from "../utils/cartUtils";
 
 
 function Burger() {
@@ -80,6 +81,7 @@ function Burger() {
 
     if (foodPreference) {
 
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedType(
         normalizePreference(foodPreference)
       );
@@ -220,20 +222,14 @@ function Burger() {
   // REAL-TIME CART EXCLUSION FILTER (M7)
   // Ensures items in cart NEVER display in 4 cards or additional rows
   // ==========================================
-  const cartNames = useMemo(
-    () => new Set((cart || []).map((c) => String(c?.name || "").trim().toLowerCase())),
-    [cart]
-  );
-  const cartIds = useMemo(
-    () => new Set((cart || []).map((c) => c?.id).filter(Boolean).map(String)),
-    [cart]
-  );
+  const cartNames = useMemo(() => getOrderedProductNames(cart), [cart]);
+  const cartIds = useMemo(() => getOrderedProductIds(cart), [cart]);
 
   const notInCart = useCallback((item) => {
     if (!item) return false;
     const name = String(item?.name || "").trim().toLowerCase();
     if (cartNames.has(name)) return false;
-    if (item?.id && cartIds.has(String(item.id))) return false;
+    if (item?.id != null && cartIds.has(String(item.id))) return false;
     return true;
   }, [cartNames, cartIds]);
 

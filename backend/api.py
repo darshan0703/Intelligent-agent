@@ -35,7 +35,10 @@ from services.cart_service import (
     get_cart,
     update_cart_item,
 )
-from services.meal_service import get_meal_options
+from services.meal_service import (
+    get_meal_options,
+    _sanitize_error,
+)
 from services.menu_service import (
     add_item,
     get_available,
@@ -483,7 +486,7 @@ def meal_options(request: dict):
         }
         return offer
     except Exception as e:
-        print(f"Error in meal_options endpoint: {e}")
+        print(f"Error in meal_options endpoint: {_sanitize_error(e)}")
         return {
             "success": False,
             "is_meal_available": False,
@@ -537,6 +540,10 @@ def cart_add_meal(request: dict):
     return add_meal(
         request["meal"],
         request.get("quantity", 1),
+        replace_index=request.get("replace_index"),
+        expected_item_id=request.get("expected_item_id") or request.get("expected_burger_id"),
+        expected_side_id=request.get("expected_side_id"),
+        expected_drink_id=request.get("expected_drink_id"),
     )
 @app.patch("/cart/item")
 def update_cart_item_endpoint(request: dict):

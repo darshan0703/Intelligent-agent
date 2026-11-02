@@ -16,6 +16,12 @@ function MealPage({ meal: propMeal } = {}) {
     const navigate = useNavigate();
     const origin = state?.origin || "/";
     const meal = propMeal || state?.meal;
+    const isEditMode = Boolean(state?.editMode);
+    const editIndex = state?.editIndex;
+    const expectedItemId = state?.expectedItemId;
+    const expectedSideId = state?.expectedSideId;
+    const expectedDrinkId = state?.expectedDrinkId;
+    const savedQuantity = state?.quantity || 1;
 
     const burger = meal?.burger;
     const side = meal?.side;
@@ -24,7 +30,7 @@ function MealPage({ meal: propMeal } = {}) {
     const { syncCart, cart, notifyCartItemAdded } = useCart();
     const { foodPreference } = useKiosk();
     const mealSize = meal?.size || "Medium";
-    const [quantity, setQuantity] = useState(1);
+    const [quantity, setQuantity] = useState(savedQuantity);
 
     const [selectedSide, setSelectedSide] = useState(side);
 
@@ -54,7 +60,10 @@ function MealPage({ meal: propMeal } = {}) {
         if (!item || !cart || !Array.isArray(cart)) return false;
         const itemId = item.id;
         const itemName = String(item.name || "").trim().toLowerCase();
-        return cart.some((c) => {
+        return cart.some((c, idx) => {
+            if (isEditMode && typeof editIndex === "number" && idx === editIndex) {
+                return false;
+            }
             if (c.id && itemId && String(c.id) === String(itemId)) return true;
             const cName = String(c.name || "").trim().toLowerCase();
             if (cName && (cName === itemName || (itemName.length > 5 && cName === itemName))) return true;
@@ -209,6 +218,21 @@ function MealPage({ meal: propMeal } = {}) {
         }
 
         try {
+            const payload = {
+                meal: {
+                    ...meal,
+                    side: selectedSide,
+                    drink: selectedDrink,
+                },
+                quantity,
+            };
+
+            if (isEditMode && typeof editIndex === "number") {
+                payload.replace_index = editIndex;
+                if (expectedItemId) payload.expected_item_id = expectedItemId;
+                if (expectedSideId) payload.expected_side_id = expectedSideId;
+                if (expectedDrinkId) payload.expected_drink_id = expectedDrinkId;
+            }
 
             const response = await fetch(
                 "/cart/add-meal",
@@ -219,36 +243,40 @@ function MealPage({ meal: propMeal } = {}) {
                         "Content-Type": "application/json",
                     },
 
-                    body: JSON.stringify({
-                        meal: {
-                            ...meal,
-                            side: selectedSide,
-                            drink: selectedDrink
-                        },
-                        quantity
-                    })
-
+                    body: JSON.stringify(payload),
                 }
             );
 
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
             const data = await response.json();
 
-            console.log("ADD MEAL:", data);
+            console.log(isEditMode ? "UPDATE MEAL:" : "ADD MEAL:", data);
 
             if (data.success) {
                 syncCart(data);
                 notifyCartItemAdded();
                 navigate(origin);
+            } else {
+                alert(data.message || "Failed to update meal in cart.");
             }
 
         } catch (error) {
 
             console.error(error);
+            alert("Something went wrong while updating your meal in the cart.");
 
         }
-
     };
+
     const handleDeclineMeal = async () => {
+        if (isEditMode) {
+            navigate(origin);
+            return;
+        }
+
         try {
             const response = await fetch(
                 "/meal/decline",
@@ -645,7 +673,9 @@ function MealPage({ meal: propMeal } = {}) {
                     >
                         {(!selectedSide || !selectedDrink)
                             ? "Choose Side & Drink to Add Meal"
-                            : `Add Meal To Cart • ₹${totalPrice * quantity}`}
+                            : isEditMode
+                                ? `Update Meal In Cart • ₹${totalPrice * quantity}`
+                                : `Add Meal To Cart • ₹${totalPrice * quantity}`}
                     </button>
 
                 </>

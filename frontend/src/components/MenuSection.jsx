@@ -1,19 +1,20 @@
 import "./MenuSection.css";
+import { useMemo } from "react";
 import ProductCard from "./ProductCard";
 import { useCart } from "../context/CartContext";
+import { getOrderedProductIds, getOrderedProductNames } from "../utils/cartUtils";
 
 function MenuSection({ title, products }) {
   const { cart } = useCart();
 
-  const cartIds = new Set((cart || []).map((c) => c.id).filter(Boolean));
-  const cartNames = new Set(
-    (cart || []).map((c) => String(c.name || "").trim().toLowerCase())
-  );
+  const orderedProductIds = useMemo(() => getOrderedProductIds(cart), [cart]);
+  const orderedProductNames = useMemo(() => getOrderedProductNames(cart), [cart]);
 
   const isItemInCart = (product) => {
-    if (product.id && cartIds.has(product.id)) return true;
+    if (!product) return false;
+    if (product.id != null && orderedProductIds.has(String(product.id))) return true;
     const name = String(product.name || "").trim().toLowerCase();
-    return cartNames.has(name);
+    return orderedProductNames.has(name);
   };
 
   // Keep items not in cart first (original order), and push added cart items to the end
