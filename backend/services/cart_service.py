@@ -248,7 +248,7 @@ def get_cart():
         }
 
 
-def add_meal(meal, quantity=1, idempotency_key=None):
+def add_meal(meal, quantity=1, replace_index=None, expected_item_id=None, expected_side_id=None, expected_drink_id=None, idempotency_key=None):
     with cart_lock:
         store = _get_idempotency_store()
         if idempotency_key and idempotency_key in store:
@@ -258,12 +258,83 @@ def add_meal(meal, quantity=1, idempotency_key=None):
             conversation_context["cart"] = []
 
         cart = conversation_context["cart"]
-        cart_snapshot = copy.deepcopy(cart)
 
         try:
             quantity = max(1, int(quantity or 1))
         except (ValueError, TypeError):
             quantity = 1
+
+        if replace_index is not None:
+            if not isinstance(replace_index, int) or replace_index < 0 or replace_index >= len(cart):
+                return {
+                    "success": False,
+                    "message": "Invalid cart item index for replacement.",
+                    "cart": cart,
+                    "itemCount": sum(item["quantity"] for item in cart),
+                    "subtotal": sum(item["subtotal"] for item in cart),
+                    "total": sum(item["subtotal"] for item in cart),
+                }
+
+            target_item = cart[replace_index]
+
+            # Verify that target item is a meal
+            if not isinstance(target_item, dict) or target_item.get("type") != "meal":
+                return {
+                    "success": False,
+                    "message": "Cart item at specified index is not a meal.",
+                    "cart": cart,
+                    "itemCount": sum(item["quantity"] for item in cart),
+                    "subtotal": sum(item["subtotal"] for item in cart),
+                    "total": sum(item["subtotal"] for item in cart),
+                }
+
+            # Verify burger identifier against original meal
+            target_burger = target_item.get("main_item") or target_item.get("burger") or {}
+            target_burger_id = target_burger.get("id") if isinstance(target_burger, dict) else None
+
+            expected_burger_id = expected_item_id
+            if expected_burger_id is None:
+                sub_burger = meal.get("burger") or meal.get("main_item") or {}
+                expected_burger_id = sub_burger.get("id") if isinstance(sub_burger, dict) else None
+
+            if expected_burger_id is not None:
+                if target_burger_id is None or str(target_burger_id) != str(expected_burger_id):
+                    return {
+                        "success": False,
+                        "message": "Cart item at specified index no longer matches the meal being customized.",
+                        "cart": cart,
+                        "itemCount": sum(item["quantity"] for item in cart),
+                        "subtotal": sum(item["subtotal"] for item in cart),
+                        "total": sum(item["subtotal"] for item in cart),
+                    }
+
+            # Verify side identifier if specified
+            if expected_side_id is not None:
+                target_side = target_item.get("side") or {}
+                target_side_id = target_side.get("id") if isinstance(target_side, dict) else None
+                if target_side_id is None or str(target_side_id) != str(expected_side_id):
+                    return {
+                        "success": False,
+                        "message": "Cart item at specified index no longer matches the meal being customized.",
+                        "cart": cart,
+                        "itemCount": sum(item["quantity"] for item in cart),
+                        "subtotal": sum(item["subtotal"] for item in cart),
+                        "total": sum(item["subtotal"] for item in cart),
+                    }
+
+            # Verify drink identifier if specified
+            if expected_drink_id is not None:
+                target_drink = target_item.get("drink") or {}
+                target_drink_id = target_drink.get("id") if isinstance(target_drink, dict) else None
+                if target_drink_id is None or str(target_drink_id) != str(expected_drink_id):
+                    return {
+                        "success": False,
+                        "message": "Cart item at specified index no longer matches the meal being customized.",
+                        "cart": cart,
+                        "itemCount": sum(item["quantity"] for item in cart),
+                        "subtotal": sum(item["subtotal"] for item in cart),
+                        "total": sum(item["subtotal"] for item in cart),
+                    }
 
         side = meal.get("side") or meal.get("selected_side") or {}
         drink = meal.get("drink") or meal.get("selected_drink") or {}
@@ -284,52 +355,57 @@ def add_meal(meal, quantity=1, idempotency_key=None):
             + drink_extra
         )
 
-        burger_name = (meal.get("burger") or {}).get("name", "Burger") if isinstance(meal.get("burger"), dict) else str(meal.get("burger") or "Burger")
+        burger_info = meal.get("burger") or meal.get("main_item") or {}
+        burger_name = burger_info.get("name", "Burger") if isinstance(burger_info, dict) else str(burger_info or "Burger")
         size_str = str(meal.get("size", "Medium")).capitalize()
         meal_name = (
             f"{burger_name} "
             f"{size_str} Meal"
         )
 
-        side_id = side.get("id") if isinstance(side, dict) else None
-        drink_id = drink.get("id") if isinstance(drink, dict) else None
+        new_item = {
+            "type": "meal",
+            "name": meal_name,
+            "quantity": quantity,
+            "unitPrice": subtotal,
+            "subtotal": subtotal * quantity,
+            "image": burger_info.get("image") if isinstance(burger_info, dict) else None,
+            "main_item": burger_info,
+            "side": side,
+            "drink": drink,
+            "meal_size": meal.get("size", "Medium")
+        }
 
-        existing = next(
-            (
-                item
-                for item in cart
-                if item.get("type") == "meal"
-                and item.get("name") == meal_name
-                and (
-                    (side_id is not None and item.get("side", {}).get("id") == side_id)
-                    or item.get("side", {}).get("name") == (side.get("name") if isinstance(side, dict) else str(side))
-                )
-                and (
-                    (drink_id is not None and item.get("drink", {}).get("id") == drink_id)
-                    or item.get("drink", {}).get("name") == (drink.get("name") if isinstance(drink, dict) else str(drink))
-                )
-            ),
-            None
-        )
-
-        if existing:
-            existing["unitPrice"] = subtotal
-            existing["quantity"] += quantity
-            existing["subtotal"] += subtotal * quantity
+        if replace_index is not None:
+            cart[replace_index] = new_item
         else:
-            burger_info = meal.get("burger") or {}
-            cart.append({
-                "type": "meal",
-                "name": meal_name,
-                "quantity": quantity,
-                "unitPrice": subtotal,
-                "subtotal": subtotal * quantity,
-                "image": burger_info.get("image") if isinstance(burger_info, dict) else None,
-                "main_item": burger_info,
-                "side": side,
-                "drink": drink,
-                "meal_size": meal.get("size", "Medium")
-            })
+            side_id = side.get("id") if isinstance(side, dict) else None
+            drink_id = drink.get("id") if isinstance(drink, dict) else None
+
+            existing = next(
+                (
+                    item
+                    for item in cart
+                    if item.get("type") == "meal"
+                    and item.get("name") == meal_name
+                    and (
+                        (side_id is not None and item.get("side", {}).get("id") == side_id)
+                        or item.get("side", {}).get("name") == (side.get("name") if isinstance(side, dict) else str(side))
+                    )
+                    and (
+                        (drink_id is not None and item.get("drink", {}).get("id") == drink_id)
+                        or item.get("drink", {}).get("name") == (drink.get("name") if isinstance(drink, dict) else str(drink))
+                    )
+                ),
+                None
+            )
+
+            if existing:
+                existing["unitPrice"] = subtotal
+                existing["quantity"] += quantity
+                existing["subtotal"] += subtotal * quantity
+            else:
+                cart.append(new_item)
 
         cart_res = get_cart()
         cart_res["quantity_added"] = quantity

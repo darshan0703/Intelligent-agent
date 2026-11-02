@@ -40,7 +40,10 @@ from services.cart_service import (
     update_cart_item,
     cart_lock,
 )
-from services.meal_service import get_meal_options
+from services.meal_service import (
+    get_meal_options,
+    _sanitize_error,
+)
 from services.menu_service import (
     add_item,
     get_available,
@@ -733,6 +736,10 @@ def cart_add_meal(request: dict, raw_req: Request = None, response: Response = N
         res = add_meal(
             request["meal"],
             request.get("quantity", 1),
+            replace_index=request.get("replace_index"),
+            expected_item_id=request.get("expected_item_id") or request.get("expected_burger_id"),
+            expected_side_id=request.get("expected_side_id"),
+            expected_drink_id=request.get("expected_drink_id"),
             idempotency_key=idempotency_key,
         )
         tracer.log("backend_touch_request_completed", duration_ms=(time.perf_counter() - t0) * 1000.0, endpoint="/cart/add-meal")
