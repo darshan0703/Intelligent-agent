@@ -27,6 +27,13 @@ function MealPage({ meal: propMeal } = {}) {
         }
     }, [propMeal, state?.meal]);
 
+    const isEditMode = Boolean(state?.editMode);
+    const editIndex = state?.editIndex;
+    const expectedItemId = state?.expectedItemId;
+    const expectedSideId = state?.expectedSideId;
+    const expectedDrinkId = state?.expectedDrinkId;
+    const savedQuantity = state?.quantity || 1;
+
     const burger = meal?.burger;
     const side = meal?.side;
     const drink = meal?.drink;
@@ -34,7 +41,7 @@ function MealPage({ meal: propMeal } = {}) {
     const { syncCart, cart, notifyCartItemAdded } = useCart();
     const { foodPreference } = useKiosk();
     const mealSize = meal?.size || "Medium";
-    const [quantity, setQuantity] = useState(1);
+    const [quantity, setQuantity] = useState(savedQuantity);
 
     const [selectedSide, setSelectedSide] = useState(side);
 
@@ -64,7 +71,10 @@ function MealPage({ meal: propMeal } = {}) {
         if (!item || !cart || !Array.isArray(cart)) return false;
         const itemId = item.id;
         const itemName = String(item.name || "").trim().toLowerCase();
-        return cart.some((c) => {
+        return cart.some((c, idx) => {
+            if (isEditMode && typeof editIndex === "number" && idx === editIndex) {
+                return false;
+            }
             if (c.id && itemId && String(c.id) === String(itemId)) return true;
             const cName = String(c.name || "").trim().toLowerCase();
             if (cName && (cName === itemName || (itemName.length > 5 && cName === itemName))) return true;
@@ -83,7 +93,34 @@ function MealPage({ meal: propMeal } = {}) {
         });
     };
 
-    const sideOptions = meal?.side_options ?? [];
+    const sideOptions = useMemo(() => {
+        const options = meal?.side_options ?? [];
+        return [...options].sort((a, b) => {
+            const aInCart = isItemInCart(a) ? 1 : 0;
+            const bInCart = isItemInCart(b) ? 1 : 0;
+            if (aInCart !== bInCart) return aInCart - bInCart; // cart exclusion at last
+
+            const aIsVeg = isVegItem(a);
+            const bIsVeg = isVegItem(b);
+
+            if (effectivePref === "veg") {
+                const aPri = aIsVeg ? 0 : 1;
+                const bPri = bIsVeg ? 0 : 1;
+                if (aPri !== bPri) return aPri - bPri; // Veg first, non-veg after
+            } else if (effectivePref === "non_veg") {
+                const aPri = aIsVeg ? 1 : 0;
+                const bPri = bIsVeg ? 0 : 1;
+                if (aPri !== bPri) return aPri - bPri; // Non-veg first, veg after
+            }
+
+            // Default first
+            const aDef = a.id === side?.id ? 0 : 1;
+            const bDef = b.id === side?.id ? 0 : 1;
+            if (aDef !== bDef) return aDef - bDef;
+
+            return (Number(a.extra_price) || 0) - (Number(b.extra_price) || 0);
+        });
+    }, [meal?.side_options, effectivePref, cart, side, isEditMode, editIndex]);
 
     const drinkSections = useMemo(() => [
         ...new Set(
@@ -246,6 +283,23 @@ function MealPage({ meal: propMeal } = {}) {
 
         try {
             const endBackend = tracker.startStage("backend_request", { endpoint: "/cart/add-meal" });
+
+            const payload = {
+                meal: {
+                    ...meal,
+                    side: sideToUse,
+                    drink: drinkToUse,
+                },
+                quantity,
+            };
+
+            if (isEditMode && typeof editIndex === "number") {
+                payload.replace_index = editIndex;
+                if (expectedItemId) payload.expected_item_id = expectedItemId;
+                if (expectedSideId) payload.expected_side_id = expectedSideId;
+                if (expectedDrinkId) payload.expected_drink_id = expectedDrinkId;
+            }
+
             const response = await fetch(
                 "/cart/add-meal",
                 {
@@ -256,17 +310,13 @@ function MealPage({ meal: propMeal } = {}) {
                         "X-Interaction-ID": tracker.id,
                     },
 
-                    body: JSON.stringify({
-                        meal: {
-                            ...meal,
-                            side: sideToUse,
-                            drink: drinkToUse
-                        },
-                        quantity
-                    })
-
+                    body: JSON.stringify(payload),
                 }
             );
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
 
             const data = await response.json();
             endBackend();
@@ -275,7 +325,7 @@ function MealPage({ meal: propMeal } = {}) {
                 endpoint: "/cart/add-meal",
             });
 
-            console.log("ADD MEAL:", data);
+            console.log(isEditMode ? "UPDATE MEAL:" : "ADD MEAL:", data);
 
             if (data.success) {
                 syncCart(data);
@@ -283,16 +333,24 @@ function MealPage({ meal: propMeal } = {}) {
                 tracker.log("navigation_initiated", { destination: origin });
                 navigate(origin);
                 measureScreenRender(tracker, origin);
+            } else {
+                alert(data.message || "Failed to update meal in cart.");
             }
 
         } catch (error) {
 
             console.error(error);
+            alert("Something went wrong while updating your meal in the cart.");
 
         }
-
     };
+
     const handleDeclineMeal = async () => {
+        if (isEditMode) {
+            navigate(origin);
+            return;
+        }
+
         if (isNavigatingRef.current) return;
         isNavigatingRef.current = true;
         const tracker = createPerfTracker("touch");
@@ -652,11 +710,10 @@ function MealPage({ meal: propMeal } = {}) {
                                     key={item.id}
 
                                     className={`meal-card ${
-                                        Boolean(
-                                            selectedSide &&
-                                            (String(selectedSide.id) === String(item.id) ||
-                                             (selectedSide.name && item.name && selectedSide.name.toLowerCase() === item.name.toLowerCase()))
-                                        ) ? "active" : ""
+                                        selectedSide &&
+                                        (String(selectedSide.id) === String(item.id) ||
+                                         (selectedSide.name && item.name && selectedSide.name.toLowerCase() === item.name.toLowerCase()))
+                                         ? "active" : ""
                                     }`}
 
                                     onClick={() => handleSideSelect(item)}
@@ -753,11 +810,10 @@ function MealPage({ meal: propMeal } = {}) {
                                     key={item.id}
 
                                     className={`drink-card ${
-                                        Boolean(
-                                            selectedDrink &&
-                                            (String(selectedDrink.id) === String(item.id) ||
-                                             (selectedDrink.name && item.name && selectedDrink.name.toLowerCase() === item.name.toLowerCase()))
-                                        ) ? "active" : ""
+                                        selectedDrink &&
+                                        (String(selectedDrink.id) === String(item.id) ||
+                                         (selectedDrink.name && item.name && selectedDrink.name.toLowerCase() === item.name.toLowerCase()))
+                                         ? "active" : ""
                                     }`}
 
                                     onClick={() => handleDrinkSelect(item)}
@@ -846,7 +902,9 @@ function MealPage({ meal: propMeal } = {}) {
                     >
                         {(!selectedSide || !selectedDrink)
                             ? "Choose Side & Drink to Add Meal"
-                            : `Add Meal To Cart • ₹${totalPrice * quantity}`}
+                            : isEditMode
+                                ? `Update Meal In Cart • ₹${totalPrice * quantity}`
+                                : `Add Meal To Cart • ₹${totalPrice * quantity}`}
                     </button>
 
                 </>

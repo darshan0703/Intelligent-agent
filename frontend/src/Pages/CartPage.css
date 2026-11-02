@@ -68,6 +68,52 @@
     font-size: 22px;
 }
 
+.cart-page-meal-desc-row,
+.cart-page-meal-details {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.cart-page-meal-desc-row p,
+.cart-page-meal-desc {
+    margin: 0;
+    color: #888;
+    font-family: "Flame";
+    font-size: 22px;
+}
+
+.cart-page-customize-btn {
+    display: inline-flex;
+    align-items: center;
+    background: transparent;
+    border: none;
+    padding: 0;
+    color: #888;
+    font-family: "Flame", sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    transition: color 0.15s ease, transform 0.1s ease;
+}
+
+.cart-page-customize-btn:hover {
+    color: #888;
+    text-decoration: underline;
+}
+
+.cart-page-customize-btn:active {
+    color: #FF8D28;
+    text-decoration: underline;
+    transform: scale(0.96);
+}
+
+
 .cart-page-item-quantity {
     display: flex;
 

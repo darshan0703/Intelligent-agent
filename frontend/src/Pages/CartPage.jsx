@@ -1,6 +1,7 @@
 import "./CartPage.css";
 import { useState, useEffect, useRef } from "react";
 import { useCart } from "../context/CartContext";
+import { useKiosk } from "../context/KioskContext";
 import { useNavigate } from "react-router-dom";
 import { syncScreen } from "../services/screenService";
 
@@ -12,6 +13,7 @@ import { createPerfTracker, measureScreenRender } from "../services/perf";
 
 function CartPage() {
   const { cart, displayCart, total, syncCart } = useCart();
+  const { foodPreference } = useKiosk();
   const navigate = useNavigate();
 
   const [isCartUpdating, setIsCartUpdating] = useState(false);
@@ -196,6 +198,70 @@ function CartPage() {
     }
   };
 
+  const handleCustomizeMeal = async (item, index) => {
+    const burgerId = item.main_item?.id || item.burger?.id || item.id;
+    if (!burgerId) {
+      alert("Unable to identify meal item for customization.");
+      return;
+    }
+
+    try {
+      const res = await fetch("/meal/options", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          item_id: burgerId,
+          food_preference: foodPreference,
+          cart,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Server returned HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+      if (!data?.success || !data?.is_meal_available) {
+        alert(data?.message || "Meal customization is currently unavailable for this item.");
+        return;
+      }
+
+      const sizeKey = (item.meal_size || "medium").toLowerCase();
+      const baseMeal = data.meals?.[sizeKey] || data.meals?.medium || data.meals?.large;
+
+      if (!baseMeal) {
+        alert("Customization options for this meal size are currently unavailable.");
+        return;
+      }
+
+      const matchedSide = (baseMeal.side_options || []).find((s) => s.id === item.side?.id) || item.side;
+      const matchedDrink = (baseMeal.drink_options || []).find((d) => d.id === item.drink?.id) || item.drink;
+
+      const targetCartIndex = typeof item._originalIndex === "number" ? item._originalIndex : index;
+
+      navigate("/mealpage", {
+        state: {
+          meal: {
+            ...baseMeal,
+            size: item.meal_size || baseMeal.size || "medium",
+            side: matchedSide,
+            drink: matchedDrink,
+          },
+          origin: "/cart",
+          editMode: true,
+          editIndex: targetCartIndex,
+          expectedItemId: burgerId,
+          expectedSideId: item.side?.id,
+          expectedDrinkId: item.drink?.id,
+          quantity: item.quantity || 1,
+        },
+      });
+    } catch (err) {
+      console.error("Failed to load meal options for customization:", err);
+      alert("Unable to load meal customization options. Please try again.");
+    }
+  };
+
   // Voice UI Action Listener for cart operations
   useEffect(() => {
     const findTargetItem = (val, items) => {
@@ -376,15 +442,25 @@ function CartPage() {
       <PreviousButton />
 
       <div className="cart-page-items">
-        {displayCart.map((item) => (
+        {displayCart.map((item, index) => (
           <div className="cart-page-item" key={item._uniqueKey}>
             <div className="cart-page-item-info">
               <h2>{item.name}</h2>
 
               {item.type === "meal" && (
-                <p>
-                  Includes {item.side?.name} + {item.drink?.name}
-                </p>
+                <div className="cart-page-meal-details">
+                  <p className="cart-page-meal-desc">
+                    Includes {item.side?.name} + {item.drink?.name}
+                  </p>
+                  <button
+                    type="button"
+                    className="cart-page-customize-btn"
+                    onClick={() => handleCustomizeMeal(item, item._originalIndex ?? index)}
+                    aria-label={`Customize ${item.name}`}
+                  >
+                    Customize &gt;
+                  </button>
+                </div>
               )}
             </div>
 
