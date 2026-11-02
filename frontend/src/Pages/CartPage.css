@@ -68,15 +68,17 @@
     font-size: 22px;
 }
 
-.cart-page-meal-desc-row {
+.cart-page-meal-desc-row,
+.cart-page-meal-details {
     display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
     margin-top: 8px;
 }
 
-.cart-page-meal-desc-row p {
+.cart-page-meal-desc-row p,
+.cart-page-meal-desc {
     margin: 0;
     color: #888;
     font-family: "Flame";
@@ -89,17 +91,17 @@
     background: transparent;
     border: none;
     padding: 0;
-    color: #888;
+    color: var(--bk-brown);
     font-family: "Flame", sans-serif;
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 700;
     cursor: pointer;
+    text-decoration: underline;
     transition: color 0.15s ease, transform 0.1s ease;
 }
 
 .cart-page-customize-btn:hover {
-    color: #888;
-    text-decoration: underline;
+    color: var(--bk-orange);
 }
 
 .cart-page-customize-btn:active {

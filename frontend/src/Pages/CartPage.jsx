@@ -237,8 +237,8 @@ if (data.success) {
               <h2>{item.name}</h2>
 
               {item.type === "meal" && (
-                <div className="cart-page-meal-desc-row">
-                  <p>
+                <div className="cart-page-meal-details">
+                  <p className="cart-page-meal-desc">
                     Includes {item.side?.name} + {item.drink?.name}
                   </p>
                   <button
