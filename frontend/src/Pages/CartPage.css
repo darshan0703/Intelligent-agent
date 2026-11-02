@@ -91,22 +91,26 @@
     background: transparent;
     border: none;
     padding: 0;
-    color: var(--bk-brown);
+    color: #888;
     font-family: "Flame", sans-serif;
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 700;
     cursor: pointer;
-    text-decoration: underline;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
     transition: color 0.15s ease, transform 0.1s ease;
 }
 
 .cart-page-customize-btn:hover {
-    color: var(--bk-orange);
+    color: #888;
+    text-decoration: underline;
 }
 
 .cart-page-customize-btn:active {
+    color: #FF8D28;
+    text-decoration: underline;
     transform: scale(0.96);
-    opacity: 0.85;
 }
 
 
