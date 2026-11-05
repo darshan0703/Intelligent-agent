@@ -12,8 +12,9 @@ import numpy as np
 import soundfile as sf
 try:
     import whisper
-except Exception:
+except Exception as e:
     whisper = None
+    print(f"WHISPER IMPORT WARNING: {repr(e)}")
 import time
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, UploadFile, Request
@@ -427,6 +428,19 @@ def message(request: MessageRequest, raw_req: Request = None, response: Response
         if current_screen != ScreenTypes.MEAL_CONVERSION:
             prod_resolution = resolve_product(request.message, conversation_context)
             if prod_resolution.get("status") not in ["selected", "ambiguous"]:
+                # Check for physical dimensions / measurement expressions (e.g. "8 feet 8, 11 feet 8")
+                from services.dimension_parser import parse_spoken_dimensions, build_dimension_clarification_response
+                dims = parse_spoken_dimensions(request.message)
+                if dims:
+                    conversation_context["last_detected_measurement"] = dims
+                    clarification = build_dimension_clarification_response(dims, current_screen)
+                    tracer.log("dimension_utterance_clarified", detected_dimensions=dims)
+                    return finish({
+                        "screen": conversation_context.get("current_screen"),
+                        "message": clarification,
+                        "cart": conversation_context.get("cart", []),
+                    })
+
                 target_cat = resolve_category_request(request.message)
                 if target_cat:
                     from services.menuservice import handle_category
@@ -761,8 +775,15 @@ def complete_order_endpoint(raw_req: Request = None, response: Response = None):
     try:
         if response is not None:
             response.headers["X-Interaction-ID"] = tracer.interaction_id
+        session_id = conversation_context.get("session_id")
+        payment_method = conversation_context.get("selected_payment") or "cash"
+        idempotency_key = conversation_context.get("current_idempotency_key")
+
         result = complete_order(
-            conversation_context.get("cart", [])
+            conversation_context.get("cart", []),
+            session_id=session_id,
+            payment_method=payment_method,
+            idempotency_key=idempotency_key,
         )
         if isinstance(result, dict) and result.get("success"):
             conversation_context["current_screen"] = ScreenTypes.ORDER_COMPLETE
@@ -789,6 +810,7 @@ def complete_order_endpoint(raw_req: Request = None, response: Response = None):
             conversation_context["current_interaction_id"] = None
             conversation_context["current_idempotency_key"] = None
             conversation_context["session_id"] = str(uuid.uuid4())
+            conversation_context["cart"] = []
             if "session_start_time" in conversation_context:
                 session_dur = time.perf_counter() - conversation_context["session_start_time"]
                 tracer.log(
@@ -796,7 +818,20 @@ def complete_order_endpoint(raw_req: Request = None, response: Response = None):
                     session_duration_s=round(session_dur, 2),
                     session_duration_ms=round(session_dur * 1000, 2),
                 )
-        tracer.log("backend_touch_request_completed", duration_ms=(time.perf_counter() - t0) * 1000.0, endpoint="/order/complete")
+            tracer.log("backend_touch_request_completed", duration_ms=(time.perf_counter() - t0) * 1000.0, endpoint="/order/complete")
+        else:
+            # Explicitly set response HTTP error code so failures are never reported as HTTP 200
+            err_code = (result.get("status_code") if isinstance(result, dict) else None) or 502
+            if response is not None:
+                response.status_code = err_code
+            tracer.log(
+                "backend_touch_request_failed",
+                duration_ms=(time.perf_counter() - t0) * 1000.0,
+                endpoint="/order/complete",
+                status_code=err_code,
+                error_code=result.get("code") if isinstance(result, dict) else "UNKNOWN_ERROR",
+                error_message=result.get("message") if isinstance(result, dict) else str(result),
+            )
         return result
     finally:
         current_perf_tracer.reset(token)
