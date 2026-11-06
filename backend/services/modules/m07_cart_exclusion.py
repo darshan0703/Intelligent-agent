@@ -113,7 +113,9 @@ def exclude_cart_items(
                             if item.get("type") == "meal":
                                 meal_burger_names.add(base_name)
 
-        if item.get("type") == "meal":
+        is_combo = (item.get("type") == "meal" or item.get("combo") or "main_item" in item or "burger" in item or "side" in item or "drink" in item)
+
+        if is_combo:
             for b_key in ("main_item", "burger"):
                 comp = item.get(b_key)
                 if isinstance(comp, dict):

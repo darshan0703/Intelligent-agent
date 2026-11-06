@@ -568,9 +568,10 @@ def message(request: MessageRequest, raw_req: Request = None, response: Response
 
 class CheckoutSuggestionsRequest(BaseModel):
     cart_lines: list[dict] | None = None
+    food_preference: str | None = None
 
 
-def _build_checkout_recommendations(cart):
+def _build_checkout_recommendations(cart, food_preference=None):
     from services.menu_service import get_category, get_available
     from services.modules.m02_m03_basket_completion import build_checkout_3slot_recommendations
 
@@ -579,19 +580,23 @@ def _build_checkout_recommendations(cart):
     all_desserts = get_category("dessert") or []
     all_items = get_available() or []
 
+    pref = food_preference or conversation_context.get("food_preference")
+
     return build_checkout_3slot_recommendations(
         cart=cart,
         all_sides=all_sides,
         all_drinks=all_drinks,
         all_desserts=all_desserts,
         all_items=all_items,
+        food_preference=pref,
     )
 
 
 @app.get("/recommendations/checkout")
-def checkout_suggestions_get():
+def checkout_suggestions_get(preference: str | None = None):
     cart = conversation_context.get("cart", [])
-    recs = _build_checkout_recommendations(cart)
+    pref = preference or conversation_context.get("food_preference")
+    recs = _build_checkout_recommendations(cart, food_preference=pref)
     conversation_context["checkout_recommendations"] = recs
     return {
         "success": True,
@@ -601,9 +606,10 @@ def checkout_suggestions_get():
 
 
 @app.post("/recommendations/checkout")
-def checkout_suggestions_post(body: CheckoutSuggestionsRequest | None = None):
+def checkout_suggestions_post(body: CheckoutSuggestionsRequest | None = None, preference: str | None = None):
     cart = (body.cart_lines if body and body.cart_lines is not None else None) or conversation_context.get("cart", [])
-    recs = _build_checkout_recommendations(cart)
+    pref = preference or (body.food_preference if body else None) or conversation_context.get("food_preference")
+    recs = _build_checkout_recommendations(cart, food_preference=pref)
     conversation_context["checkout_recommendations"] = recs
     return {
         "success": True,
@@ -613,9 +619,10 @@ def checkout_suggestions_post(body: CheckoutSuggestionsRequest | None = None):
 
 
 @app.get("/cart/checkout-suggestions")
-def checkout_suggestions_alias():
+def checkout_suggestions_alias(preference: str | None = None):
     cart = conversation_context.get("cart", [])
-    recs = _build_checkout_recommendations(cart)
+    pref = preference or conversation_context.get("food_preference")
+    recs = _build_checkout_recommendations(cart, food_preference=pref)
     return {
         "success": True,
         "recommendations": recs,
@@ -652,12 +659,21 @@ def cart_clear():
 @app.post("/meal/options")
 def meal_options(request: dict):
     try:
+        from services.modules.m08_contextual_memory import is_meal_offer_dismissed
         item_id = request.get("item_id")
         if item_id is None:
             return {
                 "success": False,
                 "message": "item_id is required",
             }
+        # Check scoped session memory: if automatic fetch and offer dismissed for THIS item, suppress
+        if request.get("automatic") and is_meal_offer_dismissed(conversation_context, item_id):
+            return {
+                "success": True,
+                "is_meal_available": False,
+                "message": "Meal offer dismissed for this item.",
+            }
+
         pref = request.get("food_preference") or conversation_context.get("food_preference")
         cart = request.get("cart") if ("cart" in request and request.get("cart") is not None) else conversation_context.get("cart", [])
         offer = get_meal_options(item_id, food_preference=pref, cart=cart)
@@ -682,6 +698,7 @@ def meal_options(request: dict):
         }
 @app.post("/meal/decline")
 def decline_meal(request: Optional[dict] = None, raw_req: Request = None, response: Response = None):
+    from services.modules.m08_contextual_memory import record_meal_rejection
     tracer = extract_or_create_tracer(request=raw_req)
     token = current_perf_tracer.set(tracer)
     t0 = time.perf_counter()
@@ -723,6 +740,7 @@ def decline_meal(request: Optional[dict] = None, raw_req: Request = None, respon
                 conversation_context["declined_meal_products"] = []
             if str(item_id) not in [str(x) for x in conversation_context["declined_meal_products"]]:
                 conversation_context["declined_meal_products"].append(item_id)
+            record_meal_rejection(conversation_context, item_id=item_id)
 
         tracer.log("backend_touch_request_completed", duration_ms=(time.perf_counter() - t0) * 1000.0, endpoint="/meal/decline")
         return {
