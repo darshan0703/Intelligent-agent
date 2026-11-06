@@ -51,14 +51,14 @@ def _compute_product_recommendations(product, cart=None, limit=3, preference=Non
     product_food_type = get_item_food_type(product)
     eff_pref = normalize_food_type(preference)
 
-    if not eff_pref:
-        if product_food_type:
-            eff_pref = product_food_type
-        elif cart:
-            if all(get_item_food_type(item) == "veg" for item in cart):
-                eff_pref = "veg"
-            else:
-                eff_pref = "both"
+    # DYNAMIC PRODUCT-BASED DIETARY INTELLIGENCE:
+    # If the product being viewed is vegetarian (e.g. Veg Whopper), the companion
+    # recommendations on that product page MUST be strictly vegetarian.
+    if product_food_type == "veg":
+        eff_pref = "veg"
+    elif not eff_pref or eff_pref == "both":
+        if cart and all(get_item_food_type(item) == "veg" for item in cart):
+            eff_pref = "veg"
         else:
             eff_pref = "both"
 
@@ -81,10 +81,10 @@ def _compute_product_recommendations(product, cart=None, limit=3, preference=Non
         else:
             filtered = candidates
 
-        # Module A: Apply soft sensory contrast ranking within the fixed category slot
-        from services.modules.m02_m03_basket_completion import rank_candidates_with_sensory
+        # Dynamic Commercial Engine: Apply soft sensory contrast & commercial margin ranking
+        from services.modules.dynamic_commercial_engine import rank_candidates_commercial
         cart_ctx = (cart or []) + ([product] if product else [])
-        return rank_candidates_with_sensory(filtered, cart=cart_ctx, placement="normal")
+        return rank_candidates_commercial(filtered, cart=cart_ctx, placement="product_page")
 
     def try_add(item):
         item_id = item.get("id")

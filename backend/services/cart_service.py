@@ -501,9 +501,15 @@ def commit_cart_transaction(operations, idempotency_key=None):
             }
 
 
-def complete_order(cart):
+def complete_order(cart, session_id=None, payment_method="cash", idempotency_key=None):
     with cart_lock:
-        result = repository_complete_order(cart)
+        import repositories.order_repository as order_repo
+        result = order_repo.complete_order(
+            cart,
+            session_id=session_id,
+            payment_method=payment_method,
+            idempotency_key=idempotency_key,
+        )
 
         if not result["success"]:
             return result

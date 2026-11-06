@@ -197,8 +197,9 @@ function ProductPage() {
     if (!product?.name) return;
 
     const controller = new AbortController();
+    const query = foodPreference ? `?preference=${encodeURIComponent(foodPreference)}` : "";
 
-    fetch(`/menu/product/${encodeURIComponent(product.name)}/recommendations`, {
+    fetch(`/menu/product/${encodeURIComponent(product.name)}/recommendations${query}`, {
       signal: controller.signal,
     })
       .then((res) => {
@@ -219,7 +220,7 @@ function ProductPage() {
     return () => {
       controller.abort();
     };
-  }, [product?.name]);
+  }, [product?.name, cart?.length, foodPreference]);
 
   const handleDirectAddRecommend = async (item) => {
     try {
@@ -250,8 +251,9 @@ function ProductPage() {
 
     refreshTimersRef.current[item.id] = setTimeout(async () => {
       try {
+        const query = foodPreference ? `?preference=${encodeURIComponent(foodPreference)}` : "";
         const res = await fetch(
-          `/menu/product/${encodeURIComponent(product.name)}/recommendations`
+          `/menu/product/${encodeURIComponent(product.name)}/recommendations${query}`
         );
         if (res.ok) {
           const freshData = await res.json();

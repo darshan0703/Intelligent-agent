@@ -1,3 +1,4 @@
+import uuid
 from conversation import (
     handle_correction,
     handle_decline,
@@ -2120,30 +2121,52 @@ def process_message(user_input, llm):
 
         lower = user_input.lower()
 
-        if "cash" in lower or "card" in lower:
+        if "cancel" in lower:
+            conversation_context["checkout_pending"] = False
+            reply = KioskResponse(
+                screen=ScreenTypes.CART,
+                message="Checkout cancelled. Your cart has been preserved.",
+            )
+            return track_screen(reply)
 
-            from repositories.order_repository import complete_order
+        if "cash" in lower or "card" in lower or "upi" in lower:
+
+            from services.cart_service import complete_order
+
+            if "upi" in lower:
+                pm = "upi"
+            elif "cash" in lower:
+                pm = "cash"
+            else:
+                pm = "card"
+
+            session_id = conversation_context.get("session_id")
+            idemp_key = conversation_context.get("current_idempotency_key")
 
             result = complete_order(
-                conversation_context["cart"]
+                conversation_context["cart"],
+                session_id=session_id,
+                payment_method=pm,
+                idempotency_key=idemp_key,
             )
 
             if not result["success"]:
-
-                conversation_context[
-                    "checkout_pending"
-                ] = False
+                # If network timeout or transient error, keep checkout_pending for retry
+                is_transient = result.get("code") == "NETWORK_TIMEOUT" or "timed out" in str(result.get("message", "")).lower()
+                if not is_transient:
+                    conversation_context["checkout_pending"] = False
 
                 return result["message"]
 
             conversation_context["cart"] = []
+            conversation_context["current_idempotency_key"] = None
+            conversation_context["session_id"] = str(uuid.uuid4())
 
             conversation_context[
                 "checkout_pending"
             ] = False
 
-            if "cash" in lower:
-
+            if pm == "cash":
                 reply = KioskResponse(
                     screen=ScreenTypes.ORDER_COMPLETE,
                     message=(
@@ -2151,7 +2174,15 @@ def process_message(user_input, llm):
                         "Please pay at the counter. Thank you!"
                     )
                 )
-
+                return track_screen(reply)
+            elif pm == "upi":
+                reply = KioskResponse(
+                    screen=ScreenTypes.PAYMENT,
+                    message=(
+                        "Your order has been placed successfully. "
+                        "Please scan the QR code to pay via UPI. Thank you!"
+                    )
+                )
                 return track_screen(reply)
 
             reply = KioskResponse(

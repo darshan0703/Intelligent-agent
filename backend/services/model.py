@@ -11,6 +11,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
 from langchain_openai import ChatOpenAI
 from debugging.context_capture import capture_standalone_call
+from perf import get_current_tracer
 
 
 # ==============================================================================
@@ -28,9 +29,9 @@ else:
 # ==============================================================================
 CEREBRAS_MODEL = os.getenv("CEREBRAS_MODEL", "qwen-3.8-27b")
 CEREBRAS_API_BASE = os.getenv("CEREBRAS_API_BASE", "https://api.cerebras.ai/v1")
-CEREBRAS_TIMEOUT = float(os.getenv("CEREBRAS_TIMEOUT", "10.0"))
+CEREBRAS_TIMEOUT = float(os.getenv("CEREBRAS_TIMEOUT", "3.5"))
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
-GEMINI_TIMEOUT = float(os.getenv("GEMINI_TIMEOUT", "5.0"))
+GEMINI_TIMEOUT = float(os.getenv("GEMINI_TIMEOUT", "4.0"))
 GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
 
 logger = logging.getLogger("model")
@@ -218,49 +219,101 @@ class ModelAdapter:
         return self._invoke_with_fallback(messages, tools=None, **kwargs)
 
     def _invoke_with_fallback(self, messages: Any, tools: Optional[Any] = None, **kwargs: Any) -> Any:
-        t0 = time.perf_counter()
+        tracer = get_current_tracer()
+        t_start = time.perf_counter()
+        primary_duration = 0.0
+
         # 1. Attempt using primary provider (Cerebras)
         try:
+            p_t0 = time.perf_counter()
             if tools:
                 resp = self.primary_model.bind_tools(tools, **kwargs).invoke(messages)
             else:
                 resp = self.primary_model.invoke(messages, **kwargs)
-            duration = time.perf_counter() - t0
+            primary_duration = time.perf_counter() - p_t0
+            total_duration = time.perf_counter() - t_start
+
+            if tracer:
+                tracer.log(
+                    "llm_primary_attempt",
+                    provider="cerebras",
+                    model=CEREBRAS_MODEL,
+                    duration_ms=primary_duration * 1000.0,
+                    success=True,
+                )
+                tracer.log(
+                    "llm_operation_completed",
+                    provider="cerebras",
+                    model=CEREBRAS_MODEL,
+                    total_duration_ms=total_duration * 1000.0,
+                    fallback_used=False,
+                )
+
             capture_standalone_call(
                 prompt_or_messages=messages,
                 response=resp,
                 tools=tools,
                 model_name=CEREBRAS_MODEL,
                 provider="cerebras",
-                duration_seconds=duration,
+                duration_seconds=primary_duration,
             )
             return resp
         except Exception as cerebras_exc:
+            primary_duration = time.perf_counter() - t_start
+            if tracer:
+                tracer.log(
+                    "llm_primary_attempt",
+                    provider="cerebras",
+                    model=CEREBRAS_MODEL,
+                    duration_ms=primary_duration * 1000.0,
+                    success=False,
+                    error=type(cerebras_exc).__name__,
+                )
+
             # 2. Check if the error is an eligible transient failure
             if not is_transient_error(cerebras_exc):
+                total_duration = time.perf_counter() - t_start
+                if tracer:
+                    tracer.log(
+                        "llm_operation_failed",
+                        total_duration_ms=total_duration * 1000.0,
+                        primary_error=type(cerebras_exc).__name__,
+                        reason="non_transient_error",
+                    )
                 raise cerebras_exc
 
             logger.warning(
-                "Cerebras encountered transient error (%s). Falling back to Gemini...",
+                "Cerebras encountered transient error (%s) after %.2fs. Falling back to Gemini...",
                 type(cerebras_exc).__name__,
+                primary_duration,
             )
 
             # Check fallback key availability
             gemini_key = self.gemini_key or (os.getenv("GEMINI_API_KEY") or "").strip()
             if not gemini_key:
+                total_duration = time.perf_counter() - t_start
+                if tracer:
+                    tracer.log(
+                        "llm_operation_failed",
+                        total_duration_ms=total_duration * 1000.0,
+                        primary_error=type(cerebras_exc).__name__,
+                        reason="gemini_key_unconfigured",
+                    )
                 raise RuntimeError(
                     f"Cerebras failed with transient error: {cerebras_exc}. "
                     "Cannot fall back to Gemini because GEMINI_API_KEY is not configured."
                 ) from cerebras_exc
 
             # 3. Attempt request using fallback provider (Gemini)
+            f_t0 = time.perf_counter()
             try:
+                fallback_timeout = float(os.getenv("GEMINI_TIMEOUT", "4.0"))
                 fallback_model = ChatGoogleGenerativeAI(
                     model=GEMINI_MODEL,
                     temperature=0,
                     google_api_key=gemini_key,
                     transport="rest",
-                    timeout=GEMINI_TIMEOUT,
+                    timeout=fallback_timeout,
                     max_retries=0,
                 )
                 # Suppress hidden ResourceExhausted time.sleep backoff in langchain_google_genai
@@ -283,21 +336,57 @@ class ModelAdapter:
                     resp = fallback_model.bind_tools(tools, **kwargs).invoke(gemini_messages)
                 else:
                     resp = fallback_model.invoke(gemini_messages, **kwargs)
-                duration = time.perf_counter() - t0
+
+                fallback_duration = time.perf_counter() - f_t0
+                total_duration = time.perf_counter() - t_start
+
+                if tracer:
+                    tracer.log(
+                        "llm_fallback_attempt",
+                        provider="gemini",
+                        model=GEMINI_MODEL,
+                        duration_ms=fallback_duration * 1000.0,
+                        success=True,
+                    )
+                    tracer.log(
+                        "llm_operation_completed",
+                        provider="gemini",
+                        model=GEMINI_MODEL,
+                        total_duration_ms=total_duration * 1000.0,
+                        fallback_used=True,
+                    )
+
                 capture_standalone_call(
                     prompt_or_messages=gemini_messages,
                     response=resp,
                     tools=tools,
                     model_name=GEMINI_MODEL,
                     provider="gemini",
-                    duration_seconds=duration,
+                    duration_seconds=fallback_duration,
                 )
                 return resp
             except Exception as gemini_exc:
-                # 4. If fallback also fails, raise meaningful error
+                fallback_duration = time.perf_counter() - f_t0
+                total_duration = time.perf_counter() - t_start
+                if tracer:
+                    tracer.log(
+                        "llm_fallback_attempt",
+                        provider="gemini",
+                        model=GEMINI_MODEL,
+                        duration_ms=fallback_duration * 1000.0,
+                        success=False,
+                        error=type(gemini_exc).__name__,
+                    )
+                    tracer.log(
+                        "llm_operation_failed",
+                        total_duration_ms=total_duration * 1000.0,
+                        primary_error=type(cerebras_exc).__name__,
+                        fallback_error=type(gemini_exc).__name__,
+                    )
                 raise RuntimeError(
-                    f"Primary provider (Cerebras) failed with transient error: {cerebras_exc}. "
-                    f"Fallback provider (Gemini) also failed: {gemini_exc}."
+                    f"Primary provider (Cerebras) failed with transient error: {cerebras_exc} (took {primary_duration:.2f}s). "
+                    f"Fallback provider (Gemini) also failed: {gemini_exc} (took {fallback_duration:.2f}s). "
+                    f"Total duration: {total_duration:.2f}s."
                 ) from gemini_exc
 
     def __getattr__(self, name: str) -> Any:

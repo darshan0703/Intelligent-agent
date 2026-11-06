@@ -123,7 +123,10 @@ def organize_meal_options(options, food_preference=None, cart=None, main_product
     - Within each group: default first, then higher sensory affinity, then lower extra_price first.
     """
     from services.modules.m07_cart_exclusion import get_cart_exclusion_sets, is_candidate_excluded
-    from services.modules.m02_m03_basket_completion import compute_sensory_score
+    from services.modules.dynamic_commercial_engine import (
+        compute_commercial_margin_score,
+        generate_candidate_signals,
+    )
 
     cart_ctx = (cart or []) + ([main_product] if main_product else [])
     pref = str(food_preference or "veg").lower().strip()
@@ -138,13 +141,17 @@ def organize_meal_options(options, food_preference=None, cart=None, main_product
         diet_pri = 0 if (is_veg == is_veg_preferred) else 1
 
         is_def = 0 if item.get("is_default") else 1
-        sensory = compute_sensory_score(cart_ctx, item)
+        signals = generate_candidate_signals(item, cart_ctx, placement="meal_customizer")
+        sensory = signals.get("sensory_score", 0.0)
+        margin = compute_commercial_margin_score(item, cart_ctx)
+        comb_score = (1.0 + sensory) + margin
+
         extra = _parse_price(item.get("extra_price"))
         if extra is None:
             extra = DEFAULT_MAX_EXTRA_PRICE
         disp_order = item.get("display_order") or item.get("section_order") or 0
         item_id = str(item.get("id") or "")
-        return (in_cart, diet_pri, -round(sensory, 2), is_def, extra, disp_order, item_id)
+        return (in_cart, diet_pri, -round(comb_score, 2), is_def, extra, disp_order, item_id)
 
     return sorted(options, key=option_key)
 
