@@ -151,10 +151,12 @@ def compute_commercial_margin_score(
         else:
             score += 0.10
     elif mindset == "low_budget":
-        # In low budget mode, reward high-value entry items (<= 119)
-        if price <= 119.0:
+        # In low budget mode, reward commercial sweet-spot items (70-125) without downselling to cheap items
+        if 70.0 <= price <= 125.0:
             score += 0.30
-        elif price <= 140.0:
+        elif price < 70.0:
+            score += 0.15
+        elif price <= 150.0:
             score += 0.15
         else:
             score += 0.0  # Avoid pushing expensive items to price-sensitive guests
@@ -190,18 +192,27 @@ def rank_candidates_commercial(
     - Module A Sensory Affinity Score S_sensory (-0.4 to 0.4)
     - Commercial Margin Score S_margin (0.0 to 0.5)
     - Base Priority / Score S_base (0.0 to 1.0)
+    - Dietary Alignment Score S_dietary (0.0 to 0.35)
     
     Formula:
-      FinalScore = S_base * (1.0 + S_sensory) + S_margin
+      FinalScore = S_base * (1.0 + S_sensory) + S_margin + S_dietary
     """
     if not candidates:
         return []
+
+    from services.modules.m01_dietary_lock import get_item_food_type
 
     mindset = compute_budget_mindset(cart)
     scored = []
 
     for idx, item in enumerate(candidates):
         if not isinstance(item, dict):
+            continue
+
+        item_ft = get_item_food_type(item)
+
+        # Hard gate enforcement for strict veg
+        if food_type == "veg" and item_ft == "non_veg":
             continue
 
         signals = generate_candidate_signals(item, cart, placement=placement)
@@ -212,13 +223,19 @@ def rank_candidates_commercial(
         if base_priority < 0:
             base_priority = 0.0
 
-        final_score = base_priority * (1.0 + sensory_score) + margin_score
+        # Dietary alignment boost for non-veg context in savory categories (sides, burgers)
+        dietary_boost = 0.0
+        if food_type == "non_veg" and item_ft == "non_veg":
+            dietary_boost = 0.35
+
+        final_score = base_priority * (1.0 + sensory_score) + margin_score + dietary_boost
 
         scored.append({
             "item": item,
             "final_score": final_score,
             "sensory_score": sensory_score,
             "margin_score": margin_score,
+            "dietary_boost": dietary_boost,
             "orig_idx": idx,
         })
 

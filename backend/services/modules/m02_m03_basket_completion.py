@@ -233,7 +233,7 @@ def compute_sensory_score(cart: Optional[List[Dict[str, Any]]], candidate: Dict[
 
         # 6. Specific Product Profile Pairings (e.g. Makhani vs Double Patty vs Cheesy/Royale)
         if "makhani" in cart_name:
-            if any(k in cand_name for k in ["sprite", "fanta", "pepsi", "coke", "veggie strips"]):
+            if any(k in cand_name for k in ["sprite", "fanta", "pepsi", "coke"]):
                 total_sensory += 0.25
         elif "double" in cart_name:
             if any(k in cand_name for k in ["rings", "nuggets", "coca cola", "coke", "peri peri", "lava"]):

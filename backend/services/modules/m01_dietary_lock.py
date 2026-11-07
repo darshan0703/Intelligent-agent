@@ -75,11 +75,12 @@ def apply_dietary_lock(candidates, preference, cart):
     # ---------------------------------------------------------
 
     if eff_pref == "non_veg":
-        return [
+        non_veg_candidates = [
             item
             for item in candidates
             if get_item_food_type(item) == "non_veg"
         ]
+        return non_veg_candidates if non_veg_candidates else candidates
 
     # ---------------------------------------------------------
     # NO ACTIVE LOCK

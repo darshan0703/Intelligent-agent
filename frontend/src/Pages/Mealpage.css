@@ -578,3 +578,37 @@
 .meal-add-cart-btn:active {
     transform: scale(0.98);
 }
+
+
+.meal-loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    color: #4d240d;
+    font-size: 32px;
+    font-weight: 700;
+}
+
+.meal-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 60vh;
+    gap: 24px;
+    text-align: center;
+    padding: 40px;
+}
+
+.meal-empty-btn {
+    padding: 14px 32px;
+    border-radius: 18px;
+    background: #ff6a00;
+    color: white;
+    font-size: 26px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+}

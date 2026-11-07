@@ -47,9 +47,14 @@ def get_product_recommendations(product, cart=None, limit=3, preference=None):
     # recommendations on that product page MUST be strictly vegetarian.
     if product_food_type == "veg":
         eff_pref = "veg"
+    elif product_food_type == "non_veg":
+        if eff_pref != "veg":
+            eff_pref = "non_veg"
     elif not eff_pref or eff_pref == "both":
         if cart and all(get_item_food_type(item) == "veg" for item in cart):
             eff_pref = "veg"
+        elif cart and any(get_item_food_type(item) == "non_veg" for item in cart):
+            eff_pref = "non_veg"
         else:
             eff_pref = "both"
 
@@ -64,18 +69,13 @@ def get_product_recommendations(product, cart=None, limit=3, preference=None):
         if eff_pref == "veg":
             # Strict veg only
             filtered = [i for i in candidates if get_item_food_type(i) == "veg"]
-        elif eff_pref == "non_veg":
-            # Smart blend: prioritize non-veg first, then veg
-            non_veg_list = [i for i in candidates if get_item_food_type(i) == "non_veg"]
-            veg_list = [i for i in candidates if get_item_food_type(i) == "veg"]
-            filtered = non_veg_list + veg_list
         else:
             filtered = candidates
 
         # Dynamic Commercial Engine: Apply soft sensory contrast & commercial margin ranking
         from services.modules.dynamic_commercial_engine import rank_candidates_commercial
         cart_ctx = (cart or []) + ([product] if product else [])
-        return rank_candidates_commercial(filtered, cart=cart_ctx, placement="product_page")
+        return rank_candidates_commercial(filtered, cart=cart_ctx, placement="product_page", food_type=eff_pref)
 
     # Pick 1 item from each target category
     for target_cat in target_cats:

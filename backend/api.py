@@ -499,7 +499,8 @@ def meal_options(request: dict):
         }
         return offer
     except Exception as e:
-        print(f"Error in meal_options endpoint: {e}")
+        from services.meal_service import _sanitize_error
+        print(f"Error in meal_options endpoint: {_sanitize_error(e)}")
         return {
             "success": False,
             "is_meal_available": False,

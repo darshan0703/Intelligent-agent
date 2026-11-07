@@ -108,48 +108,151 @@ def is_veg_meal_item(item):
     return get_item_food_type(item) == "veg"
 
 
-def organize_meal_options(options, food_preference=None, cart=None, main_product=None):
+def get_drink_sections_order(burger_price, default_section, available_sections, is_morning=None):
     """
-    Organizes meal upgrade options:
-    - If food_preference is 'veg': Veg items first, Non-veg items after.
-    - If food_preference is 'non_veg': Non-veg items first, Veg items after.
-    - Module A Sensory & Flavor Harmony: Ranks options according to selected main_product & cart context
-      (e.g., Peri Peri main product brings compatible Peri Peri sides & complementary cold drinks higher).
-    - Cart Exclusion: items already in cart are moved to the VERY LAST!
-    - Within each group: default first, then higher sensory affinity, then lower extra_price first.
+    Computes dynamic drink section priority order based on time of day and burger price.
+    - If burger < 100:
+      Morning: BK Café, Cold Drinks, Shakes, Floats
+      Else:    Shakes, Cold Drinks, BK Café, Floats
+    - If burger >= 100:
+      Morning: BK Café, Shakes, Cold Drinks, Floats
+      Else:    Shakes, BK Café, Cold Drinks, Floats
+    - The default drink's section is placed first so it is immediately visible & active with its red border,
+      followed by the rest in exact priority order.
+    """
+    if is_morning is None:
+        from datetime import datetime
+        is_morning = (5 <= datetime.now().hour < 12)
+
+    try:
+        b_price = float(burger_price) if burger_price is not None else 0.0
+    except (ValueError, TypeError):
+        b_price = 0.0
+
+    if b_price < 100.0:
+        if is_morning:
+            target_order = ["BK Café", "Cold Drinks", "Shakes", "Floats"]
+        else:
+            target_order = ["Shakes", "Cold Drinks", "BK Café", "Floats"]
+    else:
+        if is_morning:
+            target_order = ["BK Café", "Shakes", "Cold Drinks", "Floats"]
+        else:
+            target_order = ["Shakes", "BK Café", "Cold Drinks", "Floats"]
+
+    matched = []
+    avail_list = list(available_sections or [])
+
+    for tgt in target_order:
+        norm_tgt = tgt.lower().replace("é", "e").replace("caffe", "cafe").replace("caf", "cafe").strip()
+        for act in avail_list:
+            norm_act = act.lower().replace("é", "e").replace("caffe", "cafe").replace("caf", "cafe").strip()
+            if norm_tgt == norm_act or norm_tgt in norm_act or norm_act in norm_tgt:
+                if act not in matched:
+                    matched.append(act)
+
+    for act in avail_list:
+        if act not in matched:
+            matched.append(act)
+
+    # Keep sections in their natural dynamic priority order (do not force default to index 0)
+
+    return matched
+
+
+def organize_side_options(options, food_preference=None, cart=None, main_product=None):
+    """
+    Dynamic Side Options Ranking:
+    1. If product/pref is Veg -> Veg sides first, then Non-Veg sides.
+       If product/pref is Non-Veg -> Non-Veg sides first, then Veg sides.
+    2. Within each section: Higher price first (extra_price descending).
+       - For Peri Peri burgers: Peri Peri Fries takes precedence over Saucy Fries.
+       - Otherwise: Saucy Fries (₹40) > Peri Peri Fries (₹30) > Fries (₹0) > Veg Pizza Puff (₹0).
+    3. The default side (is_default=True) retains its is_default flag, but stays in its natural sorted position
+       (NOT forced to index 0).
+    4. Soft cart exclusion: Items already in cart are moved to the end of their group.
     """
     from services.menu_organizer import is_item_in_cart
-    from services.modules.dynamic_commercial_engine import (
-        compute_commercial_margin_score,
-        generate_candidate_signals,
-    )
 
-    cart_ctx = (cart or []) + ([main_product] if main_product else [])
-    pref = str(food_preference or "veg").lower().strip()
+    burger_name = str(main_product.get("name") or "").lower() if main_product else ""
+    burger_flavor = str(main_product.get("flavor_profile") or "").lower() if main_product else ""
+    is_peri_peri_burger = ("peri peri" in burger_name) or ("peri peri" in burger_flavor)
 
-    def option_key(item):
+    burger_ft = get_item_food_type(main_product) if main_product else ""
+    user_pref = str(food_preference or "").lower().strip()
+
+    if user_pref == "veg":
+        primary_diet = "veg"
+    elif "non" in user_pref:
+        primary_diet = "non_veg"
+    else:
+        primary_diet = "veg" if burger_ft == "veg" else "non_veg"
+
+    def side_key(item):
         in_cart = 1 if is_item_in_cart(item, cart) else 0
-        is_veg = is_veg_meal_item(item)
 
-        if pref == "veg":
-            diet_pri = 0 if is_veg else 1
-        elif "non" in pref:
-            diet_pri = 1 if is_veg else 0
+        item_is_veg = (get_item_food_type(item) == "veg")
+        if primary_diet == "veg":
+            diet_group = 0 if item_is_veg else 1
         else:
-            diet_pri = 0 if is_veg else 1
+            diet_group = 0 if not item_is_veg else 1
 
-        is_def = 0 if item.get("is_default") else 1
-        signals = generate_candidate_signals(item, cart_ctx, placement="meal_customizer")
-        sensory = signals.get("sensory_score", 0.0)
-        margin = compute_commercial_margin_score(item, cart_ctx)
-        comb_score = (1.0 + sensory) + margin
+        extra = _parse_price(item.get("extra_price")) or 0.0
+        item_name = str(item.get("name") or "").lower()
 
-        extra = _parse_price(item.get("extra_price"))
-        if extra is None:
-            extra = 9999.0
-        return (in_cart, diet_pri, -round(comb_score, 2), is_def, extra)
+        # Flavor priority for Peri Peri burger vs Saucy fries:
+        # If Peri Peri burger: Peri Peri fries first.
+        # If normal burger (e.g. Veg Whopper): Saucy fries first.
+        flavor_priority = 0
+        if is_peri_peri_burger and "peri peri" in item_name:
+            flavor_priority = -1000
+        elif not is_peri_peri_burger and "saucy" in item_name:
+            flavor_priority = -500
 
-    return sorted(options, key=option_key)
+        # Potato fries priority over puffs at zero extra price
+        tie_break = 0
+        if "fries" in item_name:
+            tie_break = -10
+
+        # Higher price first: -extra (higher extra_price comes first)
+        # Notice: is_default is NOT used in sorting, so default stays in natural position
+        return (in_cart, diet_group, flavor_priority, -extra, tie_break)
+
+    return sorted(options, key=side_key)
+
+
+def organize_drink_options(options, food_preference=None, cart=None, main_product=None):
+    """
+    Dynamic Drink Options Ranking:
+    Within each drink section, sort by higher price/extra_price first,
+    preserving default drink's is_default flag in its natural position.
+    """
+    from services.menu_organizer import is_item_in_cart
+
+    def drink_key(item):
+        in_cart = 1 if is_item_in_cart(item, cart) else 0
+        extra = _parse_price(item.get("extra_price")) or 0.0
+        price = _parse_price(item.get("price")) or 0.0
+        return (in_cart, -extra, -price)
+
+    return sorted(options, key=drink_key)
+
+
+def organize_meal_options(options, food_preference=None, cart=None, main_product=None):
+    """
+    Universal entry point for meal option ranking.
+    Routes to organize_side_options or organize_drink_options based on meal_role.
+    """
+    if not options:
+        return []
+    # If contains sides, route to organize_side_options
+    sample = options[0]
+    cat = str(sample.get("section") or sample.get("category") or "").lower()
+    role = str(sample.get("meal_role") or "").lower()
+
+    if role == "drink" or "drink" in cat or "shake" in cat or "caf" in cat:
+        return organize_drink_options(options, food_preference=food_preference, cart=cart, main_product=main_product)
+    return organize_side_options(options, food_preference=food_preference, cart=cart, main_product=main_product)
 
 
 def get_default_meal(meal_size):
@@ -331,9 +434,17 @@ def build_meal(item_id, meal_size, food_preference=None, cart=None):
             if item.get("meal_role") == "drink"
         ]
 
-        # Organize options with dietary priority, Module A flavor & sensory affinity, and cart exclusion
-        side_options = organize_meal_options(side_options, food_preference=effective_pref, cart=cart, main_product=burger_data)
-        drink_options = organize_meal_options(drink_options, food_preference=effective_pref, cart=cart, main_product=burger_data)
+        # Organize options with dietary priority, price ranking, and Peri Peri flavor harmony
+        side_options = organize_side_options(side_options, food_preference=effective_pref, cart=cart, main_product=burger_data)
+        drink_options = organize_drink_options(drink_options, food_preference=effective_pref, cart=cart, main_product=burger_data)
+
+        # Dynamic drink sections ordering
+        avail_sections = list(set(d.get("section") for d in drink_options if d.get("section")))
+        drink_sections = get_drink_sections_order(
+            burger_price=burger_price,
+            default_section=drink_default.get("section"),
+            available_sections=avail_sections,
+        )
 
         upgrade_price = _parse_price(MEAL_UPGRADE_PRICES.get(meal_size, 140))
         if upgrade_price is None:
@@ -380,6 +491,7 @@ def build_meal(item_id, meal_size, food_preference=None, cart=None):
 
             "side_options": side_options,
             "drink_options": drink_options,
+            "drink_sections": drink_sections,
         }
     except Exception as e:
         print(f"Error building meal for item {item_id}: {_sanitize_error(e)}")
